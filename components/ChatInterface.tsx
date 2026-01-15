@@ -1,0 +1,1 @@
+export default function ChatInterface() { return null; }
