@@ -86,7 +86,7 @@ export const toggleLikePost = async (postId: string, userId: string, currentLike
 // 3. 评论与通知 (Comments & Notifications)
 // ==============================
 
-export const addComment = async (comment: Comment, postAuthorId: string, postTitle: string) => {
+export const addComment = async (comment: Comment, postUserId: string, postTitle: string) => {
   // 1. 敏感词过滤
   const filteredContent = await filterSensitiveWords(comment.content);
 
@@ -106,9 +106,9 @@ export const addComment = async (comment: Comment, postAuthorId: string, postTit
   if (cError) throw cError;
 
   // 3. 自动创建通知 (发给贴主，除非是贴主自己评论)
-  if (postAuthorId !== comment.userId) {
+  if (postUserId !== comment.userId) {
     await supabase.from('notifications').insert([{
-      user_id: postAuthorId,
+      user_id: postUserId,
       type: comment.replyToId ? 'reply' : 'comment',
       from_user_id: comment.userId,
       from_username: comment.username,
