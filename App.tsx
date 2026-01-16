@@ -1,3 +1,4 @@
+import { supabase } from './services/supabaseClient';
 import React, { useState, useEffect, useRef } from 'react';
 import Landing from './components/Landing';
 import { User, Post, Category, Collection } from './types';
@@ -6,6 +7,7 @@ import AdminPanel from './components/AdminPanel';
 import UserProfile from './components/UserProfile';
 import Toast, { ToastType } from './components/Toast';
 import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageSquare, Trash2, X, Plus, Check, Star, Lock, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2 } from 'lucide-react';
+
 
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
@@ -613,37 +615,60 @@ const ChangePasswordModal = ({ user, onComplete }: { user: User, onComplete: (u:
   );
 };
 
-const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
+// 从环境变量获取管理员暗号
+ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
 
-  const handleLogin = () => {
+  // ✅ 必须放在 Login 组件的大括号内部，handleLogin 的外面
+  const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
+
+  const handleLogin = async () => {
     if (!id || !password) {
       setError('请输入 ID 和密码');
       return;
     }
 
+    // 1. 管理员暗号登录逻辑
+    if (id === 'admin') {
+      if (password === ADMIN_PASSWORD) {
+        // 使用 await 调用你导入的 supabase
+        const { data } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', 'admin')
+          .single();
+
+        if (data) {
+          onLogin(data as User); // ✅ 用 'as User' 消除类型红线
+        } else {
+          // 如果数据库没数据，给一个默认的管理员对象
+          onLogin({ 
+            id: 'admin', 
+            username: '管理员', 
+            role: 'admin', 
+            isFirstLogin: false, 
+            isBanned: false, 
+            createdAt: new Date().toISOString() 
+          } as User);
+        }
+        return;
+      } else {
+        setError('管理员暗号错误');
+        return;
+      }
+    }
+
+    // 2. 普通用户本地登录逻辑
     const user = getUser(id);
-    if (!user) {
-      setError('用户不存在');
-      return;
+    if (user && user.password === password) {
+      onLogin(user);
+    } else {
+      setError('账号或密码错误');
     }
-    
-    if (user.password !== password) {
-      setError('密码错误');
-      return;
-    }
-
-    if (user.isBanned) {
-      setError('该账号已被封禁');
-      return;
-    }
-
-    onLogin(user);
   };
-
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
