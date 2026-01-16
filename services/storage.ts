@@ -120,15 +120,17 @@ export const createPost = async (post: Post) => {
 
   if (error) {
     console.error('保存到数据库失败:', error.message);
-    throw new Error('保存失败: ' + error.message);
+    throw new Error('保存失败：' + error.message);
   }
 
-  // 3. 同时更新一下本地缓存以便立即看到效果
-  db.posts.unshift(data[0]);
-  saveDB(db);
+  // ✅ 只有加上这段逻辑，网页才会收到“成功”的信号并关闭弹窗
+  if (data && data[0]) {
+    db.posts.unshift(data[0]); // 更新本地缓存
+    saveDB(db);               // 保存本地缓存
+    return data[0];           // 返回新帖子数据
+  }
+}; // 👈 这是整个函数唯一的结尾
 
-  return data[0]; 
-};
 
 export const updatePost = (postId: string, updates: Partial<Pick<Post, 'title' | 'content' | 'category'>>) => {
   const db = getDB();
