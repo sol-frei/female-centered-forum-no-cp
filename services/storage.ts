@@ -151,21 +151,29 @@ export const updatePost = (postId: string, updates: Partial<Pick<Post, 'title' |
   saveDB(db);
 };
 
-export const getPosts = (category: Category | '全部', sort: 'new' | 'essence') => {
-  const db = getDB();
-  let filtered = db.posts;
-  
+export const getPosts = async (category: Category | '全部', sort: 'new' | 'essence') => {
+  // ✅ 改为直接从 Supabase 查询
+  let query = supabase
+    .from('posts')
+    .select('*');
+
   if (category !== '全部') {
-    filtered = filtered.filter(p => p.category === category);
+    query = query.eq('category', category);
   }
-  
+
   if (sort === 'essence') {
-    filtered = filtered.filter(p => p.isEssence);
+    query = query.eq('is_essence', true);
   } else {
-    // Sort by Date Desc
-    filtered = filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    query = query.order('created_at', { ascending: false });
   }
-  return filtered;
+
+  const { data, error } = await query;
+  
+  if (error) {
+    console.error('获取帖子失败:', error.message);
+    return [];
+  }
+  return data; // 返回云端数据
 };
 
 export const toggleLikePost = (postId: string, userId: string) => {
