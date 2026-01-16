@@ -1,3 +1,4 @@
+import { supabase } from './supabaseClient';
 import { AppState, User, Post, Comment, Category, Notification, Collection } from '../types';
 
 const STORAGE_KEY = 'HERSTORY_FORUM_DB_V2'; // Version bump for schema change
@@ -88,10 +89,11 @@ export const updateUser = (id: string, updates: Partial<User>) => {
   return db.users[idx];
 };
 
-// --- Post Operations ---
-export const createPost = (post: Post) => {
+// ✅ 1. 确保函数前加了 async (异步关键字)
+export const createPost = async (post: Post) => {
   const db = getDB();
-  // Check banned words
+
+  // 保留你原有的敏感词检查逻辑
   const hasBannedWord = db.bannedWords.some(word => 
     post.title.includes(word) || post.content.includes(word)
   );
@@ -100,8 +102,32 @@ export const createPost = (post: Post) => {
     throw new Error("帖子内容包含违禁词，无法发布");
   }
 
-  db.posts.unshift(post);
+  // ✅ 2. 核心：将数据插入 Supabase 数据库
+  const { data, error } = await supabase
+    .from('posts')
+    .insert([
+      {
+        title: post.title,
+        content: post.content,
+        category: post.category,
+        // 把原先的 author_id 改为对应 post 里的 userId
+        author_id: post.userId,      // ✅ 对应 types.ts 里的 userId
+        author_name: post.username,  // ✅ 对应 types.ts 里的 username
+        created_at: new Date().toISOString()
+      }
+    ])
+    .select();
+
+  if (error) {
+    console.error('保存到数据库失败:', error.message);
+    throw new Error('保存失败: ' + error.message);
+  }
+
+  // 3. 同时更新一下本地缓存以便立即看到效果
+  db.posts.unshift(data[0]);
   saveDB(db);
+
+  return data[0]; 
 };
 
 export const updatePost = (postId: string, updates: Partial<Pick<Post, 'title' | 'content' | 'category'>>) => {
