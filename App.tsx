@@ -71,7 +71,7 @@ const CreatePostModal = ({ user, onClose, onSuccess, showToast }: { user: User, 
     }
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!title.trim()) {
       showToast("请输入标题", 'error');
       return;
@@ -111,8 +111,8 @@ const CreatePostModal = ({ user, onClose, onSuccess, showToast }: { user: User, 
           deadline: new Date(Date.now() + days * 86400000).toISOString()
         };
       }
-
-      createPost(postData);
+       
+      await createPost(postData);
       onSuccess();
     } catch (e: any) {
       showToast(e.message, 'error');
