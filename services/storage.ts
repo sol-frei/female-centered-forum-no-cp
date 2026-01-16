@@ -4,10 +4,9 @@ import { User, Post, Comment, Category, Notification, Collection } from '../type
 // ==============================
 // 1. 敏感词处理逻辑
 // ==============================
-// 建议从数据库获取，这里保留一个基础过滤函数
 export const filterSensitiveWords = async (text: string): Promise<string> => {
   const { data: words } = await supabase.from('sensitive_words').select('word');
-  if (!words) return text;
+  if (!words || words.length === 0) return text;
   
   let filteredText = text;
   words.forEach(({ word }) => {
@@ -21,29 +20,34 @@ export const filterSensitiveWords = async (text: string): Promise<string> => {
 // 2. 帖子操作 (Post Operations)
 // ==============================
 
-// 创建帖子
-export const createPost = async (postData: Partial<Post>) => {
+export const createPost = async (postData: any) => {
   // 1. 敏感词预检
   const { data: bannedWords } = await supabase.from('sensitive_words').select('word');
-  const hasBanned = bannedWords?.some(b => postData.title?.includes(b.word) || postData.content?.includes(b.word));
+  const checkText = (postData.title || '') + (postData.content || '');
+  const hasBanned = bannedWords?.some(b => checkText.includes(b.word));
   if (hasBanned) throw new Error("内容包含违禁词，发布失败");
 
-  // 2. 插入数据库
+  // 2. 插入数据库 (严格对应你 SQL 中的字段名)
   const { data, error } = await supabase
     .from('posts')
     .insert([{
       title: postData.title,
       content: postData.content,
       category: postData.category,
-      user_id: postData.userId,     // 对应 SQL 中的 user_id
-      username: postData.username,  // 对应 SQL 中的 username
+      user_id: postData.userId,      // 对应 SQL 的 user_id
+      username: postData.username,   // 对应 SQL 的 username
       images: postData.images || [],
-      poll: postData.poll || null
+      poll: postData.poll || null,
+      likes: [],                     // 初始化空数组
+      view_count: 0                  // 初始化浏览量
     }])
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Supabase 插入失败详情:', error);
+    throw new Error(error.message);
+  }
   return data;
 };
 
@@ -54,12 +58,10 @@ export const getPosts = async (category: Category | '全部', sort: 'new' | 'ess
   if (category !== '全部') {
     query = query.eq('category', category);
   }
-
   if (sort === 'essence') {
     query = query.eq('is_essence', true);
   }
 
-  // 默认按时间倒序
   query = query.order('created_at', { ascending: false });
 
   const { data, error } = await query;
@@ -68,11 +70,12 @@ export const getPosts = async (category: Category | '全部', sort: 'new' | 'ess
 };
 
 // 点赞/取消点赞
-export const toggleLikePost = async (postId: string, userId: string, currentLikes: string[]) => {
-  const isLiked = currentLikes.includes(userId);
+export const toggleLikePost = async (postId: string, userId: string, currentLikes: string[] = []) => {
+  const safeLikes = Array.isArray(currentLikes) ? currentLikes : [];
+  const isLiked = safeLikes.includes(userId);
   const newLikes = isLiked 
-    ? currentLikes.filter(id => id !== userId) 
-    : [...currentLikes, userId];
+    ? safeLikes.filter(id => id !== userId) 
+    : [...safeLikes, userId];
 
   const { error } = await supabase
     .from('posts')
@@ -80,17 +83,16 @@ export const toggleLikePost = async (postId: string, userId: string, currentLike
     .eq('id', postId);
 
   if (error) throw error;
+  return newLikes;
 };
 
 // ==============================
-// 3. 评论与通知 (Comments & Notifications)
+// 3. 评论与通知
 // ==============================
 
-export const addComment = async (comment: Comment, postUserId: string, postTitle: string) => {
-  // 1. 敏感词过滤
+export const addComment = async (comment: any, postUserId: string, postTitle: string) => {
   const filteredContent = await filterSensitiveWords(comment.content);
 
-  // 2. 插入评论
   const { data: newComment, error: cError } = await supabase
     .from('comments')
     .insert([{
@@ -105,7 +107,6 @@ export const addComment = async (comment: Comment, postUserId: string, postTitle
 
   if (cError) throw cError;
 
-  // 3. 自动创建通知 (发给贴主，除非是贴主自己评论)
   if (postUserId !== comment.userId) {
     await supabase.from('notifications').insert([{
       user_id: postUserId,
@@ -121,47 +122,22 @@ export const addComment = async (comment: Comment, postUserId: string, postTitle
   return newComment;
 };
 
-export const getComments = async (postId: string) => {
-  const { data, error } = await supabase
-    .from('comments')
-    .select('*')
-    .eq('post_id', postId)
-    .order('created_at', { ascending: true });
-    
-  if (error) throw error;
-  return data;
-};
-
 // ==============================
-// 4. 通知操作 (Notification Operations)
+// 4. 收藏逻辑 (Collections)
 // ==============================
-
-export const markNotificationsRead = async (userId: string) => {
-  await supabase
-    .from('notifications')
-    .update({ is_read: true })
-    .eq('user_id', userId)
-    .eq('is_read', false);
-};
-
-// ==============================
-// 5. 收藏逻辑 (Collections)
-// ==============================
-// 这里采用你新建立的独立 collections 表
 export const toggleCollection = async (userId: string, postId: string) => {
-  // 先检查是否已收藏
-  const { data } = await supabase
+  const { data: existing } = await supabase
     .from('collections')
     .select('*')
     .eq('user_id', userId)
     .eq('post_id', postId)
-    .single();
+    .maybeSingle();
 
-  if (data) {
-    // 取消收藏
-    await supabase.from('collections').delete().eq('id', data.id);
+  if (existing) {
+    await supabase.from('collections').delete().eq('id', existing.id);
+    return false; // 代表取消收藏
   } else {
-    // 添加收藏
     await supabase.from('collections').insert([{ user_id: userId, post_id: postId }]);
+    return true; // 代表收藏成功
   }
 };

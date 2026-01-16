@@ -699,8 +699,8 @@ export default function App() {
                               className="py-4 hover:bg-zinc-50 cursor-pointer group transition-colors px-2"
                             >
                               <div className="flex items-start gap-3">
-                                <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.author_id); }}>
-                                  <Avatar url={usersMap[post.author_id]?.avatar} className="w-10 h-10" />
+                                <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.user_id); }}>
+                                  <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
                                 </div>
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
