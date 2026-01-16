@@ -217,8 +217,22 @@ const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, s
   }, [postId]);
 
   // 3. 渲染拦截：在数据返回前不执行后续代码，彻底解决 getTime 报错
-  if (loading) return <div className="p-20 text-center text-zinc-500">正在加载内容...</div>;
-  if (!post) return <div className="p-20 text-center text-zinc-500">未找到该帖子</div>;
+  // 修正后的第 220-221 行
+  if (loading) {
+    return (
+      <div className="p-20 text-center text-zinc-500">
+        正在努力加载内容...
+      </div>
+    );
+  }
+
+  if (!post) {
+    return (
+      <div className="p-20 text-center text-zinc-500">
+        未找到该帖子
+      </div>
+    );
+  }
   
   
   
@@ -339,7 +353,7 @@ const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, s
               <div className="text-sm text-zinc-500 flex gap-3 items-center">
                 {!isEditingPost && <span className="bg-zinc-100 px-2 py-0.5 rounded text-xs">{post.category}</span>}
                 <span onClick={() => onViewProfile(post.userId)} className="hover:underline cursor-pointer hover:text-black transition-colors">{post.username}</span>
-                <span>{timeAgo(post.createdAt)}</span>
+                <span>{post?.created_at ? timeAgo(post.created_at) : ''}</span>
                 {post.isEssence && <span className="bg-black text-white px-1.5 text-xs flex items-center">蒂</span>}
                 {canEditPost && !isEditingPost && (
                   <button onClick={startEditPost} className="flex items-center gap-1 text-blue-600 hover:underline ml-2">
@@ -351,7 +365,7 @@ const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, s
             <div className="flex gap-2">
               {isAdminOrInver && (
                 <>
-                  <button onClick={() => { toggleEssence(post.id); setPost(getDB().posts.find(p => p.id === postId)); }} title="设为精华/取消" className="p-2 hover:bg-zinc-100 rounded"><Star className={`w-4 h-4 ${post.isEssence ? 'fill-black' : ''}`} /></button>
+                  <button onClick={async () => { await toggleEssence(post.id); setPost({ ...post, is_essence: !post.is_essence }); }} title="设为精华/取消" className="p-2 hover:bg-zinc-100 rounded"></button>
                   <button onClick={() => { deletePost(post.id); onDelete(); }} title="删除" className="p-2 hover:bg-red-50 text-red-600 rounded"><Trash2 className="w-4 h-4" /></button>
                 </>
               )}
