@@ -180,14 +180,48 @@ const CreatePostModal = ({ user, onClose, onSuccess, showToast }: { user: User, 
 };
 
 const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, showToast }: { postId: string, user: User, usersMap: Record<string, User>, onBack: () => void, onViewProfile: (uid: string) => void, onDelete: () => void, showToast: (msg: string, type: ToastType) => void }) => {
-  const [post, setPost] = useState<Post | undefined>(getDB().posts.find(p => p.id === postId));
-  const [comments, setComments] = useState(getComments(postId));
+// 1. 修改初始化：将原本从 getDB() 查找改为 null，并增加 loading 状态
+  const [post, setPost] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [showCollectionModal, setShowCollectionModal] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
-  const [userCollections, setUserCollections] = useState<Collection[]>([]);
+  const [userCollections, setUserCollections] = useState<any[]>([]);
 
+  // 2. 核心修复：添加 useEffect 从 Supabase 获取真实数据
+  useEffect(() => {
+    const fetchPostDetail = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('posts')
+          .select('*')
+          .eq('id', postId)
+          .single();
+        
+        if (data) {
+          setPost(data);
+        } else {
+          console.error("帖子不存在:", error);
+        }
+      } catch (err) {
+        console.error("加载失败:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (postId) fetchPostDetail();
+  }, [postId]);
+
+  // 3. 渲染拦截：在数据返回前不执行后续代码，彻底解决 getTime 报错
+  if (loading) return <div className="p-20 text-center text-zinc-500">正在云端加载内容...</div>;
+  if (!post) return <div className="p-20 text-center text-zinc-500">未找到该帖子</div>;
+  
+  
+  
   // Edit States
   const [isEditingPost, setIsEditingPost] = useState(false);
   const [editTitle, setEditTitle] = useState('');
