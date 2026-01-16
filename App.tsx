@@ -4,6 +4,7 @@ import Landing from './components/Landing';
 import { User, Post, Category, Collection } from './types';
 import { getDB, getUser, createPost, getPosts, toggleLikePost, toggleEssence, deletePost, votePoll, addComment, getComments, updateUser, getUnreadNotificationCount, createCollection, addToCollection, updatePost, updateComment } from './services/storage';
 import AdminPanel from './components/AdminPanel';
+import ChangePasswordModal from './components/ChangePasswordModal';
 import UserProfile from './components/UserProfile';
 import Toast, { ToastType } from './components/Toast';
 import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageSquare, Trash2, X, Plus, Check, Star, Lock, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2 } from 'lucide-react';
@@ -179,151 +180,82 @@ const CreatePostModal = ({ user, onClose, onSuccess, showToast }: { user: User, 
   );
 };
 
-const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, showToast }: { postId: string, user: User, usersMap: Record<string, User>, onBack: () => void, onViewProfile: (uid: string) => void, onDelete: () => void, showToast: (msg: string, type: ToastType) => void }) => {
-// 1. 修改初始化：将原本从 getDB() 查找改为 null，并增加 loading 状态
+// --- 最终整合修正版 PostDetail ---
+const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, showToast }: { 
+  postId: string, 
+  user: User, 
+  usersMap: Record<string, User>, 
+  onBack: () => void, 
+  onViewProfile: (uid: string) => void, 
+  onDelete: () => void, 
+  showToast: (msg: string, type: ToastType) => void 
+}) => {
+  // 1. 基础状态
   const [post, setPost] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [comments, setComments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // 2. 编辑与交互状态
+  const [isEditingPost, setIsEditingPost] = useState(false);
+  const [editContent, setEditContent] = useState('');
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [showCollectionModal, setShowCollectionModal] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
-  const [userCollections, setUserCollections] = useState<any[]>([]);
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // 2. 核心修复：添加 useEffect 从 Supabase 获取真实数据
+  // 3. 数据初始加载
   useEffect(() => {
-    const fetchPostDetail = async () => {
+    const loadData = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('posts')
-          .select('*')
-          .eq('id', postId)
-          .single();
-        
-        if (data) {
-          setPost(data);
-        } else {
-          console.error("帖子不存在:", error);
-        }
+        const { data: postData } = await supabase.from('posts').select('*').eq('id', postId).single();
+        const { data: commentData } = await supabase.from('comments').select('*').eq('post_id', postId).order('created_at', { ascending: true });
+        setPost(postData);
+        setComments(commentData || []);
       } catch (err) {
-        console.error("加载失败:", err);
+        showToast("内容加载失败", "error");
       } finally {
         setLoading(false);
       }
     };
-
-    if (postId) fetchPostDetail();
+    if (postId) loadData();
   }, [postId]);
 
-  // 3. 渲染拦截：在数据返回前不执行后续代码，彻底解决 getTime 报错
-  // 修正后的第 220-221 行
-  if (loading) {
-    return (
-      <div className="p-20 text-center text-zinc-500">
-        正在努力加载内容...
-      </div>
-    );
-  }
-
-  if (!post) {
-    return (
-      <div className="p-20 text-center text-zinc-500">
-        未找到该帖子
-      </div>
-    );
-  }
-  
-  
-  
-  // Edit States
-  const [isEditingPost, setIsEditingPost] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
-  const [editCategory, setEditCategory] = useState<Category>('讨论👊🏻i女');
-
-  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
-  const [editCommentContent, setEditCommentContent] = useState('');
-
-  const commentInputRef = useRef<HTMLTextAreaElement>(null);
-
-  const isAdminOrInver = ['admin', 'i女er'].includes(user.role);
-
-  // Check if post is editable (author & < 10 mins)
-  const canEditPost = post && user.id === post.userId && (Date.now() - new Date(post.createdAt).getTime() < 10 * 60 * 1000);
-
+  // 4. 实时订阅
   useEffect(() => {
-    if (user) {
-      setUserCollections(getDB().collections.filter(c => c.userId === user.id));
-    }
-  }, [user, showCollectionModal]);
+    const channel = supabase.channel(`post_sync_${postId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts', filter: `id=eq.${postId}` }, payload => setPost(payload.new))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, () => {
+        supabase.from('comments').select('*').eq('post_id', postId).then(({ data }) => setComments(data || []));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [postId]);
 
-  if (!post) return <div>帖子不存在</div>;
+  // 5. 渲染拦截（白屏克星）
+  if (loading) return <div className="p-20 text-center text-zinc-500">正在努力加载内容...</div>;
+  if (!post) return <div className="p-20 text-center text-zinc-500">未找到该帖子</div>;
 
-  const handleComment = () => {
+  // 6. 权限计算
+  const isAdminOrInver = user ? ['admin', 'i女er'].includes(user.role) : false;
+  const postTime = post.created_at || post.createdAt || new Date().toISOString();
+  const canEditPost = user.id === post.userId && (Date.now() - new Date(postTime).getTime() < 10 * 60 * 1000);
+
+  // 7. 处理函数
+  const handleComment = async () => {
     if (!newComment.trim()) return;
-    try {
-      addComment({
-        id: Date.now().toString(),
-        postId,
-        userId: user.id,
-        username: user.username,
-        content: newComment,
-        createdAt: new Date().toISOString(),
-        likes: [],
-        replyToId: replyTo || undefined
-      });
+    const { error } = await supabase.from('comments').insert({
+      post_id: postId,
+      user_id: user.id,
+      username: user.username,
+      content: newComment,
+      reply_to_id: replyTo
+    });
+    if (error) showToast("发送失败", "error");
+    else {
       setNewComment('');
       setReplyTo(null);
-      setComments(getComments(postId));
-    } catch (e: any) {
-      showToast(e.message, 'error');
-    }
-  };
-
-  const handleVote = (optId: string) => {
-    votePoll(postId, optId, user.id);
-    setPost(getDB().posts.find(p => p.id === postId));
-  };
-
-  const handleCreateCollection = () => {
-    if (!newCollectionName.trim()) return;
-    createCollection(user.id, newCollectionName);
-    setUserCollections(getDB().collections.filter(c => c.userId === user.id));
-    setNewCollectionName('');
-  };
-
-  const startEditPost = () => {
-    setEditTitle(post.title);
-    setEditContent(post.content);
-    setEditCategory(post.category);
-    setIsEditingPost(true);
-  };
-
-  const savePostEdit = () => {
-    try {
-      updatePost(post.id, { title: editTitle, content: editContent, category: editCategory });
-      setPost(getDB().posts.find(p => p.id === postId));
-      setIsEditingPost(false);
-      showToast('修改成功', 'success');
-    } catch (e: any) {
-      showToast(e.message, 'error');
-    }
-  };
-
-  const startEditComment = (comment: any) => {
-    setEditingCommentId(comment.id);
-    setEditCommentContent(comment.content);
-  };
-
-  const saveCommentEdit = (commentId: string) => {
-    try {
-      updateComment(commentId, editCommentContent);
-      setComments(getComments(postId));
-      setEditingCommentId(null);
-      showToast('评论修改成功', 'success');
-    } catch (e: any) {
-      showToast(e.message, 'error');
     }
   };
 
@@ -332,332 +264,69 @@ const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, s
       <div className="max-w-3xl mx-auto py-8 px-4 flex-1 pb-32 w-full">
         <button onClick={onBack} className="mb-4 text-sm text-zinc-500 hover:text-black">← 返回列表</button>
 
-        {/* Post Content */}
         <div className="bg-white border border-zinc-200 p-6 shadow-sm mb-6">
           <div className="flex items-start gap-4 mb-4">
             <div className="flex-shrink-0 cursor-pointer" onClick={() => onViewProfile(post.userId)}>
               <Avatar url={usersMap[post.userId]?.avatar} className="w-12 h-12" />
             </div>
             <div className="flex-1">
-              {isEditingPost ? (
-                <div className="space-y-2 mb-4">
-                  <select value={editCategory} onChange={e => setEditCategory(e.target.value as Category)} className="border p-1 text-sm">
-                    {CATEGORIES.filter(c => c !== '全部').map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <input className="w-full border p-2 font-bold text-xl" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
-                </div>
-              ) : (
-                <h1 className="text-2xl font-bold mb-2">{post.title}</h1>
-              )}
-
+              <h1 className="text-2xl font-bold mb-2">{post.title}</h1>
               <div className="text-sm text-zinc-500 flex gap-3 items-center">
-                {!isEditingPost && <span className="bg-zinc-100 px-2 py-0.5 rounded text-xs">{post.category}</span>}
-                <span onClick={() => onViewProfile(post.userId)} className="hover:underline cursor-pointer hover:text-black transition-colors">{post.username}</span>
-                <span>{post?.created_at ? timeAgo(post.created_at) : ''}</span>
-                {post.isEssence && <span className="bg-black text-white px-1.5 text-xs flex items-center">蒂</span>}
-                {canEditPost && !isEditingPost && (
-                  <button onClick={startEditPost} className="flex items-center gap-1 text-blue-600 hover:underline ml-2">
-                    <Edit2 className="w-3 h-3" /> 修改
-                  </button>
+                <span className="bg-zinc-100 px-2 py-0.5 rounded text-xs">{post.category}</span>
+                <span className="hover:underline cursor-pointer">{post.username}</span>
+                <span>{timeAgo(postTime)}</span>
+                {(post.is_essence || post.isEssence) && <span className="bg-black text-white px-1.5 text-xs">蒂</span>}
+                {canEditPost && (
+                  <button onClick={() => { setEditContent(post.content); setIsEditingPost(true); }} className="text-blue-600 hover:underline ml-2">修改</button>
                 )}
               </div>
             </div>
-            <div className="flex gap-2">
-              {isAdminOrInver && (
-                <>
-                  <button onClick={async () => { await toggleEssence(post.id); setPost({ ...post, is_essence: !post.is_essence }); }} title="设为精华/取消" className="p-2 hover:bg-zinc-100 rounded"></button>
-                  <button onClick={() => { deletePost(post.id); onDelete(); }} title="删除" className="p-2 hover:bg-red-50 text-red-600 rounded"><Trash2 className="w-4 h-4" /></button>
-                </>
-              )}
-            </div>
+            {isAdminOrInver && (
+              <div className="flex gap-2">
+                <button onClick={async () => { await supabase.from('posts').update({ is_essence: !post.is_essence }).eq('id', post.id); }} className="p-2 hover:bg-zinc-100 rounded">
+                  <Star className={`w-4 h-4 ${post.is_essence ? 'fill-yellow-500' : ''}`} />
+                </button>
+                <button onClick={async () => { await deletePost(post.id); onDelete(); }} className="p-2 hover:bg-red-50 text-red-600 rounded"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            )}
           </div>
 
           {isEditingPost ? (
-            <div className="mb-4">
+            <div className="space-y-2">
               <textarea className="w-full border p-2 h-64" value={editContent} onChange={e => setEditContent(e.target.value)} />
-              <div className="flex gap-2 mt-2">
-                <button onClick={savePostEdit} className="bg-black text-white px-3 py-1 text-sm">保存</button>
+              <div className="flex gap-2">
+                <button onClick={async () => { await supabase.from('posts').update({ content: editContent }).eq('id', post.id); setIsEditingPost(false); }} className="bg-black text-white px-3 py-1 text-sm">保存</button>
                 <button onClick={() => setIsEditingPost(false)} className="bg-zinc-200 px-3 py-1 text-sm">取消</button>
               </div>
             </div>
           ) : (
-            <div className="prose prose-zinc max-w-none mb-8 whitespace-pre-wrap leading-relaxed text-zinc-800">
-              {post.content}
-            </div>
+            <div className="prose max-w-none mb-8 whitespace-pre-wrap leading-relaxed">{post.content}</div>
           )}
-
-          {/* Images */}
-          {post.images && post.images.length > 0 && (
-            <div className="mb-8 space-y-4">
-              {post.images.map((img, i) => (
-                <img key={i} src={img} alt="post content" className="max-w-full rounded border border-zinc-100" />
-              ))}
-            </div>
-          )}
-
-          {/* Poll */}
-          {post.poll && (
-            <div className="bg-zinc-50 p-4 border border-zinc-200 mb-6">
-              <h3 className="font-bold mb-3 flex justify-between">
-                <span>📊 {post.poll.question}</span>
-                <span className="text-xs font-normal text-zinc-500">{post.poll.isMultiple ? '多选' : '单选'} · {new Date(post.poll.deadline) < new Date() ? '已截止' : '进行中'}</span>
-              </h3>
-              <div className="space-y-2">
-                {post.poll.options.map(opt => {
-                  const totalVotes = post.poll!.options.reduce((acc, o) => acc + o.votes.length, 0);
-                  const percent = totalVotes === 0 ? 0 : Math.round((opt.votes.length / totalVotes) * 100);
-                  const isVoted = opt.votes.includes(user.id);
-                  return (
-                    <div key={opt.id} className="relative group cursor-pointer" onClick={() => handleVote(opt.id)}>
-                      <div className="flex justify-between text-sm mb-1 z-10 relative">
-                        <span className={isVoted ? 'font-bold' : ''}>{opt.text} {isVoted && '✓'}</span>
-                        <span>{opt.votes.length}票 ({percent}%)</span>
-                      </div>
-                      <div className="h-2 bg-zinc-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-zinc-800 transition-all" style={{ width: `${percent}%` }}></div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-6 pt-4 border-t border-zinc-100 text-zinc-500 text-sm">
-            <button
-              onClick={() => { toggleLikePost(post.id, user.id); setPost(getDB().posts.find(p => p.id === postId)); }}
-              className={`flex items-center gap-1 hover:text-red-600 transition-colors ${post.likes.includes(user.id) ? 'text-red-600' : ''}`}
-            >
-              <Heart className={`w-4 h-4 ${post.likes.includes(user.id) ? 'fill-current' : ''}`} /> {post.likes.length} 赞
-            </button>
-            <button
-              onClick={() => setShowCollectionModal(true)}
-              className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-            >
-              <Bookmark className="w-4 h-4" /> 收藏
-            </button>
-          </div>
         </div>
 
-        {/* Comments List */}
+        {/* 评论列表 */}
         <div className="space-y-4">
-          {comments.map((comment, i) => {
-            const parent = comment.replyToId ? comments.find(c => c.id === comment.replyToId) : null;
-            const canEditComment = user.id === comment.userId && (Date.now() - new Date(comment.createdAt).getTime() < 10 * 60 * 1000);
-
-            return (
-              <div key={comment.id} className="bg-zinc-50 p-4 border-b border-zinc-200 text-sm flex gap-3">
-                <div className="flex-shrink-0 cursor-pointer" onClick={() => onViewProfile(comment.userId)}>
-                  <Avatar url={usersMap[comment.userId]?.avatar} className="w-8 h-8" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between mb-2">
-                    <span onClick={() => onViewProfile(comment.userId)} className="font-bold text-zinc-700 hover:underline cursor-pointer">{comment.username}</span>
-                    <div className="flex gap-2 items-center">
-                      <span className="text-zinc-400 text-xs">{timeAgo(comment.createdAt)}</span>
-                      {canEditComment && editingCommentId !== comment.id && (
-                        <button onClick={() => startEditComment(comment)} className="text-blue-600 text-xs hover:underline">修改</button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Quote Logic */}
-                  {comment.replyToId && (
-                    <div className="bg-zinc-100 p-2 text-xs text-zinc-500 mb-2 border-l-2 border-zinc-300">
-                      {parent ? (
-                        <>
-                          <span className="font-bold">@{parent.username}:</span> {parent.content}
-                        </>
-                      ) : (
-                        <span className="italic">该评论已被删除</span>
-                      )}
-                    </div>
-                  )}
-
-                  {editingCommentId === comment.id ? (
-                    <div className="mb-2">
-                      <textarea className="w-full border p-2 text-sm" value={editCommentContent} onChange={e => setEditCommentContent(e.target.value)} />
-                      <div className="flex gap-2 mt-1">
-                        <button onClick={() => saveCommentEdit(comment.id)} className="bg-black text-white px-2 py-0.5 text-xs">保存</button>
-                        <button onClick={() => setEditingCommentId(null)} className="bg-zinc-200 px-2 py-0.5 text-xs">取消</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-zinc-800 mb-2">{comment.content}</p>
-                  )}
-
-                  <div className="flex gap-4 text-xs text-zinc-500">
-                    <button onClick={() => { setReplyTo(comment.id); commentInputRef.current?.focus(); }} className="hover:underline">回复</button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+          {comments.map(c => (
+            <div key={c.id} className="bg-zinc-50 p-4 border-b border-zinc-200 text-sm">
+              <div className="flex justify-between mb-2 font-bold">{c.username} <span className="text-zinc-400 font-normal text-xs">{timeAgo(c.created_at)}</span></div>
+              <p>{c.content}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Sticky Bottom Input */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 p-3 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-40">
-        <div className="max-w-3xl mx-auto flex flex-col gap-2">
-          {replyTo && (
-            <div className="text-xs bg-zinc-50 p-2 border-l-2 border-black flex justify-between items-center">
-              <span>
-                回复 <span className="font-bold">{comments.find(c => c.id === replyTo)?.username}</span>
-              </span>
-              <button onClick={() => setReplyTo(null)} className="text-zinc-400 hover:text-black"><X className="w-3 h-3" /></button>
-            </div>
-          )}
-          <div className="flex gap-2">
-            <textarea
-              ref={commentInputRef}
-              value={newComment}
-              onChange={e => setNewComment(e.target.value)}
-              placeholder={replyTo ? "输入回复..." : "发表评论..."}
-              className="flex-1 p-3 bg-zinc-50 border border-zinc-200 rounded-lg outline-none resize-none text-sm h-12 focus:bg-white focus:border-black transition-all"
-            />
-            <button onClick={handleComment} className="bg-black text-white px-4 rounded-lg flex items-center justify-center hover:bg-zinc-800 transition-colors">
-              <Send className="w-4 h-4" />
-            </button>
-          </div>
+      {/* 底部输入框 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-3">
+        <div className="max-w-3xl mx-auto flex gap-2">
+          <textarea 
+            ref={commentInputRef}
+            value={newComment}
+            onChange={e => setNewComment(e.target.value)}
+            className="flex-1 border rounded p-2 h-12 text-sm"
+            placeholder="发表评论..."
+          />
+          <button onClick={handleComment} className="bg-black text-white px-4 rounded"><Send className="w-4 h-4"/></button>
         </div>
-      </div>
-
-      {/* Collection Modal */}
-      {showCollectionModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <div className="bg-white p-6 w-96 max-w-full shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold">添加到收藏夹</h3>
-              <button onClick={() => setShowCollectionModal(false)}><X className="w-4 h-4" /></button>
-            </div>
-            <div className="max-h-48 overflow-y-auto space-y-2 mb-4">
-              {userCollections.length === 0 ? <p className="text-sm text-zinc-400">暂无收藏夹</p> :
-                userCollections.map(col => (
-                  <button
-                    key={col.id}
-                    onClick={() => { addToCollection(col.id, post.id); setShowCollectionModal(false); showToast('已收藏', 'success'); }}
-                    className="w-full text-left p-2 hover:bg-zinc-100 flex justify-between items-center border border-zinc-100"
-                  >
-                    <span className="font-bold text-sm">{col.name}</span>
-                    <span className="text-zinc-400 text-xs">{col.postIds.length} 篇</span>
-                  </button>
-                ))}
-            </div>
-            <div className="flex gap-2 pt-2 border-t border-zinc-100">
-              <input placeholder="新建收藏夹..." value={newCollectionName} onChange={e => setNewCollectionName(e.target.value)} className="border p-2 flex-1 text-sm outline-none" />
-              <button onClick={handleCreateCollection} className="bg-black text-white px-3 text-sm">新建</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// --- Auth Components ---
-
-const ChangePasswordModal = ({ user, onComplete }: { user: User, onComplete: (u: User) => void }) => {
-  const [nickname, setNickname] = useState(user.username || '');
-  const [pass1, setPass1] = useState('');
-  const [pass2, setPass2] = useState('');
-  const [showPass1, setShowPass1] = useState(false);
-  const [showPass2, setShowPass2] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleSubmit = () => {
-    if (!nickname.trim()) {
-      setError('请输入昵称');
-      return;
-    }
-    if (!pass1 || !pass2) {
-      setError('请输入新密码');
-      return;
-    }
-    if (pass1 !== pass2) {
-      setError('两次输入的密码不一致');
-      return;
-    }
-    if (pass1.length < 6) {
-      setError('密码长度至少6位');
-      return;
-    }
-
-    const updated = updateUser(user.id, { username: nickname, password: pass1, isFirstLogin: false });
-    if (updated) {
-      onComplete(updated);
-    } else {
-      setError('更新失败');
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-      <div className="bg-white p-8 max-w-md w-full text-center space-y-6 animate-in zoom-in-95">
-        <h2 className="text-2xl font-bold">首次登录完善信息</h2>
-        <p className="text-zinc-500 text-sm">为了您的账号安全，请设置昵称和新密码。</p>
-
-        <div className="space-y-4">
-          <div className="text-left">
-            <label className="text-xs font-bold text-zinc-500 mb-1 block">昵称</label>
-            <input
-              type="text"
-              placeholder="设置昵称"
-              className="w-full p-3 border border-zinc-300 outline-none focus:border-black"
-              value={nickname}
-              onChange={e => setNickname(e.target.value)}
-            />
-          </div>
-
-          <div className="text-left relative">
-            <label className="text-xs font-bold text-zinc-500 mb-1 block">新密码</label>
-            <div className="relative">
-              <input
-                type={showPass1 ? "text" : "password"}
-                placeholder="新密码 (至少6位)"
-                className="w-full p-3 border border-zinc-300 outline-none focus:border-black pr-10"
-                value={pass1}
-                onChange={e => setPass1(e.target.value)}
-              />
-              <button
-                onClick={() => setShowPass1(!showPass1)}
-                className="absolute right-3 top-3.5 text-zinc-400 hover:text-black"
-                type="button"
-              >
-                {showPass1 ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="text-left relative">
-            <label className="text-xs font-bold text-zinc-500 mb-1 block">确认密码</label>
-            <div className="relative">
-              <input
-                type={showPass2 ? "text" : "password"}
-                placeholder="再次输入新密码"
-                className="w-full p-3 border border-zinc-300 outline-none focus:border-black pr-10"
-                value={pass2}
-                onChange={e => setPass2(e.target.value)}
-              />
-              <button
-                onClick={() => setShowPass2(!showPass2)}
-                className="absolute right-3 top-3.5 text-zinc-400 hover:text-black"
-                type="button"
-              >
-                {showPass2 ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-
-        <button
-          onClick={handleSubmit}
-          className="w-full bg-black text-white py-3 font-bold hover:bg-zinc-800 transition-colors"
-        >
-          确认修改并进入
-        </button>
       </div>
     </div>
   );
