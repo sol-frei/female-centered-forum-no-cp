@@ -217,7 +217,7 @@ const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, s
   }, [postId]);
 
   // 3. 渲染拦截：在数据返回前不执行后续代码，彻底解决 getTime 报错
-  if (loading) return <div className="p-20 text-center text-zinc-500">正在云端加载内容...</div>;
+  if (loading) return <div className="p-20 text-center text-zinc-500">正在加载内容...</div>;
   if (!post) return <div className="p-20 text-center text-zinc-500">未找到该帖子</div>;
   
   
@@ -1003,7 +1003,7 @@ export default function App() {
                 {/* Post List */}
                 <div className="space-y-0 divide-y divide-zinc-100">
                   {isLoading ? (
-                    <div className="py-20 text-center text-zinc-400">正在连接云端数据库...</div>
+                    <div className="py-20 text-center text-zinc-400">正在加载内容...</div>
                   ) : (
                     <>
                       {(displayPosts || []).length > 0 ? (
