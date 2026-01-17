@@ -2,13 +2,13 @@ export type Role = 'admin' | 'user' | 'i女er';
 
 export interface User {
   id: string; // Used as login ID
-  username: string; // Display name
+  user_name: string; // Display name
   password: string;
-  avatar?: string; // Base64 image string
+  avatar?: string; // 存储来自 Storage user_images 桶的图片网址
   role: Role;
-  isFirstLogin: boolean;
-  isBanned: boolean;
-  createdAt: string;
+  is_first_login: boolean;
+  is_banned: boolean;
+  created_at: string;
 }
 
 export type Category = 
@@ -22,7 +22,7 @@ export type Category =
 export interface PollOption {
   id: string;
   text: string;
-  votes: string[]; // User IDs
+  votes: string[]; // user IDs
 }
 
 export interface Poll {
@@ -34,51 +34,51 @@ export interface Poll {
 
 export interface Comment {
   id: string;
-  postId: string;
-  userId: string;
-  username: string;
+  post_id: string;
+  user_id: string;
+  user_name: string;
   content: string;
-  createdAt: string;
-  replyToId?: string; // For nested replies
-  likes: string[]; // User IDs
+  created_at: string;
+  reply_to_id?: string; // For nested replies
+  likes: string[]; // user IDs
 }
 
 export interface Post {
   id: string;
-  userId: string;
-  username: string;
+  author_id: string;
+  user_name: string;
   title: string;
   content: string;
   images?: string[]; // Base64 strings
   category: Category;
-  createdAt: string;
-  updatedAt: string;
-  isEssence: boolean; // "蒂" tag
-  isLocked: boolean; // Admin locked
-  likes: string[]; // User IDs
+  created_at: string;
+  updated_at: string;
+  is_essence: boolean; // "蒂" tag
+  is_locked: boolean; // Admin locked
+  likes: string[]; // user IDs
   poll?: Poll;
   viewCount: number;
 }
 
 export interface Notification {
   id: string;
-  userId: string; // Recipient
+  user_id: string; // Recipient
   type: 'reply' | 'comment';
-  fromUserId: string;
-  fromUsername: string;
-  postId: string;
-  postTitle: string;
+  fromuser_id: string;
+  fromuser_name: string;
+  post_id: string;
+  post_title: string;
   content: string; // The comment content
-  createdAt: string;
+  created_at: string;
   isRead: boolean;
 }
 
 export interface Collection {
   id: string;
-  userId: string;
+  user_id: string;
   name: string;
-  postIds: string[];
-  createdAt: string;
+  post_ids: string[];
+  created_at: string;
 }
 
 export interface AppState {
