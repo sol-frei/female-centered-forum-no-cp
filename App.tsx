@@ -363,11 +363,11 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
           // 如果数据库没数据，给一个默认的管理员对象
           onLogin({
             id: 'admin',
-            username: '管理员',
+            user_name: '管理员',
             role: 'admin',
-            isFirstLogin: false,
-            isBanned: false,
-            createdAt: new Date().toISOString()
+            is_first_login: false,
+            is_banned: false,
+            created_at: new Date().toISOString()
           } as User);
         }
         return;
@@ -458,7 +458,7 @@ export default function App() {
   const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render list
   const [unreadCount, setUnreadCount] = useState(0);
-  const [usersMap, setUsersMap] = useState<Record<string, User>>({});
+  const [usersMap, set_users_map] = useState<Record<string, User>>({});
 
   const [displayPosts, setDisplayPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(false);
