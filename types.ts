@@ -46,7 +46,7 @@ export interface Comment {
 export interface Post {
   id: string;
   author_id: string;
-  user_name: string;
+  author_name: string;
   title: string;
   content: string;
   images?: string[]; // 存储来自 Storage forum_images 桶的图片网址
