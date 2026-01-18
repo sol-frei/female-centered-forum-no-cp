@@ -2,7 +2,7 @@ import { supabase } from './services/supabaseClient';
 import React, { useState, useEffect, useRef } from 'react';
 import Landing from './components/Landing';
 import { User, Post, Category, Collection, Notification, SensitiveWords } from './types';
-import { getDB, getUser, createPost, get_posts, toggle_like_post, toggleEssence, deletePost, votePoll, addComment, getComments, updateUser, getUnreadNotificationCount, createCollection, addToCollection, updatePost, updateComment } from './services/storage';
+import { get_all_users, getUser, createPost, get_posts, toggle_like_post, toggleEssence, deletePost, votePoll, addComment, getComments, updateUser, getUnreadNotificationCount, createCollection, addToCollection, updatePost, updateComment } from './services/storage';
 import AdminPanel from './components/AdminPanel';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import UserProfile from './components/UserProfile';
@@ -496,25 +496,23 @@ export default function App() {
   }, [currentCategory, onlyEssence, refreshKey]); // 监听这些变量，实现自动刷新
   // --- 粘贴结束 ---
 
-  useEffect(() => {
-    if (!user) return;
-    // Initial fetch
-    const db = getDB();
+ useEffect(() => {
+  if (!user) return;
+
+  const refresh_data = async () => {
+    // 1. 去云端拿名单
+    const users_list = await get_all_users();
+    
+    // 2. 把名单整理成机器人好记的格式（Map）
     const map: Record<string, User> = {};
-    db.users.forEach(u => map[u.id] = u);
-    setUsersMap(map);
-    setUnreadCount(getUnreadNotificationCount(user.id));
+    users_list.forEach(u => map[u.id] = u);
+    
+    // 3. 让屏幕更新
+    set_users_map(map);
+  };
 
-    const interval = setInterval(() => {
-      setUnreadCount(getUnreadNotificationCount(user.id));
-      const db = getDB();
-      const map: Record<string, User> = {};
-      db.users.forEach(u => map[u.id] = u);
-      setUsersMap(map);
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [user]);
+  refresh_data();
+}, [user]);
 
   const showToast = (msg: string, type: ToastType) => {
     setToast({ msg, type });
