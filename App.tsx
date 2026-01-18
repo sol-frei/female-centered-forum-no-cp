@@ -331,6 +331,10 @@ const PostDetail = ({ post_id, user, usersMap, onBack, onViewProfile, onDelete, 
   );
 };
 
+
+//登录页面
+
+
 // 从环境变量获取管理员暗号
 const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
   const [id, setId] = useState('');
@@ -444,6 +448,8 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
     </div>
   );
 };
+
+
 
 // --- Main App Component ---
 
