@@ -592,28 +592,20 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
     // 管理员暗号登录
     if (id === 'admin') {
       if (password === ADMIN_PASSWORD) {
-        const { data } = await supabase
+        const { data ,error} = await supabase
           .from('users')
           .select('*')
-          .eq('id', 'admin')
+          .eq('role', 'admin')
           .single();
 
-        if (data) {
+        if (error ||!data) {
           onLogin(data as User);
-        } else {
-          onLogin({
-            id: 'admin',
-            user_name: '管理员',
-            role: 'admin',
-            is_first_login: false,
-            is_banned: false,
-            created_at: new Date().toISOString()
-          } as User);
-        }
+          throw new Error('管理员账号不存在，请先在数据库中创建管理员用户');
+        }     
+        onLogin(data as User);   // ✅ data.id 是 uuid
         return;
       } else {
-        setError('管理员暗号错误');
-        return;
+        throw new Error('管理员密码错误');
       }
     }
 
