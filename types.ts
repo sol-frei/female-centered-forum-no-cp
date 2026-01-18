@@ -30,7 +30,7 @@ export interface Post {
   is_locked: boolean; // Admin locked
   likes: string[]; // user IDs
   poll?: Poll;
-  viewCount: number;
+  view_count: number;
 }
 
 export type Category = 

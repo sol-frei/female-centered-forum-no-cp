@@ -88,19 +88,18 @@ const CreatePostModal = ({ user, onClose, onSuccess, showToast }: { user: User, 
 
     try {
       const postData: any = {
-        id: Date.now().toString(),
-        userId: user.id,
-        username: user.username,
+        author_id: user.id,
+        author_name: user.user_name,
         title,
         content,
         images,
         category: cat,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isEssence: false,
-        isLocked: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_essence: false,
+        is_locked: false,
         likes: [],
-        viewCount: 0
+        view_count: 0
       };
 
       if (hasPoll) {
@@ -248,7 +247,7 @@ const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, s
     const { error } = await supabase.from('comments').insert({
       post_id: postId,
       user_id: user.id,
-      username: user.username,
+      username: user.user_name,
       content: newComment,
       reply_to_id: replyTo
     });
@@ -522,7 +521,7 @@ export default function App() {
   };
 
   const handleLogin = (u: User) => {
-    if (u.isFirstLogin) {
+    if (u.is_first_login) {
       setUser(u);
     } else {
       setUser(u);

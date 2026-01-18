@@ -34,12 +34,14 @@ export const createPost = async (postData: any) => {
       title: postData.title,
       content: postData.content,
       category: postData.category,
-      user_id: postData.userId,      // 对应 SQL 的 user_id
-      username: postData.username,   // 对应 SQL 的 username
+      author_id: postData.author_id,      // 对应 SQL 的 author_id
+      author_name: postData.author_name,   // 对应 SQL 的 author_name
       images: postData.images || [],
       poll: postData.poll || null,
       likes: [],                     // 初始化空数组
-      view_count: 0                  // 初始化浏览量
+      view_count: 0 ,                 // 初始化浏览量
+      is_essence: false,              // 图片里叫 is_essence
+      is_locked: false,           // 图片里叫 is_locked
     }])
     .select()
     .single();
