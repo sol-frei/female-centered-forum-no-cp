@@ -2,7 +2,7 @@ import { supabase } from './services/supabaseClient';
 import React, { useState, useEffect, useRef } from 'react';
 import Landing from './components/Landing';
 import { User, Post, Category, Collection, Notification, SensitiveWords } from './types';
-import { getDB, getUser, createPost, getPosts, toggleLikePost, toggleEssence, deletePost, votePoll, addComment, getComments, updateUser, getUnreadNotificationCount, createCollection, addToCollection, updatePost, updateComment } from './services/storage';
+import { getDB, getUser, createPost, get_posts, toggle_like_post, toggleEssence, deletePost, votePoll, addComment, getComments, updateUser, getUnreadNotificationCount, createCollection, addToCollection, updatePost, updateComment } from './services/storage';
 import AdminPanel from './components/AdminPanel';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import UserProfile from './components/UserProfile';
@@ -87,7 +87,7 @@ const CreatePostModal = ({ user, onClose, onSuccess, showToast }: { user: User, 
     }
 
     try {
-      const postData: any = {
+      const post_data: any = {
         author_id: user.id,
         author_name: user.user_name,
         title,
@@ -104,7 +104,7 @@ const CreatePostModal = ({ user, onClose, onSuccess, showToast }: { user: User, 
 
       if (hasPoll) {
         if (!pollQ || pollOpts.some(o => !o)) throw new Error("请完善投票信息");
-        postData.poll = {
+        post_data.poll = {
           question: pollQ,
           options: pollOpts.map((t, i) => ({ id: i.toString(), text: t, votes: [] })),
           isMultiple: isMulti,
@@ -112,7 +112,7 @@ const CreatePostModal = ({ user, onClose, onSuccess, showToast }: { user: User, 
         };
       }
 
-      await createPost(postData);
+      await createPost(post_data);
       onSuccess();
     } catch (e: any) {
       showToast(e.message, 'error');
@@ -180,8 +180,8 @@ const CreatePostModal = ({ user, onClose, onSuccess, showToast }: { user: User, 
 };
 
 // --- 最终整合修正版 PostDetail ---
-const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, showToast }: { 
-  postId: string, 
+const PostDetail = ({ post_id, user, usersMap, onBack, onViewProfile, onDelete, showToast }: { 
+  post_id: string, 
   user: User, 
   usersMap: Record<string, User>, 
   onBack: () => void, 
@@ -197,7 +197,7 @@ const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, s
   // 2. 编辑与交互状态
   const [isEditingPost, setIsEditingPost] = useState(false);
   const [editContent, setEditContent] = useState('');
-  const [newComment, setNewComment] = useState('');
+  const [new_comment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [showCollectionModal, setShowCollectionModal] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
@@ -208,9 +208,9 @@ const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, s
     const loadData = async () => {
       setLoading(true);
       try {
-        const { data: postData } = await supabase.from('posts').select('*').eq('id', postId).single();
-        const { data: commentData } = await supabase.from('comments').select('*').eq('post_id', postId).order('created_at', { ascending: true });
-        setPost(postData);
+        const { data: post_data } = await supabase.from('posts').select('*').eq('id', post_id).single();
+        const { data: commentData } = await supabase.from('comments').select('*').eq('post_id', post_id).order('created_at', { ascending: true });
+        setPost(post_data);
         setComments(commentData || []);
       } catch (err) {
         showToast("内容加载失败", "error");
@@ -218,19 +218,19 @@ const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, s
         setLoading(false);
       }
     };
-    if (postId) loadData();
-  }, [postId]);
+    if (post_id) loadData();
+  }, [post_id]);
 
   // 4. 实时订阅
   useEffect(() => {
-    const channel = supabase.channel(`post_sync_${postId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts', filter: `id=eq.${postId}` }, payload => setPost(payload.new))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, () => {
-        supabase.from('comments').select('*').eq('post_id', postId).then(({ data }) => setComments(data || []));
+    const channel = supabase.channel(`post_sync_${post_id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts', filter: `id=eq.${post_id}` }, payload => setPost(payload.new))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${post_id}` }, () => {
+        supabase.from('comments').select('*').eq('post_id', post_id).then(({ data }) => setComments(data || []));
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [postId]);
+  }, [post_id]);
 
   // 5. 渲染拦截（白屏克星）
   if (loading) return <div className="p-20 text-center text-zinc-500">正在努力加载内容...</div>;
@@ -243,12 +243,12 @@ const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, s
 
   // 7. 处理函数
   const handleComment = async () => {
-    if (!newComment.trim()) return;
+    if (!new_comment.trim()) return;
     const { error } = await supabase.from('comments').insert({
-      post_id: postId,
+      post_id: post_id,
       user_id: user.id,
-      username: user.user_name,
-      content: newComment,
+      user_name: user.user_name,
+      content: new_comment,
       reply_to_id: replyTo
     });
     if (error) showToast("发送失败", "error");
@@ -319,7 +319,7 @@ const PostDetail = ({ postId, user, usersMap, onBack, onViewProfile, onDelete, s
         <div className="max-w-3xl mx-auto flex gap-2">
           <textarea 
             ref={commentInputRef}
-            value={newComment}
+            value={new_comment}
             onChange={e => setNewComment(e.target.value)}
             className="flex-1 border rounded p-2 h-12 text-sm"
             placeholder="发表评论..."
@@ -453,7 +453,7 @@ export default function App() {
   const [currentCategory, setCurrentCategory] = useState<Category | '全部'>('全部');
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyEssence, setOnlyEssence] = useState(false);
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [selectedpost_id, setSelectedpost_id] = useState<string | null>(null);
   const [targetProfileId, setTargetProfileId] = useState<string | null>(null);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render list
@@ -482,8 +482,8 @@ export default function App() {
     const loadPosts = async () => {
       setIsLoading(true);
       try {
-        // 这里的 getPosts 是你之前修改的异步 Supabase 版本
-        const data = await getPosts(currentCategory, onlyEssence ? 'essence' : 'new');
+        // 这里的 get_posts 是你之前修改的异步 Supabase 版本
+        const data = await get_posts(currentCategory, onlyEssence ? 'essence' : 'new');
         setDisplayPosts(data || []);
       } catch (err) {
         console.error("加载帖子失败:", err);
