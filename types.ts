@@ -49,7 +49,7 @@ export interface Post {
   user_name: string;
   title: string;
   content: string;
-  images?: string[]; // Base64 strings
+  images?: string[]; // 存储来自 Storage forum_images 桶的图片网址
   category: Category;
   created_at: string;
   updated_at: string;
@@ -64,13 +64,13 @@ export interface Notification {
   id: string;
   user_id: string; // Recipient
   type: 'reply' | 'comment';
-  fromuser_id: string;
-  fromuser_name: string;
+  from_user_id: string;
+  from_user_name: string;
   post_id: string;
   post_title: string;
   content: string; // The comment content
   created_at: string;
-  isRead: boolean;
+  is_read: boolean;
 }
 
 export interface Collection {
