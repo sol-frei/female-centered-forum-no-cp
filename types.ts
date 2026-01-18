@@ -106,7 +106,7 @@ export interface SensitiveWords {
 
 // 应用程序状态
 
-export interface ToastType {
+export interface AppState {
   users: User[];
   posts: Post[];
   categories: Category[];

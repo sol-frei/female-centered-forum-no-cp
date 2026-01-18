@@ -7,7 +7,8 @@ import AdminPanel from './components/AdminPanel';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import UserProfile from './components/UserProfile';
 import Toast, { ToastType } from './components/Toast';
-import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageSquare, Trash2, X, Plus, Check, Star, Lock, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical } from 'lucide-react';
+import CreatePostModal from "./components/CreatePostModal";
+import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageCircle, MessageSquare, Trash2, X, Plus, Check, Star, Lock, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical } from 'lucide-react';
 
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
@@ -132,13 +133,27 @@ const PostDetail = ({
       })
       .subscribe();
 
-    const commentsChannel = supabase.channel(`comments_for_${postId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, () => {
-        supabase.from('comments').select('*').eq('post_id', postId).order('created_at', { ascending: true })
-          .then(({ data }) => setComments(data || []))
-          .catch(err => console.error("实时获取评论失败:", err));
-      })
-      .subscribe();
+    const commentsChannel = supabase
+         .channel(`comments_for_${postId}`)
+         .on('postgres_changes', { 
+         event: '*', 
+         schema: 'public', 
+         table: 'comments', 
+         filter: `post_id=eq.${postId}` 
+         }, async (payload) => {
+    // 直接在这里处理，不需要 .then() 或 .catch()
+     try {
+      const { data } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+      setComments(data || []);
+    } catch (err) {
+      console.error("获取评论失败:", err);
+    }
+    })
+  .subscribe();
 
     return () => {
       supabase.removeChannel(postChannel);
@@ -188,7 +203,10 @@ const PostDetail = ({
         user_name: user.user_name,
         content: newComment,
         reply_to_id: replyToCommentId || undefined,
-      });
+      },
+      post.author_id, // post_user_id（帖子作者）
+      post.title      // post_title（帖子标题）
+      );
       setNewComment('');
       setReplyToCommentId(null);
       showToast("评论成功", "success");
