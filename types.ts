@@ -1,5 +1,7 @@
 export type Role = 'admin' | 'user' | 'i女er';
 
+// 用户信息
+
 export interface User {
   id: string; // Used as login ID
   user_name: string; // Display name
@@ -9,6 +11,26 @@ export interface User {
   is_first_login: boolean;
   is_banned: boolean;
   created_at: string;
+}
+
+
+// 论坛帖子信息
+
+export interface Post {
+  id: string;
+  author_id: string;
+  author_name: string;
+  title: string;
+  content: string;
+  images?: string[]; // 存储来自 Storage forum_images 桶的图片网址
+  category: Category;
+  created_at: string;
+  updated_at: string;
+  is_essence: boolean; // "蒂" tag
+  is_locked: boolean; // Admin locked
+  likes: string[]; // user IDs
+  poll?: Poll;
+  viewCount: number;
 }
 
 export type Category = 
@@ -32,33 +54,21 @@ export interface Poll {
   deadline: string;
 }
 
+// 评论信息
+
 export interface Comment {
   id: string;
   post_id: string;
   user_id: string;
   user_name: string;
   content: string;
+  comment_images?: string[]; // 存储来自 Storage comment_images 桶的图片网址
   created_at: string;
   reply_to_id?: string; // For nested replies
   likes: string[]; // user IDs
 }
 
-export interface Post {
-  id: string;
-  author_id: string;
-  author_name: string;
-  title: string;
-  content: string;
-  images?: string[]; // 存储来自 Storage forum_images 桶的图片网址
-  category: Category;
-  created_at: string;
-  updated_at: string;
-  is_essence: boolean; // "蒂" tag
-  is_locked: boolean; // Admin locked
-  likes: string[]; // user IDs
-  poll?: Poll;
-  viewCount: number;
-}
+// 通知信息
 
 export interface Notification {
   id: string;
@@ -73,6 +83,7 @@ export interface Notification {
   is_read: boolean;
 }
 
+// 收藏夹信息
 export interface Collection {
   id: string;
   user_id: string;
@@ -81,11 +92,24 @@ export interface Collection {
   created_at: string;
 }
 
+// 敏感词信息
+
+export interface SensitiveWords {
+  id: string;
+  word: string;
+  category: string;
+  replacement: string;
+  created_at: string;
+  created_by: string;
+}
+
+// 应用程序状态
+
 export interface AppState {
   users: User[];
   posts: Post[];
   comments: Comment[];
   notifications: Notification[];
   collections: Collection[];
-  bannedWords: string[];
+  sensitive_words: SensitiveWords[];
 }
