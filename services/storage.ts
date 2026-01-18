@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { AppState,User, Post, Category, Collection, Notification, SensitiveWords} from '../types';
+import { ToastType,User, Post, Category, Collection, Notification, SensitiveWords} from '../types';
 
 
 // 1. 敏感词处理逻辑
@@ -256,3 +256,194 @@ export const create_collection = async (user_id: string, name: string) => {
   }]);
   if (error) throw error;
 };
+
+
+/**
+ * 获取指定帖子的所有评论
+ * @param postId 帖子ID
+ * @returns 评论列表
+ */
+export async function getComments(postId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error: any) {
+    console.error('获取评论失败:', error);
+    throw new Error(`获取评论失败: ${error.message}`);
+  }
+}
+
+/**
+ * 更新用户信息
+ * @param userId 用户ID
+ * @param updates 要更新的字段
+ * @returns 更新后的用户对象
+ */
+export async function updateUser(userId: string, updates: {
+  user_name?: string;
+  avatar?: string;
+  bio?: string;
+  password?: string;
+  is_first_login?: boolean;
+  [key: string]: any;
+}) {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('更新用户信息失败:', error);
+    throw new Error(`更新用户信息失败: ${error.message}`);
+  }
+}
+
+/**
+ * 获取用户未读通知数量
+ * @param userId 用户ID
+ * @returns 未读通知数量
+ */
+export async function getUnreadNotificationCount(userId: string): Promise<number> {
+  try {
+    const { data, error, count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_read', false);
+
+    if (error) throw error;
+    return count || 0;
+  } catch (error: any) {
+    console.error('获取未读通知数量失败:', error);
+    return 0; // 失败时返回0，不影响主流程
+  }
+}
+
+/**
+ * 将帖子添加到收藏夹
+ * @param collectionId 收藏夹ID
+ * @param postId 帖子ID
+ * @returns 添加结果
+ */
+export async function addToCollection(collectionId: string, postId: string) {
+  try {
+    // 首先检查是否已经收藏
+    const { data: existing } = await supabase
+      .from('collection_posts')
+      .select('*')
+      .eq('collection_id', collectionId)
+      .eq('post_id', postId)
+      .single();
+
+    if (existing) {
+      throw new Error('该帖子已在此收藏夹中');
+    }
+
+    // 添加到收藏夹
+    const { data, error } = await supabase
+      .from('collection_posts')
+      .insert({
+        collection_id: collectionId,
+        post_id: postId,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // 更新收藏夹的帖子数量
+    const { error: updateError } = await supabase.rpc('increment_collection_count', {
+      collection_id: collectionId
+    });
+
+    if (updateError) {
+      console.warn('更新收藏夹计数失败:', updateError);
+      // 不抛出错误，因为主要操作已成功
+    }
+
+    return data;
+  } catch (error: any) {
+    console.error('添加到收藏夹失败:', error);
+    throw new Error(`添加到收藏夹失败: ${error.message}`);
+  }
+}
+
+/**
+ * 更新帖子信息（这个函数和 update_post 功能重复，保留兼容性）
+ * @param postId 帖子ID
+ * @param updates 要更新的字段
+ * @returns 更新后的帖子对象
+ */
+export async function updatePost(postId: string, updates: {
+  title?: string;
+  content?: string;
+  category?: string;
+  images?: string[];
+  is_essence?: boolean;
+  is_locked?: boolean;
+  [key: string]: any;
+}) {
+  try {
+    const { data, error } = await supabase
+      .from('posts')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', postId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('更新帖子失败:', error);
+    throw new Error(`更新帖子失败: ${error.message}`);
+  }
+}
+
+/**
+ * 辅助函数：如果 collection_posts 表不存在，需要创建
+ * 数据库表结构参考：
+ * 
+ * CREATE TABLE collection_posts (
+ *   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+ *   collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+ *   post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+ *   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+ *   UNIQUE(collection_id, post_id)
+ * );
+ * 
+ * -- 索引
+ * CREATE INDEX idx_collection_posts_collection ON collection_posts(collection_id);
+ * CREATE INDEX idx_collection_posts_post ON collection_posts(post_id);
+ */
+
+/**
+ * 辅助函数：increment_collection_count RPC 函数
+ * 需要在 Supabase 中创建此函数：
+ * 
+ * CREATE OR REPLACE FUNCTION increment_collection_count(collection_id UUID)
+ * RETURNS VOID AS $$
+ * BEGIN
+ *   UPDATE collections
+ *   SET post_count = post_count + 1
+ *   WHERE id = collection_id;
+ * END;
+ * $$ LANGUAGE plpgsql;
+ */
