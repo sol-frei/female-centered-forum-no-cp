@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { X, ImageIcon, Plus, Trash2, Calendar } from 'lucide-react';
-import { User, Category, ToastType } from '../types';
+import { X, ImageIcon, Plus, Trash2, Loader } from 'lucide-react';
+import { User, Category } from '../types';
 import { create_post } from '../services/storage';
+import { uploadImages, deleteImage } from '../services/storageService';
+
+type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 interface CreatePostModalProps {
   user: User;
@@ -18,7 +21,9 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<Category>('讨论👊🏻i女');
   const [images, setImages] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]); // 存储文件对象
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   // 投票功能状态
   const [enablePoll, setEnablePoll] = useState(false);
@@ -37,16 +42,34 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
       return;
     }
 
-    Array.from(files).forEach(file => {
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+
+    Array.from(files).forEach((file: File) => {
       if (file.size > 5 * 1024 * 1024) {
         showToast('图片大小不能超过5MB', 'error');
         return;
       }
 
+      // 验证文件类型
+      if (!file.type.startsWith('image/')) {
+        showToast('只能上传图片文件', 'error');
+        return;
+      }
+
+      newFiles.push(file);
+
+      // 生成预览
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
-        setImages(prev => [...prev, result]);
+        newPreviews.push(result);
+        
+        // 当所有图片都加载完成后更新状态
+        if (newPreviews.length === newFiles.length) {
+          setImages(prev => [...prev, ...newPreviews]);
+          setImageFiles(prev => [...prev, ...newFiles]);
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -55,6 +78,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   // 删除图片
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   // 添加投票选项
@@ -130,17 +154,33 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     if (!validateForm()) return;
 
     setIsSubmitting(true);
+    let uploadedImageUrls: string[] = [];
+
     try {
+      // 1. 先上传图片到 Supabase Storage
+      if (imageFiles.length > 0) {
+        showToast('正在上传图片...', 'info');
+        uploadedImageUrls = await uploadImages(
+          imageFiles,
+          'forum-images',
+          `posts/${user.id}`,
+          (current, total) => {
+            setUploadProgress(Math.round((current / total) * 100));
+          }
+        );
+      }
+
+      // 2. 创建帖子数据
       const postData: any = {
         author_id: user.id,
         author_name: user.user_name,
         title: title.trim(),
         content: content.trim(),
         category,
-        images: images.length > 0 ? images : undefined,
+        images: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
       };
 
-      // 添加投票数据
+      // 3. 添加投票数据
       if (enablePoll) {
         const validOptions = pollOptions.filter(opt => opt.trim());
         postData.poll = {
@@ -155,13 +195,24 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         };
       }
 
+      // 4. 创建帖子
       await create_post(postData);
       showToast('发帖成功！', 'success');
       onSuccess();
     } catch (error: any) {
+      // 如果创建帖子失败，删除已上传的图片
+      if (uploadedImageUrls.length > 0) {
+        try {
+          const { deleteImages } = await import('../services/storageService');
+          await deleteImages(uploadedImageUrls, 'forum-images');
+        } catch (deleteError) {
+          console.error('清理图片失败:', deleteError);
+        }
+      }
       showToast(`发帖失败: ${error.message}`, 'error');
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(0);
     }
   };
 
@@ -169,12 +220,27 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
       <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
         {/* 头部 */}
-        <div className="sticky top-0 bg-white border-b border-zinc-200 p-4 flex justify-between items-center">
+        <div className="sticky top-0 bg-white border-b border-zinc-200 p-4 flex justify-between items-center z-10">
           <h2 className="text-xl font-bold">发布新帖</h2>
-          <button onClick={onClose} className="text-zinc-500 hover:text-black" aria-label="关闭">
+          <button onClick={onClose} disabled={isSubmitting} className="text-zinc-500 hover:text-black disabled:opacity-50" aria-label="关闭">
             <X className="w-6 h-6" />
           </button>
         </div>
+
+        {/* 上传进度提示 */}
+        {isSubmitting && uploadProgress > 0 && uploadProgress < 100 && (
+          <div className="bg-blue-50 border-b border-blue-200 p-3">
+            <div className="flex items-center gap-3">
+              <Loader className="w-4 h-4 animate-spin text-blue-600" />
+              <div className="flex-1">
+                <div className="text-sm text-blue-900 mb-1">正在上传图片... {uploadProgress}%</div>
+                <div className="w-full bg-blue-200 rounded-full h-2">
+                  <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }}></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 表单内容 */}
         <div className="p-6 space-y-4">
@@ -184,7 +250,8 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
             <select
               value={category}
               onChange={e => setCategory(e.target.value as Category)}
-              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+              disabled={isSubmitting}
+              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
             >
               {CATEGORIES.map(c => (
                 <option key={c} value={c}>{c}</option>
@@ -202,8 +269,9 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
               value={title}
               onChange={e => setTitle(e.target.value)}
               maxLength={100}
+              disabled={isSubmitting}
               placeholder="给你的帖子起个标题..."
-              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
             />
           </div>
 
@@ -217,21 +285,25 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
               onChange={e => setContent(e.target.value)}
               maxLength={10000}
               rows={10}
+              disabled={isSubmitting}
               placeholder="详细描述你的想法..."
-              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none"
+              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none disabled:opacity-50"
             />
           </div>
 
           {/* 图片上传 */}
           <div>
-            <label className="block text-sm font-bold mb-2 text-zinc-700">图片 (最多9张)</label>
+            <label className="block text-sm font-bold mb-2 text-zinc-700">
+              图片 <span className="text-xs text-zinc-400 font-normal">(最多9张，每张最大5MB)</span>
+            </label>
             <div className="grid grid-cols-3 gap-3">
               {images.map((img, index) => (
                 <div key={index} className="relative group">
-                  <img src={img} alt={`上传图片 ${index + 1}`} className="w-full h-32 object-cover rounded-lg border border-zinc-200" />
+                  <img src={img} alt={`预览 ${index + 1}`} className="w-full h-32 object-cover rounded-lg border border-zinc-200" />
                   <button
                     onClick={() => removeImage(index)}
-                    className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    disabled={isSubmitting}
+                    className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
                     aria-label="删除图片"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -239,7 +311,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                 </div>
               ))}
               {images.length < 9 && (
-                <label className="w-full h-32 border-2 border-dashed border-zinc-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-black transition-colors">
+                <label className={`w-full h-32 border-2 border-dashed border-zinc-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-black transition-colors ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}>
                   <ImageIcon className="w-8 h-8 text-zinc-400 mb-2" />
                   <span className="text-sm text-zinc-500">上传图片</span>
                   <input
@@ -247,6 +319,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                     accept="image/*"
                     multiple
                     onChange={handleImageUpload}
+                    disabled={isSubmitting}
                     className="hidden"
                   />
                 </label>
@@ -261,6 +334,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                 type="checkbox"
                 checked={enablePoll}
                 onChange={e => setEnablePoll(e.target.checked)}
+                disabled={isSubmitting}
                 className="w-4 h-4 accent-black"
               />
               <span className="text-sm font-bold">添加投票</span>
@@ -275,8 +349,9 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                     type="text"
                     value={pollQuestion}
                     onChange={e => setPollQuestion(e.target.value)}
+                    disabled={isSubmitting}
                     placeholder="你想问什么？"
-                    className="w-full p-2 border border-zinc-300 rounded"
+                    className="w-full p-2 border border-zinc-300 rounded disabled:opacity-50"
                   />
                 </div>
 
@@ -290,13 +365,15 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                           type="text"
                           value={option}
                           onChange={e => updatePollOption(index, e.target.value)}
+                          disabled={isSubmitting}
                           placeholder={`选项 ${index + 1}`}
-                          className="flex-1 p-2 border border-zinc-300 rounded"
+                          className="flex-1 p-2 border border-zinc-300 rounded disabled:opacity-50"
                         />
                         {pollOptions.length > 2 && (
                           <button
                             onClick={() => removePollOption(index)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded"
+                            disabled={isSubmitting}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded disabled:opacity-50"
                             aria-label="删除选项"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -308,7 +385,8 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                   {pollOptions.length < 10 && (
                     <button
                       onClick={addPollOption}
-                      className="mt-2 flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                      disabled={isSubmitting}
+                      className="mt-2 flex items-center gap-1 text-sm text-blue-600 hover:underline disabled:opacity-50"
                     >
                       <Plus className="w-4 h-4" /> 添加选项
                     </button>
@@ -323,6 +401,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                         type="checkbox"
                         checked={isMultiple}
                         onChange={e => setIsMultiple(e.target.checked)}
+                        disabled={isSubmitting}
                         className="w-4 h-4 accent-black"
                       />
                       <span className="text-sm">允许多选</span>
@@ -334,8 +413,9 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                       type="datetime-local"
                       value={pollDeadline}
                       onChange={e => setPollDeadline(e.target.value)}
+                      disabled={isSubmitting}
                       min={new Date().toISOString().slice(0, 16)}
-                      className="w-full p-2 border border-zinc-300 rounded text-sm"
+                      className="w-full p-2 border border-zinc-300 rounded text-sm disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -356,8 +436,9 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="px-6 py-2 bg-black text-white rounded-lg hover:bg-zinc-800 transition-colors disabled:bg-zinc-400 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-black text-white rounded-lg hover:bg-zinc-800 transition-colors disabled:bg-zinc-400 disabled:cursor-not-allowed flex items-center gap-2"
           >
+            {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}
             {isSubmitting ? '发布中...' : '发布'}
           </button>
         </div>

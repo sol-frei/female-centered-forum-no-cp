@@ -1,4 +1,5 @@
 export type Role = 'admin' | 'user' | 'i女er';
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 // 用户信息
 
