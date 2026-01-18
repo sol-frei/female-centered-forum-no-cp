@@ -22,7 +22,7 @@ export default function Landing({ onLoginClick }: LandingProps) {
             女主无CP
           </h1>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tighter">
-            小说交流中心
+            小说交流中心123456
           </h1>
         </div>
 
