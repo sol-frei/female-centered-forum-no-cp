@@ -22,14 +22,11 @@ export const filter_sensitive_words = async (text: string): Promise<string> => {
 
 export const create_post = async (post_data: any) => {
 
-  // 敏感词预检
 
   const { data: banned_words} = await supabase.from('sensitive_words').select('word');
   const check_text = (post_data.title || '') + (post_data.content || '');
   const has_banned = banned_words?.some(b => check_text.includes(b.word));
-  if (has_banned) throw new Error("内容包含违禁词，发布失败");
-
-  //  插入数据库 (严格对应你 SQL 中的字段名)
+  if (has_banned) throw new Error("内容包含违禁词，发布失败");// 敏感词预检
 
   const { data, error } = await supabase
     .from('posts')
@@ -54,7 +51,9 @@ export const create_post = async (post_data: any) => {
     throw new Error(error.message);
   }
   return data;
-};
+};//  插入数据库 (严格对应你 SQL 中的字段名)
+
+
 
 // 获取帖子列表
 
@@ -94,8 +93,79 @@ export const toggle_like_post = async (post_id: string, user_id: string, current
 };
 
 
-//评论与通知
 
+
+// 收藏逻辑 (Collections)
+
+export const toggle_collection = async (user_id: string, post_id: string) => {
+  const { data: existing } = await supabase
+    .from('collections')
+    .select('*')
+    .eq('user_id', user_id)
+    .eq('post_id', post_id)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from('collections').delete().eq('id', existing.id);
+    return false; // 代表取消收藏
+  } else {
+    await supabase.from('collections').insert([{ user_id: user_id, post_id: post_id }]);
+    return true; // 代表收藏成功
+  }
+};
+
+// 专门负责去云端把所有人的名单取回来
+export const get_all_users = async () => {
+  const { data, error } = await supabase.from('profiles').select('*'); // 假设你的用户表叫 profiles
+  if (error) throw error;
+  return data;
+};
+
+
+//根据 ID 从云端获取单个用户信息
+
+export const get_user = async (id: string) => {
+  // 1. 去 users 表里查找
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle(); // 意思是：如果找到了就给一个对象，没找到就给 null
+
+  if (error) {
+    console.error('获取用户信息失败:', error.message);
+    throw error;
+  }
+
+  return data; // 返回查到的用户对象
+};
+
+// --- 帖子交互功能 ---
+
+// 投票功能
+export const vote_poll = async (post_id: string, opt_id: string, user_id: string) => {
+  const { data: post } = await supabase.from('posts').select('poll').eq('id', post_id).single();
+  if (!post || !post.poll) return;
+
+  const new_poll = { ...post.poll };
+  // 遍历所有选项，更新投票名单
+  new_poll.options = new_poll.options.map((opt: any) => {
+    // 先把用户从所有选项的投票名单里踢出来 (防止多选限制或重复投票)
+    let votes = opt.votes.filter((id: string) => id !== user_id);
+    // 如果是用户点的那个选项，就把他加进去
+    if (opt.id === opt_id) {
+      votes.push(user_id);
+    }
+    return { ...opt, votes };
+  });
+
+  const { error } = await supabase.from('posts').update({ poll: new_poll }).eq('id', post_id);
+  if (error) throw error;
+};
+
+// --- 评论功能 ---
+
+//评论与通知
 
 export const add_comment = async (comment: any, post_user_id: string, post_title: string) => {
   const filtered_content = await filter_sensitive_words(comment.content);
@@ -129,29 +199,60 @@ export const add_comment = async (comment: any, post_user_id: string, post_title
   return new_comment;
 };
 
+// 修改评论
 
-// 收藏逻辑 (Collections)
-
-export const toggle_collection = async (user_id: string, post_id: string) => {
-  const { data: existing } = await supabase
-    .from('collections')
-    .select('*')
-    .eq('user_id', user_id)
-    .eq('post_id', post_id)
-    .maybeSingle();
-
-  if (existing) {
-    await supabase.from('collections').delete().eq('id', existing.id);
-    return false; // 代表取消收藏
-  } else {
-    await supabase.from('collections').insert([{ user_id: user_id, post_id: post_id }]);
-    return true; // 代表收藏成功
-  }
+export const update_comment = async (comment_id: string, content: string) => {
+  const { error } = await supabase.from('comments').update({ content }).eq('id', comment_id);
+  if (error) throw error;
 };
 
-// 专门负责去云端把所有人的名单取回来
-export const get_all_users = async () => {
-  const { data, error } = await supabase.from('profiles').select('*'); // 假设你的用户表叫 profiles
+//删除评论
+ 
+
+export const delete_comment = async (comment_id: string) => {
+  const { error } = await supabase.from('comments').delete().eq('id', comment_id);
   if (error) throw error;
-  return data;
+};
+
+// --- 帖子管理 (管理员功能) ---
+
+//切换精华状态
+
+export const toggle_essence_post = async (post_id: string, is_essence: boolean) => {
+  const { error } = await supabase.from('posts').update({ is_essence }).eq('id', post_id);
+  if (error) throw error;
+};
+
+// 切换锁定状态
+ 
+export const toggle_lock_post = async (post_id: string, is_locked: boolean) => {
+  const { error } = await supabase.from('posts').update({ is_locked }).eq('id', post_id);
+  if (error) throw error;
+};
+
+//更新帖子内容 (修改帖子)
+
+export const update_post = async (post_id: string, update_data: any) => {
+  const { error } = await supabase.from('posts').update(update_data).eq('id', post_id);
+  if (error) throw error;
+};
+
+//删除帖子
+
+export const delete_post = async (post_id: string) => {
+  const { error } = await supabase.from('posts').delete().eq('id', post_id);
+  if (error) throw error;
+};
+
+// --- 收藏功能 ---
+
+//创建新收藏夹
+
+export const create_collection = async (user_id: string, name: string) => {
+  const { error } = await supabase.from('collections').insert([{
+    user_id,
+    name,
+    post_ids: [] // 初始收藏夹是空的
+  }]);
+  if (error) throw error;
 };
