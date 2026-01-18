@@ -1,14 +1,13 @@
 import { supabase } from './services/supabaseClient';
 import React, { useState, useEffect, useRef } from 'react';
 import Landing from './components/Landing';
-import { User, Post, Category, Collection, Notification, SensitiveWords,ToastType} from './types';
-import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post,getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment,toggle_lock_post,delete_comment } from './services/storage';
+import { User, Post, Category, Collection, Notification, SensitiveWords } from './types';
+import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment } from './services/storage';
 import AdminPanel from './components/AdminPanel';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import UserProfile from './components/UserProfile';
 import Toast, { ToastType } from './components/Toast';
-import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageSquare, Trash2, X, Plus, Check, Star, Lock, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2 } from 'lucide-react';
-
+import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageSquare, Trash2, X, Plus, Check, Star, Lock, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical } from 'lucide-react';
 
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
@@ -37,134 +36,125 @@ function timeAgo(dateInput: string | Date): string {
 // Helper to get avatar safely
 const Avatar = ({ url, className = "w-8 h-8" }: { url?: string, className?: string }) => {
   if (url) {
-    return <img src={url} alt="Avatar" className={`${className} rounded-full object-cover bg-zinc-100 border border-zinc-100`} />;
+    return <img src={url} alt="用户头像" className={`${className} rounded-full object-cover bg-zinc-100 border border-zinc-100`} />;
   }
   return <UserCircle className={`${className} text-zinc-300`} />;
 };
 
-// 发布帖子
-
+// 帖子详情组件
 interface PostDetailProps {
-  post_id: string;
+  postId: string;
   user: User;
-  users_map: Record<string, User>; // 改为下划线
+  usersMap: Record<string, User>;
   onBack: () => void;
   onViewProfile: (uid: string) => void;
-  onDelete: () => void; // 帖子被删除后的回调
+  onDelete: () => void;
   showToast: (msg: string, type: ToastType) => void;
 }
 
 const PostDetail = ({
-  post_id,
+  postId,
   user,
-  users_map, // 改为下划线
+  usersMap,
   onBack,
   onViewProfile,
   onDelete,
   showToast,
 }: PostDetailProps) => {
-  // 1. 基础状态 (保持实时订阅带来的 any 类型，后续随着表结构稳定可以细化)
+  // 1. 基础状态
   const [post, setPost] = useState<any | null>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // 2. 评论与交互状态
-  const [new_comment, setNewComment] = useState(''); // 改为下划线
-  const [reply_to_comment_id, setReplyToCommentId] = useState<string | null>(null); // 改为下划线，精确到评论ID
+  const [newComment, setNewComment] = useState('');
+  const [replyToCommentId, setReplyToCommentId] = useState<string | null>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
 
   // 3. 收藏状态
-  const [show_collection_modal, setShowCollectionModal] = useState(false); // 改为下划线
-  const [new_collection_name, setNewCollectionName] = useState(''); // 改为下划线
-  const [user_collections, setUserCollections] = useState<Collection[]>([]); // 改为下划线
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [userCollections, setUserCollections] = useState<Collection[]>([]);
 
   // 4. 编辑帖子状态
-  const [is_editing_post, setIsEditingPost] = useState(false); // 改为下划线
-  const [edit_title, setEditTitle] = useState(''); // 改为下划线
-  const [edit_content, setEditContent] = useState(''); // 改为下划线
-  const [edit_category, setEditCategory] = useState<Category>('讨论👊🏻i女'); // 改为下划线
+  const [isEditingPost, setIsEditingPost] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editCategory, setEditCategory] = useState<Category>('讨论👊🏻i女');
 
   // 5. 编辑评论状态
-  const [editing_comment_id, setEditingCommentId] = useState<string | null>(null); // 改为下划线
-  const [edit_comment_content, setEditCommentContent] = useState(''); // 改为下划线
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentContent, setEditCommentContent] = useState('');
 
   // --- 数据初始加载 ---
   const fetchPostAndComments = async () => {
     setLoading(true);
     try {
-      // 优化：直接从 Supabase 获取带有关联的 Post 数据
-      const { data: post_data, error: post_error } = await supabase
+      const { data: postData, error: postError } = await supabase
         .from('posts')
-        .select('*') // 你也可以在这里 select('*, comments(*)') 来一次性获取评论，但实时订阅会单独处理
-        .eq('id', post_id)
+        .select('*')
+        .eq('id', postId)
         .single();
 
-      if (post_error) throw post_error;
+      if (postError) throw postError;
 
-      // 获取评论
-      const { data: comment_data, error: comment_error } = await supabase
+      const { data: commentData, error: commentError } = await supabase
         .from('comments')
         .select('*')
-        .eq('post_id', post_id)
-        .order('created_at', { ascending: true }); // 确保评论按时间排序
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
 
-      if (comment_error) throw comment_error;
+      if (commentError) throw commentError;
 
-      setPost(post_data);
-      setComments(comment_data || []);
-      // 每次加载帖子时，增加浏览量（可选功能，如果需要后端函数）
-      // await update_post_view_count(post_id);
+      setPost(postData);
+      setComments(commentData || []);
     } catch (err: any) {
       showToast(`内容加载失败: ${err.message}`, "error");
-      setPost(null); // 加载失败则清空帖子
+      setPost(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (post_id) {
+    if (postId) {
       fetchPostAndComments();
     }
-  }, [post_id]); // 帖子ID变化时重新加载数据
+  }, [postId]);
 
   // --- 实时订阅 ---
   useEffect(() => {
-    if (!post_id) return;
+    if (!postId) return;
 
-    // 订阅帖子本身的更新 (点赞数、精华、锁定状态等)
-    const post_channel = supabase.channel(`post_${post_id}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts', filter: `id=eq.${post_id}` }, payload => {
+    const postChannel = supabase.channel(`post_${postId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts', filter: `id=eq.${postId}` }, payload => {
         setPost(payload.new);
       })
       .subscribe();
 
-    // 订阅评论的更新 (新增、修改、删除)
-    const comments_channel = supabase.channel(`comments_for_${post_id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${post_id}` }, () => {
-        // 当评论表有任何变化时，重新获取评论列表
-        supabase.from('comments').select('*').eq('post_id', post_id).order('created_at', { ascending: true })
+    const commentsChannel = supabase.channel(`comments_for_${postId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, () => {
+        supabase.from('comments').select('*').eq('post_id', postId).order('created_at', { ascending: true })
           .then(({ data }) => setComments(data || []))
           .catch(err => console.error("实时获取评论失败:", err));
       })
       .subscribe();
 
-    // 清理函数：组件卸载时取消订阅
     return () => {
-      supabase.removeChannel(post_channel);
-      supabase.removeChannel(comments_channel);
+      supabase.removeChannel(postChannel);
+      supabase.removeChannel(commentsChannel);
     };
-  }, [post_id]); // 帖子ID变化时重新订阅
+  }, [postId]);
 
   // --- 收藏列表加载 ---
   useEffect(() => {
     const fetchCollections = async () => {
-      if (user && show_collection_modal) { // 仅当用户存在且模态框显示时加载
+      if (user && showCollectionModal) {
         try {
           const { data, error } = await supabase
             .from('collections')
             .select('*')
-            .eq('user_id', user.id); // 确保你的 collections 表有 user_id 列
+            .eq('user_id', user.id);
 
           if (error) throw error;
           setUserCollections(data || []);
@@ -174,71 +164,57 @@ const PostDetail = ({
       }
     };
     fetchCollections();
-  }, [user, show_collection_modal]); // 当用户或模态框状态变化时加载收藏夹
+  }, [user, showCollectionModal]);
 
-  // --- 渲染拦截 (加载中和未找到) ---
+  // --- 渲染拦截 ---
   if (loading) return <div className="p-20 text-center text-zinc-500">正在努力加载内容...</div>;
   if (!post) return <div className="p-20 text-center text-zinc-500">未找到该帖子</div>;
 
-
-  // --- 权限计算 (统一用下划线) ---
-  const is_admin_or_inver = user ? ['admin', 'i女er'].includes(user.role) : false;
-  // 适配旧数据和新数据可能的命名差异
-  const post_created_at = post.created_at || post.createdAt || new Date().toISOString();
-  // 作者只能在10分钟内修改自己的帖子
-  const can_edit_post_in_time = user.id === post.author_id && (Date.now() - new Date(post_created_at).getTime() < 10 * 60 * 1000); // 注意这里的 post.author_id
+  // --- 权限计算 ---
+  const isAdminOrInver = user ? ['admin', 'i女er'].includes(user.role) : false;
+  const postCreatedAt = post.created_at || post.createdAt || new Date().toISOString();
+  const canEditPostInTime = user && user.id === post.author_id && (Date.now() - new Date(postCreatedAt).getTime() < 10 * 60 * 1000);
 
   // --- 处理函数 ---
-
-  // 处理评论提交
-  const handle_comment = async () => { // 改为下划线
-    if (!new_comment.trim()) {
+  const handleComment = async () => {
+    if (!newComment.trim()) {
       showToast("评论内容不能为空", 'error');
       return;
     }
     try {
-      // ✅ 使用云端函数 add_comment
       await add_comment({
-        post_id: post_id,
+        post_id: postId,
         user_id: user.id,
         user_name: user.user_name,
-        content: new_comment,
-        reply_to_id: reply_to_comment_id || undefined, // 如果没有回复对象就是 undefined
+        content: newComment,
+        reply_to_id: replyToCommentId || undefined,
       });
       setNewComment('');
       setReplyToCommentId(null);
-      // 实时订阅会自动更新评论，这里不需要手动 setComments
       showToast("评论成功", "success");
     } catch (e: any) {
       showToast(`评论失败: ${e.message}`, 'error');
     }
   };
 
-  // 处理投票
-  const handle_vote = async (opt_id: string) => { // 改为下划线
+  const handleVote = async (optId: string) => {
     try {
-      // 检查是否已截止
       if (new Date(post.poll.deadline) < new Date()) {
         showToast("投票已截止", "error");
         return;
       }
-      // ✅ 使用云端函数 vote_poll
-      await vote_poll(post.id, opt_id, user.id);
-      // 实时订阅会自动更新 post 状态，不需要手动 setPost
+      await vote_poll(post.id, optId, user.id);
       showToast("投票成功", "success");
     } catch (e: any) {
       showToast(`投票失败: ${e.message}`, 'error');
     }
   };
 
-  // 创建新收藏夹
-  const handle_create_collection = async () => { // 改为下划线
-    if (!new_collection_name.trim()) return;
+  const handleCreateCollection = async () => {
+    if (!newCollectionName.trim()) return;
     try {
-      // ✅ 使用云端函数 create_collection
-      await create_collection(user.id, new_collection_name); // 确保函数参数对应
+      await create_collection(user.id, newCollectionName);
       setNewCollectionName('');
-      // 重新获取收藏夹列表
       const { data, error } = await supabase.from('collections').select('*').eq('user_id', user.id);
       if (error) throw error;
       setUserCollections(data || []);
@@ -248,17 +224,24 @@ const PostDetail = ({
     }
   };
 
-  // 保存帖子编辑
-  const save_post_edit = async () => { // 改为下划线
+  const handleAddToCollection = async (collectionId: string, collectionName: string) => {
     try {
-      // ✅ 使用云端函数 update_post
+      await addToCollection(collectionId, postId);
+      showToast(`已收藏到 ${collectionName}`, 'success');
+      setShowCollectionModal(false);
+    } catch (e: any) {
+      showToast(`收藏失败: ${e.message}`, 'error');
+    }
+  };
+
+  const savePostEdit = async () => {
+    try {
       await update_post(post.id, {
-        title: edit_title,
-        content: edit_content,
-        category: edit_category,
-        updated_at: new Date().toISOString(), // 更新时间
+        title: editTitle,
+        content: editContent,
+        category: editCategory,
+        updated_at: new Date().toISOString(),
       });
-      // 实时订阅会自动更新 post 状态，不需要手动 setPost
       setIsEditingPost(false);
       showToast('帖子修改成功', 'success');
     } catch (e: any) {
@@ -266,31 +249,25 @@ const PostDetail = ({
     }
   };
 
-  // 删除帖子
-  const handle_delete_post = async () => { // 改为下划线
+  const handleDeletePost = async () => {
     if (!window.confirm("确定要删除这篇帖子吗？")) return;
     try {
-      // ✅ 使用云端函数 delete_post
       await delete_post(post.id);
       showToast('帖子已删除', 'success');
-      onDelete(); // 通知父组件帖子已删除，可能需要返回列表页
+      onDelete();
     } catch (e: any) {
       showToast(`删除失败: ${e.message}`, 'error');
     }
   };
 
-  // 开始编辑评论
-  const start_edit_comment = (comment: any) => { // 改为下划线
+  const startEditComment = (comment: any) => {
     setEditingCommentId(comment.id);
     setEditCommentContent(comment.content);
   };
 
-  // 保存评论编辑
-  const save_comment_edit = async (comment_id: string) => { // 改为下划线
+  const saveCommentEdit = async (commentId: string) => {
     try {
-      // ✅ 使用云端函数 update_comment
-      await update_comment(comment_id, edit_comment_content);
-      // 实时订阅会自动更新评论，不需要手动 setComments
+      await update_comment(commentId, editCommentContent);
       setEditingCommentId(null);
       showToast('评论修改成功', 'success');
     } catch (e: any) {
@@ -298,26 +275,21 @@ const PostDetail = ({
     }
   };
 
-  // 删除评论
-  const handle_delete_comment = async (comment_id: string) => { // 改为下划线
+  const handleDeleteComment = async (commentId: string) => {
     if (!window.confirm("确定要删除这条评论吗？")) return;
     try {
-      // ✅ 使用云端函数 delete_comment
-      await delete_comment(comment_id);
-      // 实时订阅会自动更新评论
+      await delete_comment(commentId);
       showToast('评论已删除', 'success');
     } catch (e: any) {
       showToast(`删除失败: ${e.message}`, 'error');
     }
   };
 
-  // 点击回复按钮
-  const handle_reply_click = (comment_id: string, author_name: string) => { // 改为下划线
-    setReplyToCommentId(comment_id);
-    setNewComment(`@${author_name} `); // 预填充评论框
-    commentInputRef.current?.focus(); // 聚焦输入框
+  const handleReplyClick = (commentId: string, authorName: string) => {
+    setReplyToCommentId(commentId);
+    setNewComment(`@${authorName} `);
+    commentInputRef.current?.focus();
   };
-
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -327,31 +299,29 @@ const PostDetail = ({
         {/* 帖子内容 */}
         <div className="bg-white border border-zinc-200 p-6 shadow-sm mb-6">
           <div className="flex items-start gap-4 mb-4">
-            {/* 作者头像和信息 */}
-            <div className="flex-shrink-0 cursor-pointer" onClick={() => onViewProfile(post.author_id)}> {/* 注意 post.author_id */}
-              <Avatar url={users_map[post.author_id]?.avatar} className="w-12 h-12" />
+            <div className="flex-shrink-0 cursor-pointer" onClick={() => onViewProfile(post.author_id)}>
+              <Avatar url={usersMap[post.author_id]?.avatar} className="w-12 h-12" />
             </div>
             <div className="flex-1">
-              {is_editing_post ? (
+              {isEditingPost ? (
                 <div className="space-y-2 mb-4">
-                  <select value={edit_category} onChange={e => setEditCategory(e.target.value as Category)} className="border p-1 text-sm">
+                  <select value={editCategory} onChange={e => setEditCategory(e.target.value as Category)} className="border p-1 text-sm">
                     {CATEGORIES.filter(c => c !== '全部').map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <input className="w-full border p-2 font-bold text-xl" value={edit_title} onChange={e => setEditTitle(e.target.value)} />
+                  <input className="w-full border p-2 font-bold text-xl" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
                 </div>
               ) : (
                 <h1 className="text-2xl font-bold mb-2">{post.title}</h1>
               )}
 
               <div className="text-sm text-zinc-500 flex gap-3 items-center">
-                {!is_editing_post && <span className="bg-zinc-100 px-2 py-0.5 rounded text-xs">{post.category}</span>}
-                <span onClick={() => onViewProfile(post.author_id)} className="hover:underline cursor-pointer hover:text-black transition-colors">{users_map[post.author_id]?.user_name || post.author_name}</span> {/* 注意 post.author_id 和 user_name */}
-                <span>{timeAgo(post_created_at)}</span>
+                {!isEditingPost && <span className="bg-zinc-100 px-2 py-0.5 rounded text-xs">{post.category}</span>}
+                <span onClick={() => onViewProfile(post.author_id)} className="hover:underline cursor-pointer hover:text-black transition-colors">{usersMap[post.author_id]?.user_name || '未知用户'}</span>
+                <span>{timeAgo(postCreatedAt)}</span>
                 {(post.is_essence || post.isEssence) && <span className="bg-black text-white px-1.5 text-xs flex items-center">蒂</span>}
                 {post.is_locked && <span className="bg-red-600 text-white px-1.5 text-xs flex items-center">🔒</span>}
 
-                {/* 编辑帖子按钮 */}
-                {can_edit_post_in_time && !is_editing_post && (
+                {canEditPostInTime && !isEditingPost && (
                   <button onClick={() => { setEditTitle(post.title); setEditContent(post.content); setEditCategory(post.category); setIsEditingPost(true); }} className="flex items-center gap-1 text-blue-600 hover:underline ml-2">
                     <Edit2 className="w-3 h-3" /> 修改
                   </button>
@@ -359,16 +329,15 @@ const PostDetail = ({
               </div>
             </div>
 
-            {/* 管理员操作按钮 */}
-            {is_admin_or_inver && (
+            {isAdminOrInver && (
               <div className="flex gap-2">
                 <button onClick={async () => { await toggle_essence_post(post.id, !post.is_essence); }} title="设为精华/取消" className="p-2 hover:bg-zinc-100 rounded">
                   <Star className={`w-4 h-4 ${post.is_essence ? 'fill-yellow-500 text-yellow-500' : ''}`} />
                 </button>
                 <button onClick={async () => { await toggle_lock_post(post.id, !post.is_locked); }} title="锁定/解锁帖子" className="p-2 hover:bg-zinc-100 rounded">
-                  <Lock className={`w-4 h-4 ${post.is_locked ? 'fill-red-500 text-red-500' : ''}`} /> {/* 假设 Lock 图标已经导入 */}
+                  <Lock className={`w-4 h-4 ${post.is_locked ? 'fill-red-500 text-red-500' : ''}`} />
                 </button>
-                <button onClick={handle_delete_post} title="删除" className="p-2 hover:bg-red-50 text-red-600 rounded">
+                <button onClick={handleDeletePost} title="删除" className="p-2 hover:bg-red-50 text-red-600 rounded">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -376,11 +345,11 @@ const PostDetail = ({
           </div>
 
           {/* 帖子正文 */}
-          {is_editing_post ? (
+          {isEditingPost ? (
             <div className="mb-4">
-              <textarea className="w-full border p-2 h-64" value={edit_content} onChange={e => setEditContent(e.target.value)} />
+              <textarea className="w-full border p-2 h-64" value={editContent} onChange={e => setEditContent(e.target.value)} />
               <div className="flex gap-2 mt-2">
-                <button onClick={save_post_edit} className="bg-black text-white px-3 py-1 text-sm">保存</button>
+                <button onClick={savePostEdit} className="bg-black text-white px-3 py-1 text-sm">保存</button>
                 <button onClick={() => setIsEditingPost(false)} className="bg-zinc-200 px-3 py-1 text-sm">取消</button>
               </div>
             </div>
@@ -394,7 +363,7 @@ const PostDetail = ({
           {post.images && post.images.length > 0 && (
             <div className="mb-8 space-y-4">
               {post.images.map((img: string, i: number) => (
-                <img key={i} src={img} alt="post content" className="max-w-full rounded border border-zinc-100" />
+                <img key={i} src={img} alt={`帖子图片 ${i + 1}`} className="max-w-full rounded border border-zinc-100" />
               ))}
             </div>
           )}
@@ -407,17 +376,16 @@ const PostDetail = ({
                 <span className="text-xs font-normal text-zinc-500">{post.poll.isMultiple ? '多选' : '单选'} · {new Date(post.poll.deadline) < new Date() ? '已截止' : '进行中'}</span>
               </h3>
               <div className="space-y-2">
-                {post.poll.options.map((opt: any) => { // 类型any，因为poll的结构可能复杂
+                {post.poll.options.map((opt: any) => {
                   const totalVotes = post.poll!.options.reduce((acc: number, o: any) => acc + (o.votes?.length || 0), 0);
                   const percent = totalVotes === 0 ? 0 : Math.round(((opt.votes?.length || 0) / totalVotes) * 100);
-                  const is_voted = opt.votes?.includes(user.id); // 改为下划线
-
-                  const poll_active = new Date(post.poll.deadline) >= new Date();
+                  const isVoted = opt.votes?.includes(user.id);
+                  const pollActive = new Date(post.poll.deadline) >= new Date();
 
                   return (
-                    <div key={opt.id} className={`relative group ${poll_active ? 'cursor-pointer hover:bg-zinc-100' : 'cursor-not-allowed'}`} onClick={() => poll_active && handle_vote(opt.id)}>
+                    <div key={opt.id} className={`relative group ${pollActive ? 'cursor-pointer hover:bg-zinc-100' : 'cursor-not-allowed'}`} onClick={() => pollActive && handleVote(opt.id)}>
                       <div className="flex justify-between text-sm mb-1 z-10 relative px-2 py-1">
-                        <span className={is_voted ? 'font-bold' : ''}>{opt.text} {is_voted && '✓'}</span>
+                        <span className={isVoted ? 'font-bold' : ''}>{opt.text} {isVoted && '✓'}</span>
                         <span>{(opt.votes?.length || 0)}票 ({percent}%)</span>
                       </div>
                       <div className="h-2 bg-zinc-200 rounded-full overflow-hidden mx-2">
@@ -430,11 +398,16 @@ const PostDetail = ({
             </div>
           )}
 
-
-          {/* 底部互动操作：点赞，评论，收藏 */}
+          {/* 底部互动操作 */}
           <div className="flex gap-6 pt-4 border-t border-zinc-100 text-zinc-500 text-sm">
             <button
-              onClick={async () => { await toggle_like_post(post.id, user.id); }} // 使用云端函数
+              onClick={async () => { 
+                try {
+                  await toggle_like_post(post.id, user.id);
+                } catch (e: any) {
+                  showToast(`点赞失败: ${e.message}`, 'error');
+                }
+              }}
               className={`flex items-center gap-1 hover:text-red-600 transition-colors ${post.likes?.includes(user.id) ? 'text-red-600' : ''}`}
             >
               <Heart className={`w-4 h-4 ${post.likes?.includes(user.id) ? 'fill-current' : ''}`} /> {(post.likes?.length || 0)} 赞
@@ -456,53 +429,53 @@ const PostDetail = ({
           {comments.length === 0 ? (
             <div className="text-center text-zinc-500 p-8 border border-zinc-200 rounded-md">暂无评论，快来发表你的看法吧！</div>
           ) : (
-            comments.map((c: any) => { // 确保 c 的类型正确
-              const comment_author = users_map[c.user_id]; // 根据 user_id 查找用户
-              const is_author = user.id === c.user_id; // 判断是否是评论作者
-              const is_reply = c.reply_to_id;
-              const replied_to_comment = is_reply ? comments.find(com => com.id === c.reply_to_id) : null;
-              const replied_to_author = replied_to_comment ? users_map[replied_to_comment.user_id] : null;
+            comments.map((c: any) => {
+              const commentAuthor = usersMap[c.user_id];
+              const isAuthor = user.id === c.user_id;
+              const isReply = c.reply_to_id;
+              const repliedToComment = isReply ? comments.find(com => com.id === c.reply_to_id) : null;
+              const repliedToAuthor = repliedToComment ? usersMap[repliedToComment.user_id] : null;
 
               return (
                 <div key={c.id} className="bg-white p-4 border-b border-zinc-200 text-sm flex gap-3">
                   <div className="flex-shrink-0">
-                    <Avatar url={comment_author?.avatar} className="w-8 h-8" />
+                    <Avatar url={commentAuthor?.avatar} className="w-8 h-8" />
                   </div>
                   <div className="flex-1">
                     <div className="flex justify-between items-center mb-1">
                       <div className="font-bold flex items-center gap-1">
-                        <span onClick={() => onViewProfile(c.user_id)} className="hover:underline cursor-pointer">{comment_author?.user_name || c.user_name}</span>
-                        {is_reply && replied_to_author && (
+                        <span onClick={() => onViewProfile(c.user_id)} className="hover:underline cursor-pointer">{commentAuthor?.user_name || '未知用户'}</span>
+                        {isReply && repliedToAuthor && (
                           <span className="text-zinc-500 font-normal">回复
-                            <span onClick={() => onViewProfile(replied_to_author.id)} className="hover:underline cursor-pointer ml-1">@{replied_to_author.user_name}</span>
+                            <span onClick={() => onViewProfile(repliedToAuthor.id)} className="hover:underline cursor-pointer ml-1">@{repliedToAuthor.user_name}</span>
                           </span>
                         )}
                       </div>
                       <div className="text-zinc-400 font-normal text-xs flex items-center gap-2">
                         <span>{timeAgo(c.created_at)}</span>
-                        {(is_author || is_admin_or_inver) && (
+                        {(isAuthor || isAdminOrInver) && (
                           <div className="relative group">
                             <MoreVertical className="w-4 h-4 cursor-pointer text-zinc-500 hover:text-black" />
                             <div className="absolute right-0 top-full mt-1 w-24 bg-white border border-zinc-200 rounded-md shadow-lg hidden group-hover:block z-10">
-                              {is_author && c.id === editing_comment_id ? ( // 处于编辑状态
+                              {isAuthor && c.id === editingCommentId ? (
                                 <button onClick={() => setEditingCommentId(null)} className="block w-full text-left px-3 py-2 text-red-600 hover:bg-zinc-50">取消编辑</button>
-                              ) : is_author && ( // 可以编辑
-                                <button onClick={() => start_edit_comment(c)} className="block w-full text-left px-3 py-2 text-blue-600 hover:bg-zinc-50">编辑</button>
+                              ) : isAuthor && (
+                                <button onClick={() => startEditComment(c)} className="block w-full text-left px-3 py-2 text-blue-600 hover:bg-zinc-50">编辑</button>
                               )}
-                              {(is_author || is_admin_or_inver) && ( // 可以删除
-                                <button onClick={() => handle_delete_comment(c.id)} className="block w-full text-left px-3 py-2 text-red-600 hover:bg-zinc-50">删除</button>
+                              {(isAuthor || isAdminOrInver) && (
+                                <button onClick={() => handleDeleteComment(c.id)} className="block w-full text-left px-3 py-2 text-red-600 hover:bg-zinc-50">删除</button>
                               )}
-                              <button onClick={() => handle_reply_click(c.id, comment_author?.user_name || c.user_name)} className="block w-full text-left px-3 py-2 text-zinc-700 hover:bg-zinc-50">回复</button>
+                              <button onClick={() => handleReplyClick(c.id, commentAuthor?.user_name || '未知用户')} className="block w-full text-left px-3 py-2 text-zinc-700 hover:bg-zinc-50">回复</button>
                             </div>
                           </div>
                         )}
                       </div>
                     </div>
-                    {c.id === editing_comment_id ? (
+                    {c.id === editingCommentId ? (
                       <div className="space-y-2 mt-2">
-                        <textarea className="w-full border p-2 h-20 text-sm" value={edit_comment_content} onChange={e => setEditCommentContent(e.target.value)} />
+                        <textarea className="w-full border p-2 h-20 text-sm" value={editCommentContent} onChange={e => setEditCommentContent(e.target.value)} />
                         <div className="flex gap-2">
-                          <button onClick={() => save_comment_edit(c.id)} className="bg-black text-white px-3 py-1 text-xs">保存</button>
+                          <button onClick={() => saveCommentEdit(c.id)} className="bg-black text-white px-3 py-1 text-xs">保存</button>
                           <button onClick={() => setEditingCommentId(null)} className="bg-zinc-200 px-3 py-1 text-xs">取消</button>
                         </div>
                       </div>
@@ -522,54 +495,52 @@ const PostDetail = ({
         <div className="max-w-3xl mx-auto flex gap-2">
           <textarea
             ref={commentInputRef}
-            value={new_comment}
+            value={newComment}
             onChange={e => setNewComment(e.target.value)}
             className="flex-1 border rounded p-2 h-12 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-            placeholder={reply_to_comment_id ? `回复 @${users_map[comments.find(c => c.id === reply_to_comment_id)?.user_id]?.user_name || '未知用户'}:` : "发表评论..."}
+            placeholder={replyToCommentId ? `回复 @${usersMap[comments.find(c => c.id === replyToCommentId)?.user_id]?.user_name || '未知用户'}:` : "发表评论..."}
+            aria-label="评论输入框"
           />
-          <button onClick={handle_comment} className="bg-black text-white px-4 rounded-md flex items-center justify-center hover:bg-zinc-800 transition-colors">
+          <button onClick={handleComment} className="bg-black text-white px-4 rounded-md flex items-center justify-center hover:bg-zinc-800 transition-colors" aria-label="发送评论">
             <Send className="w-4 h-4 mr-1" /> 发送
           </button>
         </div>
-        {reply_to_comment_id && (
+        {replyToCommentId && (
           <div className="max-w-3xl mx-auto text-xs text-zinc-500 mt-1">
-            正在回复 @{users_map[comments.find(c => c.id === reply_to_comment_id)?.user_id]?.user_name || '未知用户'}
+            正在回复 @{usersMap[comments.find(c => c.id === replyToCommentId)?.user_id]?.user_name || '未知用户'}
             <button onClick={() => { setReplyToCommentId(null); setNewComment(''); }} className="ml-2 text-red-500 hover:underline">取消回复</button>
           </div>
         )}
       </div>
 
-      {/* 收藏模态框 (放在最外层 div 内) */}
-      {show_collection_modal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      {/* 收藏模态框 */}
+      {showCollectionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="collection-modal-title">
           <div className="bg-white rounded-lg p-6 w-full max-w-sm">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">收藏到</h3>
-              <button onClick={() => setShowCollectionModal(false)} className="text-zinc-500 hover:text-black"><X className="w-5 h-5" /></button>
+              <h3 id="collection-modal-title" className="text-lg font-bold">收藏到</h3>
+              <button onClick={() => setShowCollectionModal(false)} className="text-zinc-500 hover:text-black" aria-label="关闭"><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-3 mb-4">
               <input
                 type="text"
-                value={new_collection_name}
+                value={newCollectionName}
                 onChange={e => setNewCollectionName(e.target.value)}
                 placeholder="创建新收藏夹..."
                 className="w-full p-2 border border-zinc-300 rounded"
+                aria-label="新收藏夹名称"
               />
-              <button onClick={handle_create_collection} className="w-full bg-black text-white p-2 rounded">创建并收藏</button>
+              <button onClick={handleCreateCollection} className="w-full bg-black text-white p-2 rounded hover:bg-zinc-800">创建并收藏</button>
             </div>
             <div className="max-h-40 overflow-y-auto border-t border-zinc-200 pt-3">
-              {user_collections.length === 0 ? (
+              {userCollections.length === 0 ? (
                 <p className="text-zinc-500 text-sm text-center">暂无收藏夹</p>
               ) : (
-                user_collections.map(collection => (
+                userCollections.map(collection => (
                   <div key={collection.id} className="flex justify-between items-center p-2 hover:bg-zinc-50 rounded">
                     <span>{collection.name}</span>
                     <button
-                      onClick={async () => {
-                        // TODO: 将帖子添加到现有收藏夹的逻辑
-                        showToast(`已收藏到 ${collection.name}`, 'success');
-                        setShowCollectionModal(false);
-                      }}
+                      onClick={() => handleAddToCollection(collection.id, collection.name)}
                       className="bg-blue-600 text-white px-3 py-1 text-xs rounded hover:bg-blue-700"
                     >
                       收藏
@@ -584,17 +555,14 @@ const PostDetail = ({
     </div>
   );
 };
-//登录页面
 
-
-// 从环境变量获取管理员暗号
+// 登录页面
 const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
 
-  // ✅ 必须放在 Login 组件的大括号内部，handleLogin 的外面
   const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 
   const handleLogin = async () => {
@@ -603,10 +571,9 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
       return;
     }
 
-    // 1. 管理员暗号登录逻辑
+    // 管理员暗号登录
     if (id === 'admin') {
       if (password === ADMIN_PASSWORD) {
-        // 使用 await 调用你导入的 supabase
         const { data } = await supabase
           .from('users')
           .select('*')
@@ -614,9 +581,8 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
           .single();
 
         if (data) {
-          onLogin(data as User); // ✅ 用 'as User' 消除类型红线
+          onLogin(data as User);
         } else {
-          // 如果数据库没数据，给一个默认的管理员对象
           onLogin({
             id: 'admin',
             user_name: '管理员',
@@ -633,14 +599,19 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
       }
     }
 
-    // 2. 普通用户本地登录逻辑
-    const user = get_user(id);
-    if (user && user.password === password) {
-      onLogin(user);
-    } else {
-      setError('账号或密码错误');
+    // 普通用户登录
+    try {
+      const user = await get_user(id);
+      if (user && user.password === password) {
+        onLogin(user);
+      } else {
+        setError('账号或密码错误');
+      }
+    } catch (e: any) {
+      setError(`登录失败: ${e.message}`);
     }
   };
+
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
@@ -657,6 +628,7 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
               onChange={e => setId(e.target.value)}
               className="w-full p-3 border border-zinc-300 outline-none focus:border-black transition-colors bg-zinc-50 focus:bg-white"
               placeholder="输入 ID..."
+              aria-label="用户 ID"
             />
           </div>
 
@@ -669,10 +641,12 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
                 onChange={e => setPassword(e.target.value)}
                 className="w-full p-3 border border-zinc-300 outline-none focus:border-black transition-colors bg-zinc-50 focus:bg-white pr-10"
                 placeholder="输入密码..."
+                aria-label="密码"
               />
               <button
                 onClick={() => setShowPass(!showPass)}
                 className="absolute right-3 top-3.5 text-zinc-400 hover:text-black"
+                aria-label={showPass ? "隐藏密码" : "显示密码"}
               >
                 {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -681,7 +655,7 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 text-sm flex items-center gap-2">
+          <div className="bg-red-50 text-red-600 p-3 text-sm flex items-center gap-2" role="alert">
             <X className="w-4 h-4" /> {error}
           </div>
         )}
@@ -701,76 +675,84 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
   );
 };
 
-
-
-// --- Main App Component ---
-
+// 主应用组件
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [view, setView] = useState<'landing' | 'login' | 'feed' | 'admin' | 'post' | 'profile'>('landing');
   const [currentCategory, setCurrentCategory] = useState<Category | '全部'>('全部');
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyEssence, setOnlyEssence] = useState(false);
-  const [selectedpost_id, setSelectedpost_id] = useState<string | null>(null);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [targetProfileId, setTargetProfileId] = useState<string | null>(null);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0); // Force re-render list
+  const [refreshKey, setRefreshKey] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [usersMap, set_users_map] = useState<Record<string, User>>({});
-
+  const [usersMap, setUsersMap] = useState<Record<string, User>>({});
   const [displayPosts, setDisplayPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Toast State
+  // Toast 状态
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
 
+  // 初始化用户登录状态
   useEffect(() => {
     const savedUser = sessionStorage.getItem('currentUser');
     if (savedUser) {
-      const u = JSON.parse(savedUser);
-      const freshUser = get_user(u.id);
-      if (freshUser && !freshUser.is_banned) {
-        setUser(freshUser);
-        setView('feed');
+      try {
+        const u = JSON.parse(savedUser);
+        const loadUser = async () => {
+          try {
+            const freshUser = await get_user(u.id);
+            if (freshUser && !freshUser.is_banned) {
+              setUser(freshUser);
+              setView('feed');
+            }
+          } catch (err) {
+            console.error("加载用户失败:", err);
+          }
+        };
+        loadUser();
+      } catch (err) {
+        console.error("解析用户数据失败:", err);
       }
     }
   }, []);
-  // --- 粘贴开始 ---
+
+  // 加载帖子列表
   useEffect(() => {
     const loadPosts = async () => {
       setIsLoading(true);
       try {
-        // 这里的 get_posts 是你之前修改的异步 Supabase 版本
         const data = await get_posts(currentCategory, onlyEssence ? 'essence' : 'new');
         setDisplayPosts(data || []);
       } catch (err) {
         console.error("加载帖子失败:", err);
+        showToast("加载帖子失败", "error");
       } finally {
         setIsLoading(false);
       }
     };
 
     loadPosts();
-  }, [currentCategory, onlyEssence, refreshKey]); // 监听这些变量，实现自动刷新
-  // --- 粘贴结束 ---
+  }, [currentCategory, onlyEssence, refreshKey]);
 
- useEffect(() => {
-  if (!user) return;
+  // 加载用户映射
+  useEffect(() => {
+    if (!user) return;
 
-  const refresh_data = async () => {
-    // 1. 去云端拿名单
-    const users_list = await get_all_users();
-    
-    // 2. 把名单整理成机器人好记的格式（Map）
-    const map: Record<string, User> = {};
-    users_list.forEach(u => map[u.id] = u);
-    
-    // 3. 让屏幕更新
-    set_users_map(map);
-  };
+    const refreshData = async () => {
+      try {
+        const usersList = await get_all_users();
+        const map: Record<string, User> = {};
+        usersList.forEach(u => map[u.id] = u);
+        setUsersMap(map);
+      } catch (err) {
+        console.error("加载用户列表失败:", err);
+      }
+    };
 
-  refresh_data();
-}, [user]);
+    refreshData();
+  }, [user]);
 
   const showToast = (msg: string, type: ToastType) => {
     setToast({ msg, type });
@@ -808,10 +790,9 @@ export default function App() {
     setRefreshKey(prev => prev + 1);
   };
 
-  if (user && user.isFirstLogin) {
-    return (
-      <ChangePasswordModal user={user} onComplete={handleUpdateProfile} />
-    );
+  // 首次登录修改密码
+  if (user && user.is_first_login) {
+    return <ChangePasswordModal user={user} onComplete={handleUpdateProfile} />;
   }
 
   if (view === 'landing') {
@@ -828,7 +809,7 @@ export default function App() {
     <div className="min-h-screen bg-white text-zinc-900">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* Navbar */}
+      {/* 导航栏 */}
       <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
@@ -856,6 +837,7 @@ export default function App() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="pl-8 pr-4 py-1.5 bg-zinc-100 rounded-full text-sm w-48 focus:w-64 transition-all outline-none"
+                aria-label="搜索帖子"
               />
               <Search className="w-4 h-4 absolute left-2.5 top-2 text-zinc-400" />
             </div>
@@ -866,15 +848,15 @@ export default function App() {
                   <Avatar url={user?.avatar} className="w-6 h-6" />
                   {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>}
                 </div>
-                <span className="text-sm font-bold hidden sm:block">{user?.username}</span>
+                <span className="text-sm font-bold hidden sm:block">{user?.user_name}</span>
               </div>
 
               {isAdminOrInver && (
-                <button onClick={() => setView('admin')} className="p-2 hover:bg-zinc-100 rounded-full" title="管理后台">
+                <button onClick={() => setView('admin')} className="p-2 hover:bg-zinc-100 rounded-full" title="管理后台" aria-label="管理后台">
                   <Menu className="w-5 h-5" />
                 </button>
               )}
-              <button onClick={handleLogout} className="p-2 hover:bg-zinc-100 rounded-full" title="退出">
+              <button onClick={handleLogout} className="p-2 hover:bg-zinc-100 rounded-full" title="退出" aria-label="退出登录">
                 <LogOut className="w-5 h-5" />
               </button>
             </div>
@@ -882,7 +864,7 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Mobile Category Nav */}
+      {/* 移动端分类导航 */}
       <div className="md:hidden sticky top-14 bg-white z-30 border-b border-zinc-200 overflow-x-auto scrollbar-hide">
         <div className="flex px-4 py-2 gap-2 min-w-max">
           {CATEGORIES.map(c => (
@@ -897,104 +879,106 @@ export default function App() {
         </div>
       </div>
 
- <main className="max-w-5xl mx-auto min-h-[calc(100vh-3.5rem)]">
-      {view === 'admin' && <AdminPanel />}
-      {view === 'profile' && targetProfileId && (
-        <UserProfile 
-          userId={targetProfileId} 
-          onNavigateBack={() => setView('feed')} 
-          onPostClick={(id) => { setSelectedPostId(id); setView('post'); }}
-        />
-      )}
-      
-      {(view === 'feed' || view === 'post') && (
-        <div className="flex flex-col md:flex-row gap-6 p-4">
-          <div className="flex-1">
-            {view === 'post' && selectedPostId ? (
-              <PostDetail 
-                postId={selectedPostId} 
-                user={user!}
-                usersMap={usersMap}
-                onBack={() => { setSelectedPostId(null); setView('feed'); }}
-                onViewProfile={handleViewProfile}
-                onDelete={() => { setSelectedPostId(null); setView('feed'); refreshData(); }}
-                showToast={showToast}
-              />
-            ) : (
-              <div className="space-y-4">
-                {/* Filters bar */}
-                <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
-                  <div className="flex gap-4 text-sm">
-                    <label className="flex items-center gap-1 cursor-pointer select-none">
-                      <input type="checkbox" checked={onlyEssence} onChange={e => setOnlyEssence(e.target.checked)} className="accent-black" />
-                      只看精华 <span className="bg-black text-white text-[10px] px-1">蒂</span>
-                    </label>
+      {/* 主内容区 */}
+      <main className="max-w-5xl mx-auto min-h-[calc(100vh-3.5rem)]">
+        {view === 'admin' && <AdminPanel />}
+        {view === 'profile' && targetProfileId && (
+          <UserProfile 
+            userId={targetProfileId} 
+            onNavigateBack={() => setView('feed')} 
+            onPostClick={(id) => { setSelectedPostId(id); setView('post'); }}
+          />
+        )}
+        
+        {(view === 'feed' || view === 'post') && (
+          <div className="flex flex-col md:flex-row gap-6 p-4">
+            <div className="flex-1">
+              {view === 'post' && selectedPostId ? (
+                <PostDetail 
+                  postId={selectedPostId} 
+                  user={user!}
+                  usersMap={usersMap}
+                  onBack={() => { setSelectedPostId(null); setView('feed'); }}
+                  onViewProfile={handleViewProfile}
+                  onDelete={() => { setSelectedPostId(null); setView('feed'); refreshData(); }}
+                  showToast={showToast}
+                />
+              ) : (
+                <div className="space-y-4">
+                  {/* 筛选栏 */}
+                  <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
+                    <div className="flex gap-4 text-sm">
+                      <label className="flex items-center gap-1 cursor-pointer select-none">
+                        <input type="checkbox" checked={onlyEssence} onChange={e => setOnlyEssence(e.target.checked)} className="accent-black" />
+                        只看精华 <span className="bg-black text-white text-[10px] px-1">蒂</span>
+                      </label>
+                    </div>
+                    <button 
+                      onClick={() => setIsCreatingPost(true)}
+                      className="bg-black text-white px-4 py-2 text-sm font-medium flex items-center gap-2 hover:bg-zinc-800 transition-shadow shadow-md"
+                      aria-label="发帖"
+                    >
+                      <PenSquare className="w-4 h-4" /> 发帖
+                    </button>
                   </div>
-                  <button 
-                    onClick={() => setIsCreatingPost(true)}
-                    className="bg-black text-white px-4 py-2 text-sm font-medium flex items-center gap-2 hover:bg-zinc-800 transition-shadow shadow-md"
-                  >
-                    <PenSquare className="w-4 h-4" /> 发帖
-                  </button>
-                </div>
 
-                {/* Post List */}
-                <div className="space-y-0 divide-y divide-zinc-100">
-                  {isLoading ? (
-                    <div className="py-20 text-center text-zinc-400">正在加载内容...</div>
-                  ) : (
-                    <>
-                      {(displayPosts || []).length > 0 ? (
-                        displayPosts
-                          .filter(p => (p.title || '').includes(searchQuery) || (p.content || '').includes(searchQuery))
-                          .map(post => (
-                            <div 
-                              key={post.id} 
-                              onClick={() => { setSelectedPostId(post.id); setView('post'); }}
-                              className="py-4 hover:bg-zinc-50 cursor-pointer group transition-colors px-2"
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.user_id); }}>
-                                  <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    {post.is_essence && <span className="bg-black text-white px-1 text-xs" title="精华帖">蒂</span>}
-                                    <h3 className="font-medium text-base group-hover:text-blue-800 transition-colors line-clamp-1">{post.title}</h3>
+                  {/* 帖子列表 */}
+                  <div className="space-y-0 divide-y divide-zinc-100">
+                    {isLoading ? (
+                      <div className="py-20 text-center text-zinc-400">正在加载内容...</div>
+                    ) : (
+                      <>
+                        {(displayPosts || []).length > 0 ? (
+                          displayPosts
+                            .filter(p => (p.title || '').includes(searchQuery) || (p.content || '').includes(searchQuery))
+                            .map(post => (
+                              <div 
+                                key={post.id} 
+                                onClick={() => { setSelectedPostId(post.id); setView('post'); }}
+                                className="py-4 hover:bg-zinc-50 cursor-pointer group transition-colors px-2"
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.author_id); }}>
+                                    <Avatar url={usersMap[post.author_id]?.avatar} className="w-10 h-10" />
                                   </div>
-                                  <p className="text-zinc-500 text-sm line-clamp-2 mb-2">{(post.content || '').substring(0, 100)}...</p>
-                                  <div className="text-xs text-zinc-400 flex gap-3">
-                                    <span>{post.category}</span>
-                                    <span>•</span>
-                                    <span className="hover:text-black hover:underline">{post.author_name || '匿名用户'}</span>
-                                    <span>•</span>
-                                    <span>{timeAgo(post.created_at)}</span>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      {post.is_essence && <span className="bg-black text-white px-1 text-xs" title="精华帖">蒂</span>}
+                                      <h3 className="font-medium text-base group-hover:text-blue-800 transition-colors line-clamp-1">{post.title}</h3>
+                                    </div>
+                                    <p className="text-zinc-500 text-sm line-clamp-2 mb-2">{(post.content || '').substring(0, 100)}...</p>
+                                    <div className="text-xs text-zinc-400 flex gap-3">
+                                      <span>{post.category}</span>
+                                      <span>•</span>
+                                      <span className="hover:text-black hover:underline">{usersMap[post.author_id]?.user_name || '未知用户'}</span>
+                                      <span>•</span>
+                                      <span>{timeAgo(post.created_at)}</span>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          ))
-                      ) : (
-                        <div className="py-20 text-center text-zinc-400 text-sm">暂无内容</div>
-                      )}
-                    </>
-                  )}
+                            ))
+                        ) : (
+                          <div className="py-20 text-center text-zinc-400 text-sm">暂无内容</div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {isCreatingPost && (
-        <CreatePostModal 
-          user={user!} 
-          onClose={() => setIsCreatingPost(false)} 
-          onSuccess={() => { setIsCreatingPost(false); refreshData(); }}
-          showToast={showToast}
-        />
-      )}
-    </main>
+        {isCreatingPost && (
+          <CreatePostModal 
+            user={user!} 
+            onClose={() => setIsCreatingPost(false)} 
+            onSuccess={() => { setIsCreatingPost(false); refreshData(); }}
+            showToast={showToast}
+          />
+        )}
+      </main>
     </div>
   );
 }
