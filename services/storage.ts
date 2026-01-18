@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { User, Post, Comment, Category, Notification, Collection } from '../types';
+import { AppState,User, Post, Category, Collection, Notification, SensitiveWords} from '../types';
 
 // ==============================
 // 1. 敏感词处理逻辑

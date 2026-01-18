@@ -108,6 +108,7 @@ export interface SensitiveWords {
 export interface AppState {
   users: User[];
   posts: Post[];
+  categories: Category[];
   comments: Comment[];
   notifications: Notification[];
   collections: Collection[];
