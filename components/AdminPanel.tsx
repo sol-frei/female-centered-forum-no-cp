@@ -41,7 +41,6 @@ export default function AdminPanel() {
     }
   };
 
-  // 生成用户
   const handleGenerateUser = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -145,6 +144,7 @@ export default function AdminPanel() {
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
       <h1 className="text-xl font-bold border-b border-zinc-200 pb-4">云端管理后台</h1>
 
+      {/* Tabs */}
       <div className="flex gap-4 border-b border-zinc-200">
         <button 
           onClick={() => setActiveTab('users')}
@@ -176,7 +176,9 @@ export default function AdminPanel() {
 
             {newUser && (
               <div className="mt-4 p-4 bg-white border-2 border-dashed border-zinc-300 animate-in zoom-in duration-200">
-                <p className="text-sm text-zinc-500 mb-2 font-bold text-red-600 italic">请立即保存，离开后无法再次查看密码：</p>
+                <p className="text-sm text-zinc-500 mb-2 font-bold text-red-600 italic">
+                  请立即保存，离开后无法再次查看密码：
+                </p>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between bg-zinc-50 p-2 border border-zinc-200">
                     <span className="font-mono text-sm">Login ID: {newUser.login_id}</span>
@@ -209,23 +211,23 @@ export default function AdminPanel() {
                 {users.map(u => (
                   <tr key={u.id} className={u.is_banned ? 'bg-red-50/50' : ''}>
                     <td className="p-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.location.href = `/users/${u.id}`}>
                         <div className="w-10 h-10 rounded-full bg-zinc-100 overflow-hidden border border-zinc-200">
                           {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" /> : <UserCircle className="w-full h-full text-zinc-300"/>}
                         </div>
                         <div>
                           <div className="font-bold">{u.user_name}</div>
-                          {/* 去掉 uuid */}
+                          <div className="text-[10px] font-mono text-zinc-400">{u.login_id}</div>
                         </div>
                       </div>
                     </td>
                     <td className="p-3">
-                       <div className="flex flex-col gap-1">
-                          {u.role === 'admin' ? <span className="bg-black text-white text-[10px] px-1 py-0.5 w-fit rounded">管理员</span> : 
-                           u.role === 'i女er' ? <span className="bg-purple-600 text-white text-[10px] px-1 py-0.5 w-fit rounded flex items-center gap-1"><Crown className="w-2 h-2"/> i女er</span> : 
-                           <span className="text-zinc-400 text-[10px]">普通用户</span>}
-                          {u.is_banned && <span className="text-red-600 text-[10px] font-bold flex items-center gap-0.5"><ShieldAlert className="w-3 h-3"/> 已封禁</span>}
-                       </div>
+                      <div className="flex flex-col gap-1">
+                        {u.role === 'admin' ? <span className="bg-black text-white text-[10px] px-1 py-0.5 w-fit rounded">管理员</span> : 
+                         u.role === 'i女er' ? <span className="bg-purple-600 text-white text-[10px] px-1 py-0.5 w-fit rounded flex items-center gap-1"><Crown className="w-2 h-2"/> i女er</span> : 
+                         <span className="text-zinc-400 text-[10px]">普通用户</span>}
+                        {u.is_banned && <span className="text-red-600 text-[10px] font-bold flex items-center gap-0.5"><ShieldAlert className="w-3 h-3"/> 已封禁</span>}
+                      </div>
                     </td>
                     <td className="p-3">
                       {u.role !== 'admin' && (
@@ -255,6 +257,7 @@ export default function AdminPanel() {
         </div>
       )}
 
+      {/* 设置 Tab */}
       {activeTab === 'settings' && (
         <div className="bg-white border border-zinc-200 p-6 space-y-4 animate-in slide-in-from-right duration-300">
           <h3 className="font-bold flex items-center gap-2">
