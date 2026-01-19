@@ -21,7 +21,6 @@ export default function AdminPanel() {
   const [copiedPass, setCopiedPass] = useState(false);
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
-  // 初始化加载云端数据
   useEffect(() => {
     loadAdminData();
   }, []);
@@ -42,9 +41,7 @@ export default function AdminPanel() {
     }
   };
 
-  // -------------------------
-  // 生成用户（调用 Vercel API）
-  // -------------------------
+  // 生成用户
   const handleGenerateUser = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -74,7 +71,6 @@ export default function AdminPanel() {
     }
   };
 
-  // 封禁 / 解封
   const handleToggleBan = async (id: string, currentStatus: boolean) => {
     try {
       await toggle_ban_user(id, currentStatus);
@@ -85,7 +81,6 @@ export default function AdminPanel() {
     }
   };
 
-  // 角色切换
   const handleToggleRole = async (id: string, currentRole: string) => {
     const newRole = currentRole === 'i女er' ? 'user' : 'i女er';
     try {
@@ -97,7 +92,6 @@ export default function AdminPanel() {
     }
   };
 
-  // 保存违禁词
   const handleSaveWords = async () => {
     try {
       const wordsArray = bannedWordsInput
@@ -106,7 +100,6 @@ export default function AdminPanel() {
         .filter(w => w.length > 0);
       const uniqueWords = Array.from(new Set(wordsArray));
 
-      // 删除旧数据
       const { error: deleteError } = await supabase
         .from('sensitive_words')
         .delete()
@@ -134,7 +127,6 @@ export default function AdminPanel() {
     }
   };
 
-  // 复制 login_id / 密码
   const copyToClipboard = (text: string, type: 'id' | 'pass') => {
     navigator.clipboard.writeText(text);
     if (type === 'id') {
@@ -153,7 +145,6 @@ export default function AdminPanel() {
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
       <h1 className="text-xl font-bold border-b border-zinc-200 pb-4">云端管理后台</h1>
 
-      {/* Tabs */}
       <div className="flex gap-4 border-b border-zinc-200">
         <button 
           onClick={() => setActiveTab('users')}
@@ -171,6 +162,7 @@ export default function AdminPanel() {
 
       {activeTab === 'users' && (
         <div className="space-y-8 animate-in fade-in duration-300">
+          {/* 生成用户 */}
           <div className="bg-zinc-50 p-6 border border-zinc-200">
             <h3 className="font-bold flex items-center gap-2 mb-4">
               <UserPlus className="w-5 h-5" /> 生成新用户
@@ -223,7 +215,7 @@ export default function AdminPanel() {
                         </div>
                         <div>
                           <div className="font-bold">{u.user_name}</div>
-                          <div className="text-[10px] font-mono text-zinc-400">{u.id}</div>
+                          {/* 去掉 uuid */}
                         </div>
                       </div>
                     </td>
@@ -249,7 +241,7 @@ export default function AdminPanel() {
                               onClick={() => handleToggleRole(u.id, u.role)}
                               className="px-3 py-1 text-[10px] border border-purple-600 text-purple-600 hover:bg-purple-50"
                             >
-                              {u.role === 'i女er' ? '降级' : '升级 i女er'}
+                              {u.role === 'i女er' ? '成为user' : '成为i女er'}
                             </button>
                           )}
                         </div>
