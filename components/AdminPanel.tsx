@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../services/supabaseClient';
 import { 
   get_all_users, 
   updateUser, 
@@ -74,14 +75,47 @@ export default function AdminPanel() {
   };
 
   const handleSaveWords = async () => {
-    const words = bannedWordsInput.split(/[,，]/).map(w => w.trim()).filter(Boolean);
-    try {
-      await set_banned_words(words);
-      setToast({ msg: '违禁词库已同步至云端', type: 'success' });
-    } catch (err: any) {
-      setToast({ msg: '保存失败', type: 'error' });
+  try {
+    // 1. 处理输入：将字符串按逗号、空格或换行拆分为数组，并去除空格和重复项
+    const wordsArray = bannedWordsInput
+      .split(/[，, \n]+/)
+      .map(w => w.trim())
+      .filter(w => w.length > 0);
+
+    const uniqueWords = Array.from(new Set(wordsArray));
+
+    // 2. 清空云端旧数据 (删除所有记录)
+    // 注意：neq('id', '000...0') 是 Supabase 删除所有行的常用技巧
+    const { error: deleteError } = await supabase
+      .from('sensitive_words')
+      .delete()
+      .not('id', 'is', null); 
+
+    if (deleteError) throw deleteError;
+
+    // 3. 构造插入数据
+    // 关键点：字段名必须是 'word'，并根据数据库截图补充 category 和 replacement
+    const inserts = uniqueWords.map(w => ({
+      word: w,
+      category: 'misogyny', // 默认分类
+      replacement: '***',    // 默认替换符
+    }));
+
+    // 4. 执行批量插入
+    if (inserts.length > 0) {
+      const { error: insertError } = await supabase
+        .from('sensitive_words')
+        .insert(inserts);
+
+      if (insertError) throw insertError;
     }
-  };
+
+    alert('保存成功！违禁词已同步至云端。');
+  } catch (err: any) {
+    console.error('保存失败:', err);
+    alert('保存失败: ' + (err.message || '未知错误'));
+  }
+};
 
   const copyToClipboard = (text: string, type: 'id' | 'pass') => {
     navigator.clipboard.writeText(text);
