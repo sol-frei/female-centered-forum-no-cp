@@ -2,7 +2,7 @@ import { supabase } from './services/supabaseClient';
 import React, { useState, useEffect, useRef } from 'react';
 import Landing from './components/Landing';
 import { User, Post, Category, Collection, Notification, SensitiveWords } from './types';
-import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment ,get_user_by_login_id} from './services/storage';
+import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment } from './services/storage';
 import AdminPanel from './components/AdminPanel';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import UserProfile from './components/UserProfile';
