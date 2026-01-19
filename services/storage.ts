@@ -2,7 +2,7 @@ import { supabase } from './supabaseClient';
 import { ToastType,User, Post, Category, Collection, Notification, SensitiveWords} from '../types';
 
 
-// 1. 敏感词处理逻辑
+// 敏感词处理逻辑
 
 export const filter_sensitive_words = async (text: string): Promise<string> => {
   const { data: words } = await supabase.from('sensitive_words').select('word');
@@ -433,4 +433,63 @@ export const get_posts_by_user = async (user_id: string) => {
   }
 
   return data || []; // 确保即使没帖子也返回一个空数组，防止前端 map 报错
+};
+
+/**
+ * 云端生成新用户 (管理员用)
+ * 注意：Supabase Auth 建议在后台生成，这里演示向 users 表直接插入
+ */
+export const create_user_cloud = async (role: 'user' | 'admin' | 'i女er') => {
+  const newId = crypto.randomUUID(); // 生成标准 UUID
+  const randomPass = Math.random().toString(36).slice(-8); // 随机 8 位密码
+  
+  const { data, error } = await supabase
+    .from('users')
+    .insert([{
+      id: newId,
+      user_name: `用户_${newId.slice(0, 4)}`,
+      password: randomPass, // 实际项目建议加密存储
+      role: role,
+      is_banned: false
+    }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+/**
+ * 切换用户封禁状态
+ */
+export const toggle_ban_user = async (userId: string, currentStatus: boolean) => {
+  const { error } = await supabase
+    .from('users')
+    .update({ is_banned: !currentStatus })
+    .eq('id', userId);
+
+  if (error) throw error;
+  return !currentStatus;
+};
+
+/**
+ * 批量保存敏感词
+ */
+export const set_banned_words = async (words: string[]) => {
+  // 先删除旧的，再插入新的（这是一种简单替换逻辑）
+  await supabase.from('sensitive_words').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // 清空
+  
+  const insertData = words.map(w => ({ word: w }));
+  const { error } = await supabase.from('sensitive_words').insert(insertData);
+  
+  if (error) throw error;
+};
+
+/**
+ * 获取所有敏感词列表
+ */
+export const get_banned_words = async () => {
+  const { data, error } = await supabase.from('sensitive_words').select('word');
+  if (error) throw error;
+  return data.map(item => item.word);
 };
