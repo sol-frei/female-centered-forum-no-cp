@@ -65,7 +65,7 @@ export interface Comment {
   content: string;
   comment_images?: string[]; // 存储来自 Storage comment_images 桶的图片网址
   created_at: string;
-  reply_to_id?: string; // For nested replies
+  reply_to_id?: string|null; // For nested replies
   likes: string[]; // user IDs
 }
 
