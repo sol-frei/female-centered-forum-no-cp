@@ -202,7 +202,7 @@ const PostDetail = ({
         user_id: user.id,
         user_name: user.user_name,
         content: newComment,
-        reply_to_id: replyToCommentId || undefined,
+        reply_to_id: replyToCommentId || null,
       },
       post.author_id, // post_user_id（帖子作者）
       post.title      // post_title（帖子标题）
