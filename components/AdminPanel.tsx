@@ -3,12 +3,12 @@ import { supabase } from '../services/supabaseClient';
 import { 
   get_all_users, 
   updateUser, 
-  create_user_cloud, 
   toggle_ban_user, 
-  get_banned_words, 
-  set_banned_words 
+  get_banned_words 
 } from '../services/storage';
-import { UserPlus, Ban, Copy, ShieldAlert, Check, UserCircle, Crown, Loader2 } from 'lucide-react';
+import { 
+  UserPlus, Ban, Copy, ShieldAlert, Check, UserCircle, Crown, Loader2 
+} from 'lucide-react';
 import Toast from './Toast';
 
 export default function AdminPanel() {
@@ -42,17 +42,39 @@ export default function AdminPanel() {
     }
   };
 
+  // -------------------------
+  // 生成用户（调用 Vercel API）
+  // -------------------------
   const handleGenerateUser = async () => {
     try {
-      const user = await create_user_cloud('user');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('请先登录');
+
+      const res = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ role: 'user' }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || '创建用户失败');
+      }
+
+      const user = await res.json();
       setNewUser(user);
-      setUsers(prev => [user, ...prev]); // 本地列表同步更新
+      setUsers(prev => [user, ...prev]);
       setToast({ msg: '生成成功', type: 'success' });
+
     } catch (err: any) {
       setToast({ msg: '生成失败: ' + err.message, type: 'error' });
     }
   };
 
+  // 封禁 / 解封
   const handleToggleBan = async (id: string, currentStatus: boolean) => {
     try {
       await toggle_ban_user(id, currentStatus);
@@ -63,6 +85,7 @@ export default function AdminPanel() {
     }
   };
 
+  // 角色切换
   const handleToggleRole = async (id: string, currentRole: string) => {
     const newRole = currentRole === 'i女er' ? 'user' : 'i女er';
     try {
@@ -74,49 +97,44 @@ export default function AdminPanel() {
     }
   };
 
+  // 保存违禁词
   const handleSaveWords = async () => {
-  try {
-    // 1. 处理输入：将字符串按逗号、空格或换行拆分为数组，并去除空格和重复项
-    const wordsArray = bannedWordsInput
-      .split(/[，, \n]+/)
-      .map(w => w.trim())
-      .filter(w => w.length > 0);
+    try {
+      const wordsArray = bannedWordsInput
+        .split(/[，, \n]+/)
+        .map(w => w.trim())
+        .filter(w => w.length > 0);
+      const uniqueWords = Array.from(new Set(wordsArray));
 
-    const uniqueWords = Array.from(new Set(wordsArray));
-
-    // 2. 清空云端旧数据 (删除所有记录)
-    // 注意：neq('id', '000...0') 是 Supabase 删除所有行的常用技巧
-    const { error: deleteError } = await supabase
-      .from('sensitive_words')
-      .delete()
-      .not('id', 'is', null); 
-
-    if (deleteError) throw deleteError;
-
-    // 3. 构造插入数据
-    // 关键点：字段名必须是 'word'，并根据数据库截图补充 category 和 replacement
-    const inserts = uniqueWords.map(w => ({
-      word: w,
-      category: 'misogyny', // 默认分类
-      replacement: '***',    // 默认替换符
-    }));
-
-    // 4. 执行批量插入
-    if (inserts.length > 0) {
-      const { error: insertError } = await supabase
+      // 删除旧数据
+      const { error: deleteError } = await supabase
         .from('sensitive_words')
-        .insert(inserts);
+        .delete()
+        .not('id', 'is', null);
 
-      if (insertError) throw insertError;
+      if (deleteError) throw deleteError;
+
+      const inserts = uniqueWords.map(w => ({
+        word: w,
+        category: 'misogyny',
+        replacement: '***',
+      }));
+
+      if (inserts.length > 0) {
+        const { error: insertError } = await supabase
+          .from('sensitive_words')
+          .insert(inserts);
+        if (insertError) throw insertError;
+      }
+
+      alert('保存成功！违禁词已同步至云端。');
+    } catch (err: any) {
+      console.error('保存失败:', err);
+      alert('保存失败: ' + (err.message || '未知错误'));
     }
+  };
 
-    alert('保存成功！违禁词已同步至云端。');
-  } catch (err: any) {
-    console.error('保存失败:', err);
-    alert('保存失败: ' + (err.message || '未知错误'));
-  }
-};
-
+  // 复制 ID / 密码
   const copyToClipboard = (text: string, type: 'id' | 'pass') => {
     navigator.clipboard.writeText(text);
     if (type === 'id') {
