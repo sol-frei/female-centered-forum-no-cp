@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase ,supabaseAdmin} from './supabaseClient';
 import { ToastType,User, Post, Category, Collection, Notification, SensitiveWords} from '../types';
 
 
@@ -498,6 +498,8 @@ export const get_banned_words = async () => {
   return data.map(item => item.word);
 };
 
+
+
 /**
  * 云端生成新用户 (管理员用)
  * 同时在 Supabase Auth 和 users 表创建用户
@@ -521,7 +523,7 @@ export const create_user_cloud = async (role: 'user' | 'admin' | 'i女er' = 'use
   const email = `${loginId.toLowerCase()}@temp.local`;
 
   try {
-    // 1. 检查 login_id 是否已存在
+    // 1. 检查 login_id 是否已存在 (使用普通客户端查询)
     const { data: existing } = await supabase
       .from('users')
       .select('login_id')
@@ -533,7 +535,8 @@ export const create_user_cloud = async (role: 'user' | 'admin' | 'i女er' = 'use
     }
 
     // 2. 在 Supabase Auth 创建用户
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    // 【关键修改】：使用 supabaseAdmin.auth.admin 绕过权限报错
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
       password: password,
       email_confirm: true, // 自动确认邮箱，不发送邮件
@@ -562,14 +565,15 @@ export const create_user_cloud = async (role: 'user' | 'admin' | 'i女er' = 'use
       created_at: new Date().toISOString(),
     };
 
-    const { error: dbError } = await supabase
+    // 【关键修改】：这里也使用 supabaseAdmin 插入数据，确保不受 RLS 策略阻碍
+    const { error: dbError } = await supabaseAdmin
       .from('users')
       .insert(newUser);
 
     if (dbError) {
       console.error('数据库插入失败:', dbError);
-      // 如果数据库插入失败，删除刚创建的 Auth 用户
-      await supabase.auth.admin.deleteUser(authData.user.id);
+      // 如果数据库插入失败，删除刚创建的 Auth 用户 (同样使用 Admin 权限)
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
       throw new Error(`创建数据库记录失败: ${dbError.message}`);
     }
 
