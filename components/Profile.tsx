@@ -1,14 +1,16 @@
-// pages/ProfileWithMessages.tsx
+// pages/ProfileFull.tsx
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { Loader2, Bell, MessageCircle, Heart, Trash2, ExternalLink } from 'lucide-react';
+import { Loader2, Bell, Heart, MessageCircle, Trash2, ExternalLink } from 'lucide-react';
 import { MessagesTab, CollectionsTab } from '../components/MessagesAndCollections';
 
-export default function ProfileWithMessages() {
+export default function ProfileFull() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -16,9 +18,8 @@ export default function ProfileWithMessages() {
       setError(null);
 
       try {
-        // 获取登录 session
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session || !session.user) {
+        if (!session?.user) {
           setError('请先登录');
           setLoading(false);
           return;
@@ -34,11 +35,9 @@ export default function ProfileWithMessages() {
           .eq('id', id)
           .single();
 
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          throw fetchError;
-        }
+        if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
 
-        // 如果 users 表没有记录，自动创建
+        // 自动创建用户记录
         if (!userData) {
           const { data: newUser, error: insertError } = await supabase
             .from('users')
@@ -71,6 +70,31 @@ export default function ProfileWithMessages() {
     loadUser();
   }, []);
 
+  // 加载用户帖子
+  useEffect(() => {
+    const loadPosts = async () => {
+      if (!userId) return;
+      setPostsLoading(true);
+
+      try {
+        const { data, error } = await supabase
+          .from('posts')
+          .select('*')
+          .eq('author_id', userId)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setPosts(data || []);
+      } catch (err: any) {
+        console.error('加载用户帖子失败:', err);
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+
+    loadPosts();
+  }, [userId]);
+
   if (loading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin" /></div>;
   if (error) return <div className="p-10 text-center text-red-600">{error}</div>;
   if (!user) return <div className="p-10 text-center">用户不存在</div>;
@@ -85,6 +109,26 @@ export default function ProfileWithMessages() {
         <p><strong>角色:</strong> {user.role}</p>
         <p><strong>注册时间:</strong> {new Date(user.created_at).toLocaleString()}</p>
         {user.is_banned && <p className="text-red-600 font-bold">已封禁</p>}
+      </div>
+
+      {/* 用户帖子 */}
+      <div className="p-6 bg-white border rounded shadow">
+        <h2 className="text-xl font-bold mb-4">我的帖子</h2>
+        {postsLoading ? (
+          <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-zinc-400" /></div>
+        ) : posts.length === 0 ? (
+          <div className="text-center py-12 text-zinc-400 text-sm">暂无帖子</div>
+        ) : (
+          <div className="space-y-4">
+            {posts.map(post => (
+              <div key={post.id} className="p-4 border rounded hover:bg-zinc-50 transition-colors cursor-pointer">
+                <h3 className="font-medium mb-1">{post.title}</h3>
+                <p className="text-sm text-zinc-500 line-clamp-2">{post.content}</p>
+                <div className="text-xs text-zinc-400 mt-1">{new Date(post.created_at).toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 消息 */}
