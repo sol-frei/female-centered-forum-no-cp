@@ -1,137 +1,93 @@
-// /api/admin/create-user.ts
+// api/admin/create-user.ts
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseAdmin = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabaseUrl = process.env.VITE_SUPABASE_URL
+const supabaseServiceRoleKey = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  throw new Error('Supabase 环境变量缺失！请检查 Vercel 设置')
+}
+
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey)
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed')
 
   try {
-    /* =========================
-       1️⃣ 校验管理员身份
-    ========================= */
+    const authHeader = req.headers.authorization
+    if (!authHeader) return res.status(401).send('请先登录')
 
-    const token = req.headers.authorization?.replace('Bearer ', '')
-    if (!token) {
-      return res.status(401).json({ error: '未登录' })
-    }
+    const token = authHeader.split(' ')[1]
+    if (!token) return res.status(401).send('请先登录')
 
-    // 用 anon key 验证当前用户是谁
-    const supabaseUser = createClient(
-      process.env.VITE_SUPABASE_URL!,
-      process.env.VITE_SUPABASE_ANON_KEY!
-    )
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseUser.auth.getUser(token)
-
-    if (userError || !user) {
-      return res.status(401).json({ error: '无效用户' })
-    }
-
-    // 用 admin client 查角色
-    const { data: adminProfile } = await supabaseAdmin
+    // 验证登录用户并检查是否为管理员
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
+    if (userError || !userData.user) return res.status(401).send('无效 token')
+    
+    // 检查 role
+    const { data: dbUser } = await supabaseAdmin
       .from('users')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userData.user.id)
       .single()
 
-    if (adminProfile?.role !== 'admin') {
-      return res.status(403).json({ error: '不是管理员' })
-    }
+    if (!dbUser || dbUser.role !== 'admin') return res.status(403).send('仅管理员可调用此接口')
 
-    /* =========================
-       2️⃣ 生成 login_id & 密码
-    ========================= */
+    // 读取请求 body
+    const { role } = req.body
+    const userRole = role || 'user'
 
-    const { role = 'user' } = req.body
-
+    // 生成随机 login_id
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
     let loginId = ''
     for (let i = 0; i < 6; i++) {
-      loginId += chars[Math.floor(Math.random() * chars.length)]
+      loginId += chars.charAt(Math.floor(Math.random() * chars.length))
     }
 
-    const passChars =
-      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%'
+    const passwordChars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%'
     let password = ''
     for (let i = 0; i < 8; i++) {
-      password += passChars[Math.floor(Math.random() * passChars.length)]
+      password += passwordChars.charAt(Math.floor(Math.random() * passwordChars.length))
     }
 
     const email = `${loginId.toLowerCase()}@temp.local`
 
-    /* =========================
-       3️⃣ 检查 login_id 冲突
-    ========================= */
+    // 创建 Auth 用户
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { login_id: loginId }
+    })
 
-    const { data: existing } = await supabaseAdmin
-      .from('users')
-      .select('login_id')
-      .eq('login_id', loginId)
-      .single()
+    if (authError) throw authError
 
-    if (existing) {
-      return res.status(409).json({ error: 'Login ID 冲突，请重试' })
-    }
-
-    /* =========================
-       4️⃣ 创建 Auth 用户
-    ========================= */
-
-    const { data: authData, error: authError } =
-      await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { login_id: loginId },
-      })
-
-    if (authError) {
-      throw authError
-    }
-
-    /* =========================
-       5️⃣ 插入 users 表
-    ========================= */
-
+    // 插入 users 表
     const newUser = {
       id: authData.user.id,
       login_id: loginId,
       email,
-      role,
+      user_name: `用户_${loginId}`,
+      avatar: null,
+      role: userRole,
       is_banned: false,
       is_first_login: true,
-      created_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
     }
 
-    const { error: dbError } = await supabaseAdmin
-      .from('users')
-      .insert(newUser)
-
+    const { error: dbError } = await supabaseAdmin.from('users').insert(newUser)
     if (dbError) {
-      // 回滚 auth 用户
+      // 数据库插入失败，删除 Auth 用户
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
       throw dbError
     }
 
-    /* =========================
-       6️⃣ 返回一次性凭证
-    ========================= */
+    // 返回用户信息 + 一次性密码
+    return res.status(200).json({ ...newUser, password })
 
-    return res.status(200).json({
-      ...newUser,
-      password, // ⚠️ 仅返回一次
-    })
   } catch (err: any) {
-    console.error(err)
-    return res.status(500).json({ error: err.message })
+    console.error('创建用户失败:', err)
+    return res.status(500).send(err.message || '创建失败')
   }
 }
