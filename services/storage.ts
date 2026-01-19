@@ -169,12 +169,26 @@ export const vote_poll = async (post_id: string, opt_id: string, user_id: string
 
 export const add_comment = async (comment: any, post_user_id: string, post_title: string) => {
   const filtered_content = await filter_sensitive_words(comment.content);
-
-  // 确保 reply_to_id 是有效的 UUID 或真正的 null
-  const clean_reply_id = (comment.reply_to_id && comment.reply_to_id !== 'undefined' && comment.reply_to_id !== '') 
+  
+  let clean_reply_id = (comment.reply_to_id && 
+                        comment.reply_to_id !== 'undefined' && 
+                        comment.reply_to_id !== '') 
     ? comment.reply_to_id 
     : null;
-
+  
+  // 验证母评论是否存在
+  if (clean_reply_id) {
+    const { data: parent_comment, error: parent_error } = await supabase
+      .from('comments')
+      .select('id')
+      .eq('id', clean_reply_id)
+      .single();
+    
+    if (parent_error || !parent_comment) {
+      throw new Error(`无法回复：找不到 ID 为 ${clean_reply_id} 的评论`);
+    }
+  }
+  
   const { data: new_comment, error: c_error } = await supabase
     .from('comments')
     .insert([{
@@ -182,18 +196,17 @@ export const add_comment = async (comment: any, post_user_id: string, post_title
       user_id: comment.user_id,
       user_name: comment.user_name,
       content: filtered_content,
-      reply_to_id: clean_reply_id // 使用清理后的 ID
+      reply_to_id: clean_reply_id
     }])
     .select()
     .single();
-
+    
   if (c_error) throw c_error;
-
+  
   // 通知逻辑
   if (post_user_id !== comment.user_id) {
     await supabase.from('notifications').insert([{
       user_id: post_user_id,
-      // 如果 clean_reply_id 有值，说明是回复消息
       type: clean_reply_id ? 'reply' : 'comment', 
       from_user_id: comment.user_id,
       from_user_name: comment.user_name,
@@ -202,7 +215,7 @@ export const add_comment = async (comment: any, post_user_id: string, post_title
       content: filtered_content
     }]);
   }
-
+  
   return new_comment;
 };
 
