@@ -162,7 +162,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         showToast('正在上传图片...', 'info');
         uploadedImageUrls = await uploadImages(
           imageFiles,
-          'forum-images',
+          'forum_images',
           `posts/${user.id}`,
           (current, total) => {
             setUploadProgress(Math.round((current / total) * 100));
@@ -204,7 +204,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
       if (uploadedImageUrls.length > 0) {
         try {
           const { deleteImages } = await import('../services/storageService');
-          await deleteImages(uploadedImageUrls, 'forum-images');
+          await deleteImages(uploadedImageUrls, 'forum_images');
         } catch (deleteError) {
           console.error('清理图片失败:', deleteError);
         }

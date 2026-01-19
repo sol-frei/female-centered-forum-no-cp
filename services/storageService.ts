@@ -10,7 +10,7 @@ import { supabase } from './supabaseClient';
  */
 export async function uploadImage(
   file: File, 
-  bucket: 'user_images' | 'comment_images' | 'forum-images' = 'forum-images',
+  bucket: 'user_images' | 'comment_images' | 'forum_images' = 'forum_images',
   folder?: string
 ): Promise<string> {
   try {
@@ -51,7 +51,7 @@ export async function uploadImage(
  */
 export async function uploadImages(
   files: File[],
-  bucket: 'user_images' | 'comment_images' | 'forum-images' = 'forum-images',
+  bucket: 'user_images' | 'comment_images' | 'forum_images' = 'forum_images',
   folder?: string,
   onProgress?: (current: number, total: number) => void
 ): Promise<string[]> {
@@ -81,7 +81,7 @@ export async function uploadImages(
  */
 export async function deleteImage(
   url: string,
-  bucket: 'user_images' | 'comment_images' | 'forum-images' = 'forum-images'
+  bucket: 'user_images' | 'comment_images' | 'forum_images' = 'forum_images'
 ): Promise<void> {
   try {
     // 从URL中提取文件路径
@@ -106,7 +106,7 @@ export async function deleteImage(
  */
 export async function deleteImages(
   urls: string[],
-  bucket: 'user_images' | 'comment_images' | 'forum-images' = 'forum-images'
+  bucket: 'user_images' | 'comment_images' | 'forum_images' = 'forum_images'
 ): Promise<void> {
   try {
     // 从URL中提取文件路径
