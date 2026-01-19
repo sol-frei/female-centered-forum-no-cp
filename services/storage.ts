@@ -416,34 +416,21 @@ export async function updatePost(postId: string, updates: {
     throw new Error(`更新帖子失败: ${error.message}`);
   }
 }
-
 /**
- * 辅助函数：如果 collection_posts 表不存在，需要创建
- * 数据库表结构参考：
- * 
- * CREATE TABLE collection_posts (
- *   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
- *   collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
- *   post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
- *   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
- *   UNIQUE(collection_id, post_id)
- * );
- * 
- * -- 索引
- * CREATE INDEX idx_collection_posts_collection ON collection_posts(collection_id);
- * CREATE INDEX idx_collection_posts_post ON collection_posts(post_id);
+ * 获取特定用户的帖子列表 (用于个人主页)
+ * @param user_id 目标用户的 UUID
  */
+export const get_posts_by_user = async (user_id: string) => {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('user_id', user_id) // 筛选该作者的帖子
+    .order('created_at', { ascending: false }); // 按时间倒序排列
 
-/**
- * 辅助函数：increment_collection_count RPC 函数
- * 需要在 Supabase 中创建此函数：
- * 
- * CREATE OR REPLACE FUNCTION increment_collection_count(collection_id UUID)
- * RETURNS VOID AS $$
- * BEGIN
- *   UPDATE collections
- *   SET post_count = post_count + 1
- *   WHERE id = collection_id;
- * END;
- * $$ LANGUAGE plpgsql;
- */
+  if (error) {
+    console.error('获取用户帖子失败:', error.message);
+    throw error;
+  }
+
+  return data || []; // 确保即使没帖子也返回一个空数组，防止前端 map 报错
+};
