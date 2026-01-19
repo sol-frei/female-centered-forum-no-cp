@@ -440,15 +440,17 @@ export const get_posts_by_user = async (user_id: string) => {
  * 注意：Supabase Auth 建议在后台生成，这里演示向 users 表直接插入
  */
 export const create_user_cloud = async (role: 'user' | 'admin' | 'i女er') => {
-  const newId = crypto.randomUUID(); // 生成标准 UUID
-  const randomPass = Math.random().toString(36).slice(-8); // 随机 8 位密码
+  // 1. 生成一个 6 位短 ID 作为登录账号，比如 "5tY9p2"
+  const shortLoginId = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const randomPass = Math.random().toString(36).slice(-8); 
   
   const { data, error } = await supabase
     .from('users')
     .insert([{
-      id: newId,
-      user_name: `用户_${newId.slice(0, 4)}`,
-      password: randomPass, // 实际项目建议加密存储
+      // id 不用填，Supabase 会自动生成 UUID
+      login_id: shortLoginId,  // 用户拿这个登录
+      user_name: `用户_${shortLoginId}`,
+      password: randomPass,
       role: role,
       is_banned: false
     }])
@@ -456,9 +458,8 @@ export const create_user_cloud = async (role: 'user' | 'admin' | 'i女er') => {
     .single();
 
   if (error) throw error;
-  return data;
+  return data; // 返回的对象里包含 login_id 和 password
 };
-
 /**
  * 切换用户封禁状态
  */
@@ -492,4 +493,22 @@ export const get_banned_words = async () => {
   const { data, error } = await supabase.from('sensitive_words').select('word');
   if (error) throw error;
   return data.map(item => item.word);
+};
+
+/**
+ * 通过登录账号 (login_id) 获取用户信息
+ * @param login_id 用户输入的短账号
+ */
+export const get_user_by_login_id = async (login_id: string) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('login_id', login_id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('登录查询失败:', error.message);
+    throw error;
+  }
+  return data;
 };

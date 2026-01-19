@@ -2,7 +2,7 @@ import { supabase } from './services/supabaseClient';
 import React, { useState, useEffect, useRef } from 'react';
 import Landing from './components/Landing';
 import { User, Post, Category, Collection, Notification, SensitiveWords } from './types';
-import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment } from './services/storage';
+import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment ,get_user_by_login_id} from './services/storage';
 import AdminPanel from './components/AdminPanel';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import UserProfile from './components/UserProfile';
@@ -574,9 +574,12 @@ const PostDetail = ({
   );
 };
 
-// 登录页面
-const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
-  const [id, setId] = useState('');
+
+//Login组件
+
+
+const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
+  const [loginIdInput, setLoginIdInput] = useState(''); // 变量名语义化：用户输入的账号
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -584,41 +587,55 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
   const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 
   const handleLogin = async () => {
-    if (!id || !password) {
+    setError(''); // 每次点击重置错误
+    if (!loginIdInput || !password) {
       setError('请输入 ID 和密码');
       return;
     }
 
-    // 管理员暗号登录
-    if (id === 'admin') {
-      if (password === ADMIN_PASSWORD) {
-        const { data ,error} = await supabase
-          .from('users')
-          .select('*')
-          .eq('role', 'admin')
-          .single();
-
-        if (error ||!data) {
-          onLogin(data as User);
-          throw new Error('管理员账号不存在，请先在数据库中创建管理员用户');
-        }     
-        onLogin(data as User);   // ✅ data.id 是 uuid
-        return;
-      } else {
-        throw new Error('管理员密码错误');
-      }
-    }
-
-    // 普通用户登录
     try {
-      const user = await get_user(id);
-      if (user && user.password === password) {
-        onLogin(user);
+      // --- 情况 A：管理员账号登录 ---
+      if (loginIdInput.toLowerCase() === 'admin') {
+        if (password === ADMIN_PASSWORD) {
+          const { data, error: adminErr } = await supabase
+            .from('users')
+            .select('*')
+            .eq('role', 'admin')
+            .limit(1)
+            .single();
+
+          if (adminErr || !data) {
+            setError('管理员账号尚未在数据库中初始化');
+            return;
+          }
+          onLogin(data); 
+          return;
+        } else {
+          setError('管理员密码错误');
+          return;
+        }
+      }
+
+      // --- 情况 B：普通用户/i女er登录 ---
+      // 使用我们刚才写的 get_user_by_login_id
+      const user = await get_user_by_login_id(loginIdInput);
+
+      if (user) {
+        if (user.is_banned) {
+          setError('该账号已被封禁，无法登录');
+          return;
+        }
+        
+        if (user.password === password) {
+          onLogin(user); // 这里的 user 对象里包含完整的 id (UUID)
+        } else {
+          setError('密码错误');
+        }
       } else {
-        setError('账号或密码错误');
+        setError('账号不存在，请检查 ID 是否输入正确');
       }
     } catch (e: any) {
-      setError(`登录失败: ${e.message}`);
+      setError(`系统错误: ${e.message}`);
     }
   };
 
@@ -626,37 +643,35 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h2 className="text-3xl font-bold">登录小组</h2>
-          <p className="mt-2 text-zinc-500">请输入管理员分发的 ID 和密码</p>
+          <h2 className="text-3xl font-bold tracking-tighter">登录小组</h2>
+          <p className="mt-2 text-zinc-500 text-sm">请输入管理员分发的 6 位短 ID 和密码</p>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-bold text-zinc-700">用户 ID</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">用户 ID</label>
             <input
-              value={id}
-              onChange={e => setId(e.target.value)}
-              className="w-full p-3 border border-zinc-300 outline-none focus:border-black transition-colors bg-zinc-50 focus:bg-white"
-              placeholder="输入 ID..."
-              aria-label="用户 ID"
+              value={loginIdInput}
+              onChange={e => setLoginIdInput(e.target.value)}
+              className="w-full p-4 border border-zinc-200 outline-none focus:border-black transition-all bg-zinc-50 focus:bg-white font-mono"
+              placeholder="例如: AX79P2"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-bold text-zinc-700">密码</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">密码</label>
             <div className="relative">
               <input
                 type={showPass ? "text" : "password"}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="w-full p-3 border border-zinc-300 outline-none focus:border-black transition-colors bg-zinc-50 focus:bg-white pr-10"
-                placeholder="输入密码..."
-                aria-label="密码"
+                className="w-full p-4 border border-zinc-200 outline-none focus:border-black transition-all bg-zinc-50 focus:bg-white pr-12 font-mono"
+                placeholder="请输入密码"
               />
               <button
+                type="button"
                 onClick={() => setShowPass(!showPass)}
-                className="absolute right-3 top-3.5 text-zinc-400 hover:text-black"
-                aria-label={showPass ? "隐藏密码" : "显示密码"}
+                className="absolute right-4 top-4 text-zinc-400 hover:text-black"
               >
                 {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -665,25 +680,31 @@ const Login = ({ onLogin }: { onLogin: (u: User) => void }) => {
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 text-sm flex items-center gap-2" role="alert">
-            <X className="w-4 h-4" /> {error}
+          <div className="bg-red-50 text-red-600 p-4 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+            <X className="w-4 h-4 flex-shrink-0" /> {error}
           </div>
         )}
 
         <button
           onClick={handleLogin}
-          className="w-full bg-black text-white py-4 font-bold text-lg hover:bg-zinc-800 transition-transform active:scale-[0.99]"
+          className="w-full bg-black text-white py-4 font-bold text-lg hover:bg-zinc-800 transition-all active:scale-[0.98] shadow-lg shadow-zinc-200"
         >
-          立即登录
+          确认登录
         </button>
 
-        <p className="text-center text-xs text-zinc-400">
-          如忘记密码或 ID，请联系管理员重置
-        </p>
+        <div className="text-center space-y-1">
+          <p className="text-[10px] text-zinc-400">
+            ID 是唯一的通行证，请妥善保管
+          </p>
+          <p className="text-[10px] text-zinc-300">
+            Supabase Cloud Backend Connected
+          </p>
+        </div>
       </div>
     </div>
   );
 };
+
 
 // 主应用组件
 export default function App() {
@@ -705,28 +726,46 @@ export default function App() {
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
 
   // 初始化用户登录状态
-  useEffect(() => {
-    const savedUser = sessionStorage.getItem('currentUser');
-    if (savedUser) {
-      try {
-        const u = JSON.parse(savedUser);
-        const loadUser = async () => {
-          try {
-            const freshUser = await get_user(u.id);
-            if (freshUser && !freshUser.is_banned) {
-              setUser(freshUser);
-              setView('feed');
+useEffect(() => {
+  const savedUser = sessionStorage.getItem('currentUser');
+  if (savedUser) {
+    try {
+      const u = JSON.parse(savedUser);
+      
+      const loadUser = async () => {
+        try {
+          // 依然使用 u.id (UUID) 获取最新数据，这是最稳妥的
+          const freshUser = await get_user(u.id);
+          
+          if (freshUser) {
+            // 检查是否在登录期间被管理员封禁
+            if (freshUser.is_banned) {
+              sessionStorage.removeItem('currentUser');
+              setUser(null);
+              setView('login');
+              setToast({ msg: '账号已被封禁', type: 'error' });
+              return;
             }
-          } catch (err) {
-            console.error("加载用户失败:", err);
+            
+            // 更新本地缓存和状态，确保 login_id 等新字段被同步
+            setUser(freshUser);
+            sessionStorage.setItem('currentUser', JSON.stringify(freshUser));
+            setView('feed');
           }
-        };
-        loadUser();
-      } catch (err) {
-        console.error("解析用户数据失败:", err);
-      }
+        } catch (err) {
+          console.error("同步用户信息失败:", err);
+          // 如果网络错误，可以暂时使用缓存的数据
+          setUser(u);
+          setView('feed');
+        }
+      };
+      loadUser();
+    } catch (err) {
+      console.error("解析用户数据失败:", err);
     }
-  }, []);
+  }
+}, []);
+
 
   // 加载帖子列表
   useEffect(() => {
