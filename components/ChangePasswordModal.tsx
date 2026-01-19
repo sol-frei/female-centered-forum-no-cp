@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { User } from '../types';
 import { X, Loader2, Eye, EyeOff } from 'lucide-react';
@@ -30,39 +31,59 @@ export default function ChangePasswordModal({ user, onComplete }: { user: User, 
       setLoading(true);
       setError('');
 
-      // 2. 关键：预检查 Session 状态，防止 "Auth session missing"
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // 2. 先刷新 session，确保 token 是最新的
+      const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
       
-      if (sessionError || !session) {
+      if (refreshError || !session) {
         throw new Error('登录会话已过期，请刷新页面重新登录');
       }
 
-      // 3. 真正调用 Supabase Auth API 修改密码
-      const { error: authError } = await supabase.auth.updateUser({
-        password: pw
-      });
-
-      if (authError) throw authError;
-
-      // 4. 更新数据库 profiles 表，将 is_first_login 设为 false
-      // 这样用户下次登录就不会再看到这个弹窗
+      // 3. 先更新数据库标记（在修改密码之前，因为修改密码后 session 会失效）
       const { error: dbError } = await supabase
-        .from('profiles')
+        .from('users')
         .update({ is_first_login: false })
         .eq('id', user.id);
 
       if (dbError) {
-        console.warn('数据库标记更新失败，但密码已成功修改:', dbError.message);
+        console.warn('数据库标记更新失败:', dbError.message);
+        // 不阻断流程，继续修改密码
       }
 
-      // 5. 构造更新后的用户对象并回调
-      const updated = { ...user, isFirstLogin: false } as User;
-      onComplete(updated);
+      // 4. 修改密码（这个操作会使当前 session 失效）
+      const { error: authError } = await supabase.auth.updateUser({
+        password: pw
+      });
+
+      if (authError) {
+        // 如果是 session 相关错误，给出友好提示
+        if (authError.message.includes('session') || authError.message.includes('Auth')) {
+          throw new Error('登录会话已过期, 请刷新页面重新登录');
+        }
+        throw authError;
+      }
+
+      // 5. 密码修改成功，退出登录
+      await supabase.auth.signOut();
+
+      // 6. 显示成功消息并刷新页面让用户重新登录
+      alert('密码修改成功！请使用新密码重新登录');
+      
+      // 刷新页面，让用户回到登录页
+      window.location.reload();
 
     } catch (err: any) {
-      console.error('修改密码过程出错:', err);
-      // 将报错信息显示给用户（如 "Auth session missing"）
-      setError(err.message || '修改失败，请重试');
+      console.error('修改密码时出错!!:', err);
+      
+      // 友好的错误处理
+      if (err.message.includes('session') || err.message.includes('过期')) {
+        setError('登录会话已过期, 请刷新页面重新登录');
+        // 3秒后自动刷新页面
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+      } else {
+        setError(err.message || '修改失败，请重试');
+      }
     } finally {
       setLoading(false);
     }
@@ -93,11 +114,13 @@ export default function ChangePasswordModal({ user, onComplete }: { user: User, 
                 disabled={loading}
                 className="w-full border p-2 pr-10 rounded focus:ring-2 focus:ring-black outline-none disabled:bg-zinc-50" 
                 placeholder="请输入新密码"
+                autoComplete="new-password"
               />
               <button 
                 type="button"
                 onClick={() => setShowPw(!showPw)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                disabled={loading}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 disabled:opacity-50"
               >
                 {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -115,11 +138,13 @@ export default function ChangePasswordModal({ user, onComplete }: { user: User, 
                 disabled={loading}
                 className="w-full border p-2 pr-10 rounded focus:ring-2 focus:ring-black outline-none disabled:bg-zinc-50"
                 placeholder="请再次输入密码"
+                autoComplete="new-password"
               />
               <button 
                 type="button"
                 onClick={() => setShowPw2(!showPw2)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                disabled={loading}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 disabled:opacity-50"
               >
                 {showPw2 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
