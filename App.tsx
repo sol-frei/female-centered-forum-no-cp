@@ -581,21 +581,24 @@ const PostDetail = ({
 
 
 const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
-  const [loginIdInput, setLoginIdInput] = useState(''); // 变量名语义化：用户输入的账号
+  const [loginIdInput, setLoginIdInput] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 
   const handleLogin = async () => {
-    setError(''); // 每次点击重置错误
+    setError('');
     if (!loginIdInput || !password) {
       setError('请输入 ID 和密码');
       return;
     }
 
     try {
+      setLoading(true);
+
       // --- 情况 A：管理员账号登录 ---
       if (loginIdInput.toLowerCase() === 'admin') {
         if (password === ADMIN_PASSWORD) {
@@ -610,7 +613,7 @@ const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
             setError('管理员账号尚未在数据库中初始化');
             return;
           }
-          onLogin(data); 
+          onLogin(data);
           return;
         } else {
           setError('管理员密码错误');
@@ -618,26 +621,55 @@ const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
         }
       }
 
-      // --- 情况 B：普通用户/i女er登录 ---
-      // 使用我们刚才写的 get_user_by_login_id
-      const user = await get_user_by_login_id(loginIdInput);
+      // --- 情况 B：普通用户登录（使用 Supabase Auth）---
+      
+      // 1. 先从数据库查询用户信息（通过 login_id 获取 email）
+      const { data: userData, error: queryError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('login_id', loginIdInput)
+        .single();
 
-      if (user) {
-        if (user.is_banned) {
-          setError('该账号已被封禁，无法登录');
-          return;
-        }
-        
-        if (user.password === password) {
-          onLogin(user); // 这里的 user 对象里包含完整的 id (UUID)
-        } else {
-          setError('密码错误');
-        }
-      } else {
+      if (queryError || !userData) {
         setError('账号不存在，请检查 ID 是否输入正确');
+        return;
       }
+
+      if (userData.is_banned) {
+        setError('该账号已被封禁，无法登录');
+        return;
+      }
+
+      // 2. 使用 Supabase Auth 登录（创建 session）
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: userData.email,
+        password: password,
+      });
+
+      if (authError) {
+        console.error('登录失败:', authError);
+        if (authError.message.includes('Invalid login credentials')) {
+          setError('密码错误');
+        } else {
+          setError('登录失败: ' + authError.message);
+        }
+        return;
+      }
+
+      console.log('✅ 登录成功, Session 已创建:', authData.session);
+      console.log('✅ 用户信息:', authData.user);
+
+      // 3. 登录成功，传递完整的用户信息
+      onLogin({
+        ...userData,
+        auth_id: authData.user.id, // Supabase Auth 的 ID
+      });
+
     } catch (e: any) {
+      console.error('系统错误:', e);
       setError(`系统错误: ${e.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -655,7 +687,8 @@ const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
             <input
               value={loginIdInput}
               onChange={e => setLoginIdInput(e.target.value)}
-              className="w-full p-4 border border-zinc-200 outline-none focus:border-black transition-all bg-zinc-50 focus:bg-white font-mono"
+              disabled={loading}
+              className="w-full p-4 border border-zinc-200 outline-none focus:border-black transition-all bg-zinc-50 focus:bg-white font-mono disabled:opacity-50"
               placeholder="例如: AX79P2"
             />
           </div>
@@ -667,13 +700,15 @@ const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
                 type={showPass ? "text" : "password"}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="w-full p-4 border border-zinc-200 outline-none focus:border-black transition-all bg-zinc-50 focus:bg-white pr-12 font-mono"
+                disabled={loading}
+                className="w-full p-4 border border-zinc-200 outline-none focus:border-black transition-all bg-zinc-50 focus:bg-white pr-12 font-mono disabled:opacity-50"
                 placeholder="请输入密码"
               />
               <button
                 type="button"
                 onClick={() => setShowPass(!showPass)}
-                className="absolute right-4 top-4 text-zinc-400 hover:text-black"
+                disabled={loading}
+                className="absolute right-4 top-4 text-zinc-400 hover:text-black disabled:opacity-50"
               >
                 {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -689,9 +724,10 @@ const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
 
         <button
           onClick={handleLogin}
-          className="w-full bg-black text-white py-4 font-bold text-lg hover:bg-zinc-800 transition-all active:scale-[0.98] shadow-lg shadow-zinc-200"
+          disabled={loading}
+          className="w-full bg-black text-white py-4 font-bold text-lg hover:bg-zinc-800 transition-all active:scale-[0.98] shadow-lg shadow-zinc-200 disabled:bg-zinc-400 disabled:cursor-not-allowed"
         >
-          确认登录
+          {loading ? '登录中...' : '确认登录'}
         </button>
 
         <div className="text-center space-y-1">
@@ -707,7 +743,7 @@ const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
   );
 };
 
-
+// 主应用组件
 // 主应用组件
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -727,47 +763,48 @@ export default function App() {
   // Toast 状态
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
 
-  // 初始化用户登录状态
-useEffect(() => {
-  const savedUser = sessionStorage.getItem('currentUser');
-  if (savedUser) {
-    try {
-      const u = JSON.parse(savedUser);
-      
-      const loadUser = async () => {
-        try {
-          // 依然使用 u.id (UUID) 获取最新数据，这是最稳妥的
-          const freshUser = await get_user(u.id);
-          
-          if (freshUser) {
-            // 检查是否在登录期间被管理员封禁
-            if (freshUser.is_banned) {
-              sessionStorage.removeItem('currentUser');
-              setUser(null);
-              setView('login');
-              setToast({ msg: '账号已被封禁', type: 'error' });
-              return;
-            }
-            
-            // 更新本地缓存和状态，确保 login_id 等新字段被同步
-            setUser(freshUser);
-            sessionStorage.setItem('currentUser', JSON.stringify(freshUser));
-            setView('feed');
+  // ✅ 修改后的初始化用户登录状态
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        // 1. 先检查 Supabase Auth Session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          // 如果没有 session，清除本地缓存
+          sessionStorage.removeItem('currentUser');
+          return;
+        }
+
+        // 2. 如果有 session，获取用户信息
+        const freshUser = await get_user(session.user.id);
+        
+        if (freshUser) {
+          // 检查是否被封禁
+          if (freshUser.is_banned) {
+            sessionStorage.removeItem('currentUser');
+            await supabase.auth.signOut();
+            setUser(null);
+            setView('login');
+            setToast({ msg: '账号已被封禁', type: 'error' });
+            return;
           }
-        } catch (err) {
-          console.error("同步用户信息失败:", err);
-          // 如果网络错误，可以暂时使用缓存的数据
-          setUser(u);
+          
+          // 更新本地状态
+          setUser(freshUser);
+          sessionStorage.setItem('currentUser', JSON.stringify(freshUser));
           setView('feed');
         }
-      };
-      loadUser();
-    } catch (err) {
-      console.error("解析用户数据失败:", err);
-    }
-  }
-}, []);
+      } catch (err) {
+        console.error("获取用户信息失败:", err);
+        // 如果获取失败，清除状态
+        sessionStorage.removeItem('currentUser');
+        await supabase.auth.signOut();
+      }
+    };
 
+    initAuth();
+  }, []);
 
   // 加载帖子列表
   useEffect(() => {
@@ -825,10 +862,20 @@ useEffect(() => {
     setView('feed');
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    sessionStorage.removeItem('currentUser');
-    setView('landing');
+  // ✅ 修改后的退出登录函数
+  const handleLogout = async () => {
+    try {
+      // 1. 调用 Supabase Auth 退出登录
+      await supabase.auth.signOut();
+      console.log('✅ Supabase Auth 已退出');
+    } catch (error) {
+      console.error('退出登录时出错:', error);
+    } finally {
+      // 2. 清除本地状态
+      setUser(null);
+      sessionStorage.removeItem('currentUser');
+      setView('landing');
+    }
   };
 
   const handleViewProfile = (userId: string) => {
