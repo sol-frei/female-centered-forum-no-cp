@@ -213,7 +213,7 @@ export default function AdminPanel() {
       {activeTab === 'settings' && (
         <div className="bg-white border border-zinc-200 p-6 space-y-4 animate-in slide-in-from-right duration-300">
           <h3 className="font-bold flex items-center gap-2">
-            <Ban className="w-5 h-5" /> 违禁词管理 (Supabase 云端)
+            <Ban className="w-5 h-5" /> 辱女词管理
           </h3>
           <p className="text-sm text-zinc-500">
             设置后即刻生效，所有用户发帖都将受到限制。
