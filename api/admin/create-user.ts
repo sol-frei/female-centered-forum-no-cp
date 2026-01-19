@@ -32,7 +32,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('id', userData.user.id)
       .single()
 
-    if (!dbUser || dbUser.role !== 'admin') return res.status(403).send('仅管理员可调用此接口')
+   if (!dbUser || (dbUser.role !== 'admin' && dbUser.role !== 'i女er')) {
+  return res.status(403).send('仅管理员和 i女er 可调用此接口');
+}
 
     // 读取请求 body
     const { role } = req.body
