@@ -134,7 +134,7 @@ export default function AdminPanel() {
     }
   };
 
-  // 复制 ID / 密码
+  // 复制 login_id / 密码
   const copyToClipboard = (text: string, type: 'id' | 'pass') => {
     navigator.clipboard.writeText(text);
     if (type === 'id') {
@@ -179,7 +179,7 @@ export default function AdminPanel() {
               onClick={handleGenerateUser}
               className="bg-black text-white px-4 py-2 hover:bg-zinc-800 transition-colors"
             >
-              向云端申请 ID & 密码
+              向云端申请 Login ID & 密码
             </button>
 
             {newUser && (
@@ -187,13 +187,13 @@ export default function AdminPanel() {
                 <p className="text-sm text-zinc-500 mb-2 font-bold text-red-600 italic">请立即保存，离开后无法再次查看密码：</p>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between bg-zinc-50 p-2 border border-zinc-200">
-                    <span className="font-mono text-sm">ID: {newUser.id}</span>
-                    <button onClick={() => copyToClipboard(newUser.id, 'id')} className="text-xs flex items-center gap-1">
+                    <span className="font-mono text-sm">Login ID: {newUser.login_id}</span>
+                    <button onClick={() => copyToClipboard(newUser.login_id, 'id')} className="text-xs flex items-center gap-1">
                       {copiedId ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />} 复制
                     </button>
                   </div>
                   <div className="flex items-center justify-between bg-zinc-50 p-2 border border-zinc-200">
-                    <span className="font-mono text-sm font-bold">密码: {newUser.password}</span>
+                    <span className="font-mono text-sm font-bold">Password: {newUser.password}</span>
                     <button onClick={() => copyToClipboard(newUser.password, 'pass')} className="text-xs flex items-center gap-1">
                       {copiedPass ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />} 复制
                     </button>
@@ -203,6 +203,7 @@ export default function AdminPanel() {
             )}
           </div>
 
+          {/* 用户列表 */}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border border-zinc-200">
               <thead className="bg-zinc-50">
