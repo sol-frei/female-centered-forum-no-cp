@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User } from '../types';
 import { X, Loader2, Eye, EyeOff } from 'lucide-react';
@@ -11,6 +10,7 @@ export default function ChangePasswordModal({ user, onComplete }: { user: User, 
   const [showPw2, setShowPw2] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async () => {
     // 1. 基础前端校验
@@ -32,62 +32,102 @@ export default function ChangePasswordModal({ user, onComplete }: { user: User, 
       setError('');
 
       // 2. 先刷新 session，确保 token 是最新的
+      console.log('🔄 开始刷新 session...');
       const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
       
-      if (refreshError || !session) {
+      if (refreshError) {
+        console.error('❌ Session 刷新失败:', refreshError);
         throw new Error('登录会话已过期，请刷新页面重新登录');
       }
-
-      // 3. 先更新数据库标记（在修改密码之前，因为修改密码后 session 会失效）
-      const { error: dbError } = await supabase
-        .from('users')
-        .update({ is_first_login: false })
-        .eq('id', user.id);
-
-      if (dbError) {
-        console.warn('数据库标记更新失败:', dbError.message);
-        // 不阻断流程，继续修改密码
+      
+      if (!session) {
+        console.error('❌ Session 不存在');
+        throw new Error('登录会话已过期，请刷新页面重新登录');
       }
+      
+      console.log('✅ Session 刷新成功, user ID:', session.user.id);
 
-      // 4. 修改密码（这个操作会使当前 session 失效）
-      const { error: authError } = await supabase.auth.updateUser({
+      // 3. 修改密码（重要：这一步必须在数据库更新之前）
+      console.log('🔐 开始修改密码...');
+      const { data: updateData, error: authError } = await supabase.auth.updateUser({
         password: pw
       });
 
       if (authError) {
-        // 如果是 session 相关错误，给出友好提示
+        console.error('❌ 修改密码失败:', authError);
         if (authError.message.includes('session') || authError.message.includes('Auth')) {
           throw new Error('登录会话已过期, 请刷新页面重新登录');
         }
         throw authError;
       }
 
-      // 5. 密码修改成功，退出登录
-      await supabase.auth.signOut();
+      console.log('✅ 密码修改成功:', updateData);
 
-      // 6. 显示成功消息并刷新页面让用户重新登录
-      alert('密码修改成功！请使用新密码重新登录');
-      
-      // 刷新页面，让用户回到登录页
-      window.location.reload();
+      // 4. 更新数据库标记
+      console.log('💾 开始更新数据库标记...');
+      const { error: dbError } = await supabase
+        .from('users')
+        .update({ is_first_login: false })
+        .eq('id', user.id);
+
+      if (dbError) {
+        console.error('⚠️ 数据库标记更新失败:', dbError.message);
+        // 不阻断流程，因为密码已经修改成功了
+      } else {
+        console.log('✅ 数据库标记更新成功');
+      }
+
+      // 5. 修改成功，显示成功状态
+      setSuccess(true);
+
+      // 6. 2秒后关闭弹窗并退出登录
+      setTimeout(async () => {
+        const updated = { ...user, isFirstLogin: false } as User;
+        onComplete(updated);
+        
+        // 退出登录并刷新
+        await supabase.auth.signOut();
+        window.location.reload();
+      }, 2000);
 
     } catch (err: any) {
       console.error('修改密码时出错!!:', err);
       
-      // 友好的错误处理
       if (err.message.includes('session') || err.message.includes('过期')) {
         setError('登录会话已过期, 请刷新页面重新登录');
-        // 3秒后自动刷新页面
         setTimeout(() => {
           window.location.reload();
-        }, 3000);
+        }, 2000);
       } else {
         setError(err.message || '修改失败，请重试');
       }
-    } finally {
       setLoading(false);
     }
   };
+
+  // 成功状态的UI
+  if (success) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white border p-6 rounded shadow-lg text-center">
+          <div className="mb-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold mb-2">密码修改成功！</h3>
+            <p className="text-sm text-zinc-600">
+              即将跳转到登录页面，请使用新密码重新登录...
+            </p>
+          </div>
+          <div className="flex justify-center">
+            <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
