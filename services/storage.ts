@@ -502,79 +502,61 @@ export const get_banned_words = async () => {
  * 通过登录账号 (login_id) 获取用户信息
  * @param login_id 用户输入的短账号
  */
-export const get_user_by_login_id = async (login_id: string) => {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('login_id', login_id)
-    .maybeSingle();
-
-  if (error) {
-    console.error('登录查询失败:', error.message);
-    throw error;
-  }
-  return data;
-};
-
-
 /**
  * 云端生成新用户 (管理员用)
- * 同时在 Supabase Auth 和 users 表创建用户
+ * 修正版：使用 signUp 替代 admin.createUser 以解决前端权限报错
  */
 export const create_user_cloud = async (role: 'user' | 'admin' | 'i女er' = 'user') => {
-  // 生成随机 6 位 login_id (大写字母+数字)
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 去掉容易混淆的字符
+  // 1. 生成 ID 和 密码的逻辑保持不变
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let loginId = '';
   for (let i = 0; i < 6; i++) {
     loginId += chars.charAt(Math.floor(Math.random() * chars.length));
   }
 
-  // 生成随机 8 位密码
   const passChars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
   let password = '';
   for (let i = 0; i < 8; i++) {
     password += passChars.charAt(Math.floor(Math.random() * passChars.length));
   }
 
-  // 生成虚拟邮箱
+  // 虚拟邮箱，用于 Auth 注册
   const email = `${loginId.toLowerCase()}@temp.local`;
 
   try {
-    // 1. 检查 login_id 是否已存在
+    // 2. 检查 login_id 冲突
     const { data: existing } = await supabase
       .from('users')
       .select('login_id')
       .eq('login_id', loginId)
-      .single();
+      .maybeSingle();
 
-    if (existing) {
-      throw new Error('Login ID 冲突，请重新生成');
-    }
+    if (existing) throw new Error('ID 冲突，请重试');
 
-    // 2. 在 Supabase Auth 创建用户
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    
+    
+    // 3. 【核心修改】使用 signUp 注册账号
+    // 这样不需要 Service Role Key，管理员登录状态下即可操作
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email: email,
       password: password,
-      email_confirm: true, // 自动确认邮箱，不发送邮件
-      user_metadata: {
-        login_id: loginId,
+      options: {
+        data: {
+          login_id: loginId,
+          user_name: `用户_${loginId}`,
+        }
       }
     });
 
-    if (authError) {
-      console.error('Auth 创建失败:', authError);
-      throw new Error(`创建认证账号失败: ${authError.message}`);
-    }
+    if (authError) throw authError;
+    if (!authData.user) throw new Error("Auth 注册失败，未获取到 UID");
 
-    console.log('✅ Auth 用户创建成功:', authData.user.id);
-
-    // 3. 在 users 表创建用户记录
+    // 4. 在 users 表同步创建记录
     const newUser = {
-      id: authData.user.id, // 使用 Auth 生成的 UUID
+      id: authData.user.id, // 关联 Auth 产生的 UUID
       login_id: loginId,
       email: email,
       user_name: `用户_${loginId}`,
-      avatar: null,
       role: role,
       is_banned: false,
       is_first_login: true,
@@ -585,23 +567,16 @@ export const create_user_cloud = async (role: 'user' | 'admin' | 'i女er' = 'use
       .from('users')
       .insert(newUser);
 
-    if (dbError) {
-      console.error('数据库插入失败:', dbError);
-      // 如果数据库插入失败，删除刚创建的 Auth 用户
-      await supabase.auth.admin.deleteUser(authData.user.id);
-      throw new Error(`创建数据库记录失败: ${dbError.message}`);
-    }
+    if (dbError) throw dbError;
 
-    console.log('✅ 数据库记录创建成功');
-
-    // 4. 返回用户信息（包含密码，仅此一次）
+    // 5. 返回包含密码的对象（仅用于管理员展示）
     return {
       ...newUser,
-      password: password, // 仅在创建时返回，后续无法查看
+      password: password,
     };
 
   } catch (error: any) {
-    console.error('创建用户失败:', error);
+    console.error('创建失败详情:', error);
     throw error;
   }
 };
