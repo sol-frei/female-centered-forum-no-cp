@@ -116,7 +116,7 @@ export const toggle_collection = async (user_id: string, post_id: string) => {
 
 // 专门负责去云端把所有人的名单取回来
 export const get_all_users = async () => {
-  const { data, error } = await supabase.from('profiles').select('*'); // 假设你的用户表叫 profiles
+  const { data, error } = await supabase.from('users').select('*');
   if (error) throw error;
   return data;
 };
