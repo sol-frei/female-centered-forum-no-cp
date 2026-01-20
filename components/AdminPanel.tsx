@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // 添加这一行
 import { supabase } from '../services/supabaseClient';
 import { 
   get_all_users, 
@@ -12,6 +13,7 @@ import {
 import Toast from './Toast';
 
 export default function AdminPanel() {
+  const navigate = useNavigate(); // 添加这一行
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newUser, setNewUser] = useState<any | null>(null);
@@ -137,6 +139,11 @@ export default function AdminPanel() {
     }
   };
 
+  // 添加处理用户点击的函数 - 和导航栏风格一致
+  const handleViewProfile = (userId: string) => {
+    navigate(`/users/${userId}`);
+  };
+
   if (loading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin" /></div>;
 
   return (
@@ -210,31 +217,30 @@ export default function AdminPanel() {
               <tbody className="divide-y divide-zinc-200 bg-white">
                 {users.map(u => (
                   <tr key={u.id} className={u.is_banned ? 'bg-red-50/50' : ''}>
-                 <td className="p-3">
-                {/* 增加 group 类以便实现整体悬停效果 */}
-                <div 
-                className="flex items-center gap-3 cursor-pointer group" 
-                onClick={() => window.location.href = `/users/${u.id}`}
-                title="查看用户主页"
-                >
-               <div className="w-10 h-10 rounded-full bg-zinc-100 overflow-hidden border border-zinc-200 group-hover:border-black transition-colors">
-               {u.avatar ? (
-               <img src={u.avatar} className="w-full h-full object-cover" />
-               ) : (
-               <UserCircle className="w-full h-full text-zinc-300" />
-              )}
-             </div>
-            <div>
-             {/* 名字在悬停时增加下划线，模拟链接效果 */}
-           <div className="font-bold group-hover:text-blue-600 group-hover:underline transition-colors">
-            {u.user_name}
-           </div>
-           <div className="text-[10px] font-mono text-zinc-400">
-        {u.login_id}
-      </div>
-    </div>
-  </div>
-</td>
+                    <td className="p-3">
+                      {/* 采用和导航栏一致的跳转方式 */}
+                      <div 
+                        onClick={() => handleViewProfile(u.id)}
+                        className="flex items-center gap-3 cursor-pointer group" 
+                        title="查看用户主页"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-zinc-100 overflow-hidden border border-zinc-200 group-hover:border-black transition-colors">
+                          {u.avatar ? (
+                            <img src={u.avatar} className="w-full h-full object-cover" alt={u.user_name} />
+                          ) : (
+                            <UserCircle className="w-full h-full text-zinc-300" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="font-bold group-hover:text-blue-600 group-hover:underline transition-colors">
+                            {u.user_name}
+                          </div>
+                          <div className="text-[10px] font-mono text-zinc-400">
+                            {u.login_id}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
                     <td className="p-3">
                       <div className="flex flex-col gap-1">
                         {u.role === 'admin' ? <span className="bg-black text-white text-[10px] px-1 py-0.5 w-fit rounded">管理员</span> : 
