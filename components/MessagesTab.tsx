@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Loader2, Bell, MessageCircle, Heart } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+
 // 👈 确保这里引入了你刚写的函数
 import { markNotificationAsRead } from '../services/storage'; 
 
-export function MessagesTab({ userId }: { userId: string }) {
+export function MessagesTab({ 
+  userId, 
+  onPostClick 
+}: { 
+  userId: string, 
+  onPostClick: (id: string) => void 
+})
+
+
+{
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-
   const loadNotifications = async () => {
     try {
       setLoading(true);
@@ -49,19 +56,22 @@ export function MessagesTab({ userId }: { userId: string }) {
     };
   }, [userId]);
 
-  // --- 新增：处理点击逻辑 ---
-  const handleItemClick = async (n: any) => {
-    // 1. 如果是未读，先标记已读
-    if (!n.is_read) {
-      await markNotificationAsRead(n.id);
-      // 注意：这里不需要手动 setNotifications，
-      // 因为上面的实时监听 channel 会自动捕获到数据库更新并触发 loadNotifications()
+// 2. 修改点击处理函数
+  const handleItemClick = async (notification: any) => {
+    // 如果消息未读，先标记为已读
+    if (!notification.is_read) {
+      try {
+        await markNotificationAsRead(notification.id);
+        // 这里的 loadNotifications 会触发列表刷新，显示已读状态
+        loadNotifications(); 
+      } catch (err) {
+        console.error('标记已读失败:', err);
+      }
     }
 
-    // 2. 执行跳转
-    if (n.post_id) {
-      // 如果你使用的是 HashRouter，navigate('/post/xxx') 会自动处理成 /#/post/xxx
-      navigate(`/post/${n.post_id}`);
+    // 执行跳转逻辑：跳转到该消息所属的帖子详情页
+    if (notification.post_id) {
+      onPostClick(notification.post_id); //
     }
   };
 

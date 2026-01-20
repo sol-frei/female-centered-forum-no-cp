@@ -273,7 +273,10 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
           )}
 
           {activeTab === 'messages' && isOwnProfile && (
-            <MessagesTab userId={userId} />
+            <MessagesTab 
+           userId={userId} 
+          onPostClick={onPostClick} // <-- 新增：将跳转函数传递给消息组件
+  />
           )}
 
           {activeTab === 'collections' && isOwnProfile && (
