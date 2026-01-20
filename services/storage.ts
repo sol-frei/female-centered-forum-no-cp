@@ -175,21 +175,35 @@ export const get_user = async (id: string) => {
 
 // 投票功能
 export const vote_poll = async (post_id: string, opt_id: string, user_id: string) => {
+  // 1. 获取最新的投票数据
   const { data: post } = await supabase.from('posts').select('poll').eq('id', post_id).single();
   if (!post || !post.poll) return;
 
   const new_poll = { ...post.poll };
-  // 遍历所有选项，更新投票名单
+
+  // 2. 🔴 关键修改：检查用户是否已经在任何选项中投过票
+  const hasVoted = new_poll.options.some((opt: any) => 
+    opt.votes && opt.votes.includes(user_id)
+  );
+
+  if (hasVoted) {
+    // 如果已经投过票，直接抛出错误，阻止后续更新
+    throw new Error('您已经参与过投票，结果不可更改');
+  }
+
+  // 3. 🟢 更新逻辑：只负责把用户 ID 加到选中的选项里
   new_poll.options = new_poll.options.map((opt: any) => {
-    // 先把用户从所有选项的投票名单里踢出来 (防止多选限制或重复投票)
-    let votes = opt.votes.filter((id: string) => id !== user_id);
-    // 如果是用户点的那个选项，就把他加进去
     if (opt.id === opt_id) {
-      votes.push(user_id);
+      return { 
+        ...opt, 
+        // 使用解构赋值确保原有的 votes 数组被保留，并加入新用户
+        votes: [...(opt.votes || []), user_id] 
+      };
     }
-    return { ...opt, votes };
+    return opt;
   });
 
+  // 4. 更新数据库
   const { error } = await supabase.from('posts').update({ poll: new_poll }).eq('id', post_id);
   if (error) throw error;
 };
