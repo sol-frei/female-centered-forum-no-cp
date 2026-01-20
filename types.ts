@@ -92,6 +92,14 @@ export interface Collection {
   created_at: string;
 }
 
+// 收藏夹中的帖子关联信息
+export interface CollectionPost {
+  id: string;
+  collection_id: string; // 指向 collections 表
+  post_id: string;       // 指向 posts 表
+  created_at: string;
+}
+
 // 敏感词信息
 
 export interface SensitiveWords {
