@@ -8,7 +8,7 @@ import ChangePasswordModal from './components/ChangePasswordModal';
 import UserProfile from './components/UserProfile';
 import Toast, { ToastType } from './components/Toast';
 import CreatePostModal from "./components/CreatePostModal";
-import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageCircle, MessageSquare, Trash2, X, Plus, Check, Star, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical,RefreshCw } from 'lucide-react';
+import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageCircle, MessageSquare, Trash2, X, Plus, Check, Star, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical } from 'lucide-react';
 
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
@@ -41,23 +41,6 @@ const Avatar = ({ url, className = "w-8 h-8" }: { url?: string, className?: stri
   }
   return <UserCircle className={`${className} text-zinc-300`} />;
 };
-
-const [showUpdateBtn, setShowUpdateBtn] = useState(false);
-
-useEffect(() => {
-  const channel = supabase
-    .channel('posts-realtime')
-    .on('postgres_changes', { 
-      event: 'INSERT', 
-      schema: 'public', 
-      table: 'posts' 
-    }, () => {
-      setShowUpdateBtn(true); // 数据库有新帖子时，把按钮设为显示
-    })
-    .subscribe();
-
-  return () => { supabase.removeChannel(channel); };
-}, []);
 
 // 帖子详情组件
 interface PostDetailProps {
@@ -411,19 +394,6 @@ const PostDetail = ({
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* 🟢 1. 放置在这里：悬浮更新按钮 */}
-      {showUpdateBtn && (
-        <button 
-          onClick={() => {
-            window.location.reload();
-            setShowUpdateBtn(false);
-          }}
-          className="fixed top-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg animate-bounce transition-all active:scale-95"
-        >
-          <RefreshCw className="w-4 h-4" />
-          发现新帖子，点击查看
-        </button>
-      )}
       <div className="max-w-3xl mx-auto py-8 px-4 flex-1 pb-32 w-full relative">
         <button onClick={onBack} className="sticky top-0 z-40 w-full text-left py-2 bg-white/80 backdrop-blur-md mb-4 text-sm text-zinc-500 hover:text-black transition-all border-b border-transparent hover:border-zinc-100">← 返回列表</button>
 
