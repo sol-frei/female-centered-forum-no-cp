@@ -30,22 +30,17 @@ export function MessagesTab({ userId }: { userId: string }) {
   }, [userId]);
 
 const loadNotifications = async () => {
-  setLoading(true);
-  try {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId);
+  // 强制获取当前真实登录的 UID
+  const { data: { user } } = await supabase.auth.getUser();
+  console.log("【检查1】当前 Auth 模块登录的 UID:", user?.id);
+  console.log("【检查2】组件接收到的 userId 参数:", userId);
 
-    console.log('查询结果:', data); // 打印这里，看有没有数据
-    if (error) console.error('数据库错误:', error);
-    
-    setNotifications(data || []);
-  } catch (err) {
-    console.error('捕获异常:', err);
-  } finally {
-    setLoading(false);
-  }
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId);
+
+  console.log("【检查3】最终查询结果:", data);
 };
 
   const markAsRead = async (notificationId: string) => {
