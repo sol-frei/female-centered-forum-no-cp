@@ -10,7 +10,6 @@ export function MessagesTab({ userId }: { userId: string }) {
   useEffect(() => {
     loadNotifications();
 
-    // 实时订阅新消息
     const channel = supabase
       .channel(`notifications_${userId}`)
       .on('postgres_changes', {
@@ -293,9 +292,9 @@ export function CollectionsTab({ userId }: { userId: string }) {
   const loadCollectedPosts = async (collectionId: string) => {
     try {
       const { data: collectionPosts, error: cpError } = await supabase
-        .from('collections')
+        .from('collection_posts')
         .select('post_id')
-        .eq('id', collectionId);
+        .eq('collection_id', collectionId);
 
       if (cpError) throw cpError;
 
@@ -305,6 +304,11 @@ export function CollectionsTab({ userId }: { userId: string }) {
       }
 
       const postIds = collectionPosts.map(cp => cp.post_id);
+
+      if (postIds.length === 0) {
+        setCollectedPosts([]);
+        return;
+      }
 
       const { data: posts, error: postsError } = await supabase
         .from('posts')
@@ -326,9 +330,9 @@ export function CollectionsTab({ userId }: { userId: string }) {
 
     try {
       const { error } = await supabase
-        .from('collections')
+        .from('collection_posts')
         .delete()
-        .eq('id', selectedCollection)
+        .eq('collection_id', selectedCollection)
         .eq('post_id', postId);
 
       if (error) throw error;
@@ -344,12 +348,12 @@ export function CollectionsTab({ userId }: { userId: string }) {
     if (!confirm('确定要删除这个收藏夹吗？收藏夹内的所有帖子也会被移除。')) return;
 
     try {
-      const { error: delPostsError } = await supabase
+      const { error } = await supabase
         .from('collections')
         .delete()
         .eq('id', collectionId);
 
-      if (delPostsError) throw delPostsError;
+      if (error) throw error;
 
       setCollections(prev => prev.filter(c => c.id !== collectionId));
 
@@ -401,11 +405,6 @@ export function CollectionsTab({ userId }: { userId: string }) {
             <div className="flex justify-between items-start">
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{collection.name}</div>
-                <div className={`text-xs mt-1 ${
-                  selectedCollection === collection.id ? 'text-zinc-300' : 'text-zinc-400'
-                }`}>
-                  {collection.post_count || 0} 篇
-                </div>
               </div>
               <button
                 onClick={(e) => {
