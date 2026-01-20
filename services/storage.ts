@@ -76,12 +76,12 @@ export const get_posts = async (category: Category | '全部', sort: 'new' | 'es
 
 // 点赞/取消点赞
 
-export const toggle_like_post = async (post_id: string, user_id: string, current_likes: string[] = []) => {
+export const toggle_like_post = async (post_id: string, author_id: string, current_likes: string[] = []) => {
   const safe_likes = Array.isArray(current_likes) ? current_likes : [];
-  const is_liked= safe_likes.includes(user_id);
+  const is_liked= safe_likes.includes(author_id);
   const new_likes = is_liked
-    ? safe_likes.filter(id => id !== user_id) 
-    : [...safe_likes, user_id];
+    ? safe_likes.filter(id => id !== author_id) 
+    : [...safe_likes, author_id];
 
   const { error } = await supabase
     .from('posts')

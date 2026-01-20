@@ -204,7 +204,7 @@ const PostDetail = ({
         content: newComment,
         reply_to_id: replyToCommentId || null,
       },
-      post.author_id, // post_user_id（帖子作者）
+      post.author_id, // post_author_id（帖子作者）
       post.title      // post_title（帖子标题）
       );
       setNewComment('');
