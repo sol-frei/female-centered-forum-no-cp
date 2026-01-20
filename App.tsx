@@ -204,7 +204,7 @@ const PostDetail = ({
         content: newComment,
         reply_to_id: replyToCommentId || null,
       },
-      post.author_id, // post_author_id（帖子作者）
+      post.user_id, // post_user_id（帖子作者）
       post.title      // post_title（帖子标题）
       );
       setNewComment('');
@@ -303,9 +303,9 @@ const PostDetail = ({
     }
   };
 
-  const handleReplyClick = (commentId: string, authorName: string) => {
+  const handleReplyClick = (commentId: string, AuthorName: string) => {
     setReplyToCommentId(commentId);
-    setNewComment(`@${authorName} `);
+    setNewComment(`@${AuthorName} `);
     commentInputRef.current?.focus();
   };
 
@@ -317,8 +317,8 @@ const PostDetail = ({
         {/* 帖子内容 */}
         <div className="bg-white border border-zinc-200 p-6 shadow-sm mb-6">
           <div className="flex items-start gap-4 mb-4">
-            <div className="flex-shrink-0 cursor-pointer" onClick={() => onViewProfile(post.author_id)}>
-              <Avatar url={usersMap[post.author_id]?.avatar} className="w-12 h-12" />
+            <div className="flex-shrink-0 cursor-pointer" onClick={() => onViewProfile(post.user_id)}>
+              <Avatar url={usersMap[post.user_id]?.avatar} className="w-12 h-12" />
             </div>
             <div className="flex-1">
               {isEditingPost ? (
@@ -334,7 +334,7 @@ const PostDetail = ({
 
               <div className="text-sm text-zinc-500 flex gap-3 items-center">
                 {!isEditingPost && <span className="bg-zinc-100 px-2 py-0.5 rounded text-xs">{post.category}</span>}
-                <span onClick={() => onViewProfile(post.author_id)} className="hover:underline cursor-pointer hover:text-black transition-colors">{usersMap[post.author_id]?.user_name || '未知用户'}</span>
+                <span onClick={() => onViewProfile(post.user_id)} className="hover:underline cursor-pointer hover:text-black transition-colors">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
                 <span>{timeAgo(postCreatedAt)}</span>
                 {(post.is_essence || post.isEssence) && <span className="bg-black text-white px-1.5 text-xs flex items-center">蒂</span>}
                 {post.is_locked && <span className="bg-red-600 text-white px-1.5 text-xs flex items-center">🔒</span>}
@@ -1036,8 +1036,8 @@ export default function App() {
                                 className="py-4 hover:bg-zinc-50 cursor-pointer group transition-colors px-2"
                               >
                                 <div className="flex items-start gap-3">
-                                  <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.author_id); }}>
-                                    <Avatar url={usersMap[post.author_id]?.avatar} className="w-10 h-10" />
+                                  <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.user_id); }}>
+                                    <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
                                   </div>
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
@@ -1048,7 +1048,7 @@ export default function App() {
                                     <div className="text-xs text-zinc-400 flex gap-3">
                                       <span>{post.category}</span>
                                       <span>•</span>
-                                      <span className="hover:text-black hover:underline">{usersMap[post.author_id]?.user_name || '未知用户'}</span>
+                                      <span className="hover:text-black hover:underline">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
                                       <span>•</span>
                                       <span>{timeAgo(post.created_at)}</span>
                                     </div>
