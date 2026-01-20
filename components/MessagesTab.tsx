@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { Loader2, Bell, MessageCircle, Heart, Trash2 } from 'lucide-react';
+import { Loader2, Bell, MessageCircle, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+// 👈 确保这里引入了你刚写的函数
+import { markNotificationAsRead } from '../services/storage'; 
 
 export function MessagesTab({ userId }: { userId: string }) {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -10,7 +12,6 @@ export function MessagesTab({ userId }: { userId: string }) {
 
   const loadNotifications = async () => {
     try {
-      // 开启加载状态
       setLoading(true);
       const { data, error } = await supabase
         .from('notifications')
@@ -30,7 +31,6 @@ export function MessagesTab({ userId }: { userId: string }) {
   useEffect(() => {
     loadNotifications();
 
-    // 实时监听
     const channel = supabase
       .channel(`notifications_live_${userId}`)
       .on('postgres_changes', {
@@ -39,6 +39,7 @@ export function MessagesTab({ userId }: { userId: string }) {
         table: 'notifications',
         filter: `user_id=eq.${userId}`
       }, () => {
+        // 当数据库发生变化（包括标记已读）时，自动重新加载列表
         loadNotifications();
       })
       .subscribe();
@@ -48,7 +49,22 @@ export function MessagesTab({ userId }: { userId: string }) {
     };
   }, [userId]);
 
-  // 辅助函数：时间格式化
+  // --- 新增：处理点击逻辑 ---
+  const handleItemClick = async (n: any) => {
+    // 1. 如果是未读，先标记已读
+    if (!n.is_read) {
+      await markNotificationAsRead(n.id);
+      // 注意：这里不需要手动 setNotifications，
+      // 因为上面的实时监听 channel 会自动捕获到数据库更新并触发 loadNotifications()
+    }
+
+    // 2. 执行跳转
+    if (n.post_id) {
+      // 如果你使用的是 HashRouter，navigate('/post/xxx') 会自动处理成 /#/post/xxx
+      navigate(`/post/${n.post_id}`);
+    }
+  };
+
   const timeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -59,7 +75,6 @@ export function MessagesTab({ userId }: { userId: string }) {
     return date.toLocaleDateString('zh-CN');
   };
 
-  // 渲染逻辑 - 核心修复点：为不同状态提供唯一的 key
   if (loading) {
     return (
       <div key="loader" className="flex justify-center py-12">
@@ -80,9 +95,12 @@ export function MessagesTab({ userId }: { userId: string }) {
           {notifications.map((n) => (
             <div
               key={n.id}
-              onClick={() => n.post_id && navigate(`/post/${n.post_id}`)}
+              // 👈 核心修改：绑定新的处理函数
+              onClick={() => handleItemClick(n)}
               className={`p-4 border rounded-lg cursor-pointer transition-all hover:shadow-sm ${
-                n.is_read ? 'bg-white border-zinc-100' : 'bg-blue-50/50 border-blue-100 shadow-sm'
+                n.is_read 
+                  ? 'bg-white border-zinc-100' 
+                  : 'bg-blue-50/50 border-blue-100 shadow-sm ring-1 ring-blue-100' // 未读状态加个边框高亮
               }`}
             >
               <div className="flex gap-3">
@@ -93,6 +111,8 @@ export function MessagesTab({ userId }: { userId: string }) {
                   <p className="text-sm text-zinc-800">
                     <span className="font-bold">{n.from_user_name}</span> 
                     {n.type === 'comment' ? ' 评论了你的帖子' : n.type === 'reply' ? ' 回复了你的评论' : ' 赞了你的帖子'}
+                    {/* 如果未读，显示一个小红点 */}
+                    {!n.is_read && <span className="inline-block w-2 h-2 bg-blue-500 rounded-full ml-2" />}
                   </p>
                   {n.content && (
                     <p className="mt-2 text-sm text-zinc-500 bg-zinc-50 p-2 rounded italic">"{n.content}"</p>

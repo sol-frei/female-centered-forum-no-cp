@@ -597,3 +597,20 @@ export async function createUser(role: 'user' | 'admin' | 'i女er' = 'user') {
 
   return res.json()
 }
+
+/**
+ * 将通知标记为已读
+ * @param notificationId 通知ID
+ */
+export async function markNotificationAsRead(notificationId: string) {
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId);
+
+    if (error) throw error;
+  } catch (error: any) {
+    console.error('标记通知已读失败:', error.message);
+  }
+}
