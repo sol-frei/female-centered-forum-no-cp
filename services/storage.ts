@@ -489,7 +489,7 @@ export async function addToCollection(collectionId: string, postId: string) {
     const { data: existing } = await supabase
       .from('collections')
       .select('*')
-      .eq('collection_id', collectionId)
+      .eq('user_id', collectionId)
       .eq('post_id', postId)
       .single();
 
@@ -501,7 +501,7 @@ export async function addToCollection(collectionId: string, postId: string) {
     const { data, error } = await supabase
       .from('collections')
       .insert({
-        collection_id: collectionId,
+        user_id: collectionId,
         post_id: postId,
         created_at: new Date().toISOString()
       })
@@ -512,7 +512,7 @@ export async function addToCollection(collectionId: string, postId: string) {
 
     // 更新收藏夹的帖子数量
     const { error: updateError } = await supabase.rpc('increment_collection_count', {
-      collection_id: collectionId
+      user_id: collectionId
     });
 
     if (updateError) {

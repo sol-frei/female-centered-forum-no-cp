@@ -297,7 +297,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
       const { data: collectionPosts, error: cpError } = await supabase
         .from('collections')
         .select('post_id')
-        .eq('collection_id', collectionId);
+        .eq('user_id', collectionId);
 
       if (cpError) throw cpError;
 
@@ -329,7 +329,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
       const { error } = await supabase
         .from('collections')
         .delete()
-        .eq('collection_id', selectedCollection)
+        .eq('user_id', selectedCollection)
         .eq('post_id', postId);
 
       if (error) throw error;
@@ -347,7 +347,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
       await supabase
         .from('collections')
         .delete()
-        .eq('collection_id', collectionId);
+        .eq('user_id', collectionId);
 
       const { error } = await supabase
         .from('collections')
