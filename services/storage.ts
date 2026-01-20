@@ -86,9 +86,10 @@ export const get_posts = async (category: Category | '全部', sort: 'new' | 'es
 // 点赞/取消点赞
 
 export const toggle_like_post = async (post_id: string, user_id: string) => {
+  // 1. 先从数据库获取最新的点赞数据
   const { data: currentPost, error: fetchError } = await supabase
     .from('posts')
-    .select('likes, user_id, user_name, title') // 👈 多查一些信息用于通知
+    .select('likes')
     .eq('id', post_id)
     .single();
 
@@ -101,30 +102,17 @@ export const toggle_like_post = async (post_id: string, user_id: string) => {
     ? safe_likes.filter(id => id !== user_id) 
     : [...safe_likes, user_id];
 
+  // 2. 更新数据库
   const { error: updateError } = await supabase
     .from('posts')
     .update({ likes: new_likes })
     .eq('id', post_id);
 
   if (updateError) throw updateError;
-
-  // 🔴 新增：如果刚才的操作是“点赞”，且点赞的人不是帖子作者，则发通知
-  if (!is_liked && currentPost.user_id !== user_id) {
-    // 获取点赞者的名字（如果参数里没有，可以先去查一下）
-    const { data: me } = await supabase.from('users').select('user_name').eq('id', user_id).single();
-
-    await supabase.from('notifications').insert([{
-      user_id: currentPost.user_id, // 接收者：帖子作者
-      from_user_id: user_id,        // 发送者：点赞的人
-      from_user_name: me?.user_name || '某人',
-      type: 'like',                 // 类型：点赞
-      post_id: post_id,
-      content: currentPost.title    // 可选：把帖子标题存进去
-    }]);
-  }
-
   return new_likes;
 };
+
+
 
 // 收藏逻辑 (Collections)
 
@@ -297,9 +285,10 @@ export async function delete_comment(commentId: string) {
  * 切换评论点赞（精简版）
  */
 export async function toggle_like_comment(commentId: string, userId: string) {
+  // 1. 获取当前评论信息
   const { data: comment, error: fetchError } = await supabase
     .from('comments')
-    .select('likes, user_id, post_id, content')
+    .select('likes, user_id, post_id')
     .eq('id', commentId)
     .single();
 
@@ -308,6 +297,7 @@ export async function toggle_like_comment(commentId: string, userId: string) {
   const currentLikes = comment.likes || [];
   const hasLiked = currentLikes.includes(userId);
   
+  // 2. 切换点赞状态
   const newLikes = hasLiked
     ? currentLikes.filter((id: string) => id !== userId)
     : [...currentLikes, userId];
@@ -319,19 +309,8 @@ export async function toggle_like_comment(commentId: string, userId: string) {
 
   if (updateError) throw updateError;
 
-  // 🔴 新增：发点赞通知给评论作者
-  if (!hasLiked && comment.user_id !== userId) {
-    const { data: me } = await supabase.from('users').select('user_name').eq('id', userId).single();
-    
-    await supabase.from('notifications').insert([{
-      user_id: comment.user_id,
-      from_user_id: userId,
-      from_user_name: me?.user_name || '某人',
-      type: 'like',
-      post_id: comment.post_id,
-      content: comment.content // 显示评论的内容
-    }]);
-  }
+  // 🎉 这里原本有一大段手动 insert notifications 的代码，现在也删掉了
+  // 如果你为“点赞表”也写了触发器，它会自动生效
 
   return { hasLiked: !hasLiked, likesCount: newLikes.length };
 }
