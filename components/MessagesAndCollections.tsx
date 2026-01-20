@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Loader2, Bell, MessageCircle, Heart, Trash2, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 // ==================== 消息组件 ====================
 export function MessagesTab({ userId }: { userId: string }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadNotifications();
@@ -192,7 +194,10 @@ export function MessagesTab({ userId }: { userId: string }) {
                   ? 'bg-white border-zinc-200'
                   : 'bg-blue-50 border-blue-200'
               }`}
-              onClick={() => !notification.is_read && markAsRead(notification.id)}
+              onClick={() => {
+                if (!notification.is_read) markAsRead(notification.id);
+                if (notification.post_id) navigate(`/post/${notification.post_id}`);
+              }}
             >
               <div className="flex gap-3">
                 <div className="flex-shrink-0 pt-1">
@@ -214,18 +219,6 @@ export function MessagesTab({ userId }: { userId: string }) {
                     <span className="text-xs text-zinc-400">
                       {timeAgo(notification.created_at)}
                     </span>
-
-                    {notification.post_id && (
-                      <button
-                        className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.location.hash = `#/post/${notification.post_id}`;
-                        }}
-                      >
-                        查看帖子 <ExternalLink className="w-3 h-3" />
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -254,6 +247,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [collectedPosts, setCollectedPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadCollections();
@@ -443,21 +437,16 @@ export function CollectionsTab({ userId }: { userId: string }) {
                   <div
                     key={post.id}
                     className="group p-4 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer"
-                    onClick={() => {
-                      window.location.href = `#/post/${post.id}`;
-                    }}
+                    onClick={() => navigate(`/post/${post.id}`)}
                   >
                     <div className="flex justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        {/* 标题：增加 hover 颜色变化 */}
                         <h4 className="font-medium mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">
                           {post.title}
                         </h4>
-                        {/* 摘要 */}
                         <p className="text-sm text-zinc-500 line-clamp-2 mb-2">
                           {post.content}
                         </p>
-                        {/* 底部信息 */}
                         <div className="flex items-center gap-3 text-xs text-zinc-400">
                           <span className="bg-zinc-100 px-2 py-0.5 rounded text-zinc-600">
                             {post.category}
@@ -467,7 +456,6 @@ export function CollectionsTab({ userId }: { userId: string }) {
                         </div>
                       </div>
 
-                      {/* 移除按钮：独立点击，不触发跳转 */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
