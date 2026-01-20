@@ -23,7 +23,7 @@ export interface Post {
   user_name: string;
   title: string;
   content: string;
-  comment_images?: string[]; // 存储来自 Storage forum_images 桶的图片网址
+  images?: string[]; // 存储来自 Storage forum_images 桶的图片网址
   category: Category;
   created_at: string;
   updated_at: string;
