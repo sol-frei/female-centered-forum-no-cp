@@ -165,25 +165,6 @@ const PostDetail = ({
     };
   }, [postId]);
 
-  // --- 收藏列表加载 ---
-  useEffect(() => {
-    const fetchCollections = async () => {
-      if (user && showCollectionModal) {
-        try {
-          const { data, error } = await supabase
-            .from('collections')
-            .select('*')
-            .eq('user_id', user.id);
-
-          if (error) throw error;
-          setUserCollections(data || []);
-        } catch (err: any) {
-          showToast(`获取收藏夹失败: ${err.message}`, 'error');
-        }
-      }
-    };
-    fetchCollections();
-  }, [user, showCollectionModal]);
 
   // --- 渲染拦截 ---
   if (loading) return <div className="p-20 text-center text-zinc-500">正在努力加载内容...</div>;
