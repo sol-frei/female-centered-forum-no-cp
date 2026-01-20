@@ -588,10 +588,10 @@ const PostDetail = ({
                   </button>
                     )}
                   </div>
-                    </div
-                      </div>
-                      </div>
-                      </div>
+               </div> 
+             </div>
+            </div>
+         </div>
 
                       {/* 显示被回复的评论内容 */}
                       {isReply && repliedToComment && (
