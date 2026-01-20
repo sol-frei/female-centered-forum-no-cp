@@ -1,5 +1,3 @@
-// 在 components/ 目录下创建这个新文件：MessagesAndCollections.tsx
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Loader2, Bell, MessageCircle, Heart, Trash2, ExternalLink } from 'lucide-react';
@@ -11,7 +9,7 @@ export function MessagesTab({ userId }: { userId: string }) {
 
   useEffect(() => {
     loadNotifications();
-    
+
     // 实时订阅新消息
     const channel = supabase
       .channel(`notifications_${userId}`)
@@ -41,8 +39,8 @@ export function MessagesTab({ userId }: { userId: string }) {
 
       if (error) throw error;
       setNotifications(data || []);
-    } catch (err) {
-      console.error('加载消息失败:', err);
+    } catch (err: any) {
+      console.error('加载消息失败:', err?.message || err);
     } finally {
       setLoading(false);
     }
@@ -56,12 +54,12 @@ export function MessagesTab({ userId }: { userId: string }) {
         .eq('id', notificationId);
 
       if (error) throw error;
-      
-      setNotifications(prev => 
+
+      setNotifications(prev =>
         prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
       );
-    } catch (err) {
-      console.error('标记已读失败:', err);
+    } catch (err: any) {
+      console.error('标记已读失败:', err?.message || err);
     }
   };
 
@@ -75,8 +73,8 @@ export function MessagesTab({ userId }: { userId: string }) {
 
       if (error) throw error;
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-    } catch (err) {
-      console.error('全部标记已读失败:', err);
+    } catch (err: any) {
+      console.error('全部标记已读失败:', err?.message || err);
     }
   };
 
@@ -91,8 +89,8 @@ export function MessagesTab({ userId }: { userId: string }) {
 
       if (error) throw error;
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
-    } catch (err) {
-      console.error('删除消息失败:', err);
+    } catch (err: any) {
+      console.error('删除消息失败:', err?.message || err);
       alert('删除失败');
     }
   };
@@ -115,7 +113,7 @@ export function MessagesTab({ userId }: { userId: string }) {
       case 'comment':
         return (
           <>
-            <span className="font-bold">{notification.from_user_name}</span> 评论了你的帖子 
+            <span className="font-bold">{notification.from_user_name}</span> 评论了你的帖子
             <span className="font-medium">《{notification.post_title}》</span>
           </>
         );
@@ -128,7 +126,7 @@ export function MessagesTab({ userId }: { userId: string }) {
       case 'like':
         return (
           <>
-            <span className="font-bold">{notification.from_user_name}</span> 赞了你的帖子 
+            <span className="font-bold">{notification.from_user_name}</span> 赞了你的帖子
             <span className="font-medium">《{notification.post_title}》</span>
           </>
         );
@@ -191,8 +189,8 @@ export function MessagesTab({ userId }: { userId: string }) {
             <div
               key={notification.id}
               className={`p-4 border rounded-lg transition-colors cursor-pointer ${
-                notification.is_read 
-                  ? 'bg-white border-zinc-200' 
+                notification.is_read
+                  ? 'bg-white border-zinc-200'
                   : 'bg-blue-50 border-blue-200'
               }`}
               onClick={() => !notification.is_read && markAsRead(notification.id)}
@@ -206,7 +204,7 @@ export function MessagesTab({ userId }: { userId: string }) {
                   <p className="text-sm mb-1">
                     {getNotificationText(notification)}
                   </p>
-                  
+
                   {notification.content && (
                     <p className="text-sm text-zinc-500 bg-zinc-50 p-2 rounded mt-2 line-clamp-2">
                       {notification.content}
@@ -217,14 +215,12 @@ export function MessagesTab({ userId }: { userId: string }) {
                     <span className="text-xs text-zinc-400">
                       {timeAgo(notification.created_at)}
                     </span>
-                    
+
                     {notification.post_id && (
                       <button
                         className="text-xs text-blue-600 hover:underline flex items-center gap-1"
                         onClick={(e) => {
                           e.stopPropagation();
-                          // 这里需要父组件传递 onPostClick 函数
-                          // 暂时使用简单的跳转
                           window.location.hash = `#/post/${notification.post_id}`;
                         }}
                       >
@@ -267,6 +263,8 @@ export function CollectionsTab({ userId }: { userId: string }) {
   useEffect(() => {
     if (selectedCollection) {
       loadCollectedPosts(selectedCollection);
+    } else {
+      setCollectedPosts([]);
     }
   }, [selectedCollection]);
 
@@ -280,13 +278,13 @@ export function CollectionsTab({ userId }: { userId: string }) {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
       setCollections(data || []);
-      
       if (data && data.length > 0) {
         setSelectedCollection(data[0].id);
       }
-    } catch (err) {
-      console.error('加载收藏夹失败:', err);
+    } catch (err: any) {
+      console.error('加载收藏夹失败:', err?.message || err);
     } finally {
       setLoading(false);
     }
@@ -297,7 +295,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
       const { data: collectionPosts, error: cpError } = await supabase
         .from('collections')
         .select('post_id')
-        .eq('user_id', collectionId);
+        .eq('id', collectionId);
 
       if (cpError) throw cpError;
 
@@ -315,9 +313,10 @@ export function CollectionsTab({ userId }: { userId: string }) {
         .order('created_at', { ascending: false });
 
       if (postsError) throw postsError;
+
       setCollectedPosts(posts || []);
-    } catch (err) {
-      console.error('加载收藏的帖子失败:', err);
+    } catch (err: any) {
+      console.error('加载收藏的帖子失败:', err?.message || err);
       setCollectedPosts([]);
     }
   };
@@ -329,13 +328,14 @@ export function CollectionsTab({ userId }: { userId: string }) {
       const { error } = await supabase
         .from('collections')
         .delete()
-        .eq('user_id', selectedCollection)
+        .eq('id', selectedCollection)
         .eq('post_id', postId);
 
       if (error) throw error;
+
       setCollectedPosts(prev => prev.filter(p => p.id !== postId));
-    } catch (err) {
-      console.error('移除收藏失败:', err);
+    } catch (err: any) {
+      console.error('移除收藏失败:', err?.message || err);
       alert('移除失败');
     }
   };
@@ -344,26 +344,21 @@ export function CollectionsTab({ userId }: { userId: string }) {
     if (!confirm('确定要删除这个收藏夹吗？收藏夹内的所有帖子也会被移除。')) return;
 
     try {
-      await supabase
-        .from('collections')
-        .delete()
-        .eq('user_id', collectionId);
-
-      const { error } = await supabase
+      const { error: delPostsError } = await supabase
         .from('collections')
         .delete()
         .eq('id', collectionId);
 
-      if (error) throw error;
+      if (delPostsError) throw delPostsError;
 
       setCollections(prev => prev.filter(c => c.id !== collectionId));
-      
+
       if (selectedCollection === collectionId) {
         const remaining = collections.filter(c => c.id !== collectionId);
         setSelectedCollection(remaining.length > 0 ? remaining[0].id : null);
       }
-    } catch (err) {
-      console.error('删除收藏夹失败:', err);
+    } catch (err: any) {
+      console.error('删除收藏夹失败:', err?.message || err);
       alert('删除失败');
     }
   };
@@ -390,6 +385,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* 收藏夹列表 */}
       <div className="md:col-span-1 space-y-2">
         <h3 className="text-sm font-bold text-zinc-600 mb-3">我的收藏夹</h3>
         {collections.map(collection => (
@@ -430,13 +426,14 @@ export function CollectionsTab({ userId }: { userId: string }) {
         ))}
       </div>
 
+      {/* 收藏夹帖子 */}
       <div className="md:col-span-3">
         {selectedCollection && (
           <>
             <h3 className="text-sm font-bold text-zinc-600 mb-3">
               {collections.find(c => c.id === selectedCollection)?.name}
             </h3>
-            
+
             {collectedPosts.length === 0 ? (
               <div className="text-center py-12 text-zinc-400 text-sm border border-dashed border-zinc-200 rounded-lg">
                 这个收藏夹还是空的
@@ -462,7 +459,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
                           <span>{new Date(post.created_at).toLocaleDateString('zh-CN')}</span>
                         </div>
                       </div>
-                      
+
                       <button
                         onClick={() => removeFromCollection(post.id)}
                         className="flex-shrink-0 p-2 text-zinc-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
