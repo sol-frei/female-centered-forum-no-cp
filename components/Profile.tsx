@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Loader2, Bell, Heart, MessageCircle, Trash2, ExternalLink } from 'lucide-react';
-import { MessagesTab, CollectionsTab } from '../components/MessagesAndCollections';
-
+import {CollectionsTab } from '../components/CollectionsTab';
+import {MessagesTab } from '../components/MessagesTab';
 export default function ProfileFull() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);

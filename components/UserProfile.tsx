@@ -7,7 +7,8 @@ import {
   updateUser
 } from '../services/storage'; 
 import { uploadImage } from '../services/storageService';
-import { MessagesTab, CollectionsTab } from './MessagesAndCollections';
+import {CollectionsTab } from '../components/CollectionsTab';
+import {MessagesTab } from '../components/MessagesTab';
 import { 
   UserCircle, 
   Calendar, 
