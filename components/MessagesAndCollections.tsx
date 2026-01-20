@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Loader2, Bell, MessageCircle, Heart, Trash2, ExternalLink } from 'lucide-react';
@@ -443,14 +442,13 @@ export function CollectionsTab({ userId }: { userId: string }) {
                 {collectedPosts.map(post => (
                   <div
                     key={post.id}
-                    className="group p-4 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors"
+                    className="group p-4 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer"
+                    onClick={() => {
+                      window.location.href = `#/post/${post.id}`;
+                    }}
                   >
                     <div className="flex justify-between gap-3">
-                      {/* 点击此处区域跳转 - 使用 Link 组件 */}
-                      <Link 
-                        to={`/post/${post.id}`}
-                        className="flex-1 min-w-0 no-underline text-inherit"
-                      >
+                      <div className="flex-1 min-w-0">
                         {/* 标题：增加 hover 颜色变化 */}
                         <h4 className="font-medium mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">
                           {post.title}
@@ -467,7 +465,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
                           <span>•</span>
                           <span>{new Date(post.created_at).toLocaleDateString('zh-CN')}</span>
                         </div>
-                      </Link>
+                      </div>
 
                       {/* 移除按钮：独立点击，不触发跳转 */}
                       <button
