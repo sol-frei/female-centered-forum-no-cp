@@ -408,7 +408,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
               </div>
               <button
                 onClick={(e) => {
-                  e.stopPropagation();
+                  e.stopPropagation(); // 阻止触发切换收藏夹
                   deleteCollection(collection.id);
                 }}
                 className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
@@ -425,7 +425,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
         ))}
       </div>
 
-      {/* 收藏夹帖子 */}
+      {/* 收藏夹帖子列表 */}
       <div className="md:col-span-3">
         {selectedCollection && (
           <>
@@ -442,25 +442,39 @@ export function CollectionsTab({ userId }: { userId: string }) {
                 {collectedPosts.map(post => (
                   <div
                     key={post.id}
-                    className="group p-4 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors"
+                    // 添加 cursor-pointer 并绑定点击跳转事件
+                    className="group p-4 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer"
+                    onClick={() => {
+                      // 跳转到帖子详情页
+                      window.location.hash = `#/post/${post.id}`;
+                    }}
                   >
                     <div className="flex justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors cursor-pointer">
+                        {/* 标题 */}
+                        <h4 className="font-medium mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">
                           {post.title}
                         </h4>
+                        {/* 内容摘要 */}
                         <p className="text-sm text-zinc-500 line-clamp-2 mb-2">
                           {post.content}
                         </p>
-                        <div className="flex gap-3 text-xs text-zinc-400">
-                          <span>{post.category}</span>
+                        {/* 帖子信息页脚 */}
+                        <div className="flex items-center gap-3 text-xs text-zinc-400">
+                          <span className="bg-zinc-100 px-2 py-0.5 rounded text-zinc-600">
+                            {post.category}
+                          </span>
                           <span>•</span>
                           <span>{new Date(post.created_at).toLocaleDateString('zh-CN')}</span>
                         </div>
                       </div>
 
+                      {/* 移除收藏按钮 */}
                       <button
-                        onClick={() => removeFromCollection(post.id)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // ✨ 关键：阻止冒泡，点击删除时不会触发跳转帖子
+                          removeFromCollection(post.id);
+                        }}
                         className="flex-shrink-0 p-2 text-zinc-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
                         aria-label="移除收藏"
                       >
@@ -470,10 +484,10 @@ export function CollectionsTab({ userId }: { userId: string }) {
                   </div>
                 ))}
               </div>
-            )}
-          </>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
