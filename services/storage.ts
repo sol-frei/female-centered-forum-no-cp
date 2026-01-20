@@ -85,22 +85,32 @@ export const get_posts = async (category: Category | '全部', sort: 'new' | 'es
 
 // 点赞/取消点赞
 
-export const toggle_like_post = async (post_id: string, user_id: string, current_likes: string[] = []) => {
-  const safe_likes = Array.isArray(current_likes) ? current_likes : [];
-  const is_liked= safe_likes.includes(user_id);
+export const toggle_like_post = async (post_id: string, user_id: string) => {
+  // 1. 先从数据库获取最新的点赞数据
+  const { data: currentPost, error: fetchError } = await supabase
+    .from('posts')
+    .select('likes')
+    .eq('id', post_id)
+    .single();
+
+  if (fetchError || !currentPost) throw new Error("无法获取帖子数据");
+
+  const safe_likes = Array.isArray(currentPost.likes) ? currentPost.likes : [];
+  const is_liked = safe_likes.includes(user_id);
+  
   const new_likes = is_liked
     ? safe_likes.filter(id => id !== user_id) 
     : [...safe_likes, user_id];
 
-  const { error } = await supabase
+  // 2. 更新数据库
+  const { error: updateError } = await supabase
     .from('posts')
     .update({ likes: new_likes })
     .eq('id', post_id);
 
-  if (error) throw error;
+  if (updateError) throw updateError;
   return new_likes;
 };
-
 
 
 
