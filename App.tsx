@@ -317,19 +317,7 @@ const PostDetail = ({
     }
   };
 
-  const handleCreateCollection = async () => {
-    if (!newCollectionName.trim()) return;
-    try {
-      await create_collection(user.id, newCollectionName);
-      setNewCollectionName('');
-      const { data, error } = await supabase.from('collections').select('*').eq('user_id', user.id);
-      if (error) throw error;
-      setUserCollections(data || []);
-      showToast('收藏夹创建成功', 'success');
-    } catch (e: any) {
-      showToast(`创建收藏夹失败: ${e.message}`, 'error');
-    }
-  };
+
 
   const handleAddToCollection = async (collectionId: string, collectionName: string) => {
     try {
@@ -715,45 +703,7 @@ const PostDetail = ({
         </div>
       </div>
 
-      {/* 收藏模态框 */}
-      {showCollectionModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="collection-modal-title">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h3 id="collection-modal-title" className="text-lg font-bold">收藏到</h3>
-              <button onClick={() => setShowCollectionModal(false)} className="text-zinc-500 hover:text-black" aria-label="关闭"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="space-y-3 mb-4">
-              <input
-                type="text"
-                value={newCollectionName}
-                onChange={e => setNewCollectionName(e.target.value)}
-                placeholder="创建新收藏夹..."
-                className="w-full p-2 border border-zinc-300 rounded"
-                aria-label="新收藏夹名称"
-              />
-              <button onClick={handleCreateCollection} className="w-full bg-black text-white p-2 rounded hover:bg-zinc-800">创建</button>
-            </div>
-            <div className="max-h-40 overflow-y-auto border-t border-zinc-200 pt-3">
-              {userCollections.length === 0 ? (
-                <p className="text-zinc-500 text-sm text-center">暂无收藏夹</p>
-              ) : (
-                userCollections.map(collection => (
-                  <div key={collection.id} className="flex justify-between items-center p-2 hover:bg-zinc-50 rounded">
-                    <span>{collection.name}</span>
-                    <button
-                      onClick={() => handleAddToCollection(collection.id, collection.name)}
-                      className="bg-blue-600 text-white px-3 py-1 text-xs rounded hover:bg-blue-700"
-                    >
-                      收藏
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
