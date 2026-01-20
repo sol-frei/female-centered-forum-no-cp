@@ -80,7 +80,7 @@ export default function ProfileFull() {
         const { data, error } = await supabase
           .from('posts')
           .select('*')
-          .eq('author_id', userId)
+          .eq('user_id', userId)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
