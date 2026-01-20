@@ -125,7 +125,9 @@ export function MessagesTab({
                     {!n.is_read && <span className="inline-block w-2 h-2 bg-blue-500 rounded-full ml-2" />}
                   </p>
                   {n.content && (
-                    <p className="mt-2 text-sm text-zinc-500 bg-zinc-50 p-2 rounded italic">"{n.content}"</p>
+                   <p className="mt-2 text-sm text-zinc-600 bg-zinc-50 p-2 rounded">
+                  {n.content}
+                  </p>
                   )}
                   <p className="mt-2 text-[10px] text-zinc-400">{timeAgo(n.created_at)}</p>
                 </div>
