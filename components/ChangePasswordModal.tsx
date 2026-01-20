@@ -11,12 +11,11 @@ export default function ChangePasswordModal({ user, onComplete }: { user: User, 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [nickname, setNickname] = useState(''); // 绑定到 Input
-  
+
   const handleSubmit = async () => {
     // 1. 基础前端校验
-if (!pw || !pw2 || !nickname.trim()) {
-      setError('请填写完整信息（包括昵称和密码）');
+    if (!pw || !pw2) {
+      setError('请填写新密码并确认');
       return;
     }
     if (pw !== pw2) {
@@ -48,28 +47,29 @@ if (!pw || !pw2 || !nickname.trim()) {
       
       console.log('✅ Session 刷新成功, user ID:', session.user.id);
 
-      // 3. 修改密码 和 昵称 (Auth Metadata)
-      // 注意：updateUser 可以同时处理 password 和 data
-      console.log('🔐 开始修改密码和昵称...');
+      // 3. 修改密码（重要：这一步必须在数据库更新之前）
+      console.log('🔐 开始修改密码...');
       const { data: updateData, error: authError } = await supabase.auth.updateUser({
-        password: pw,
-        data: { full_name: nickname } // 将昵称存入 auth.users 的 raw_user_meta_data 中
+        password: pw
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error('❌ 修改密码失败:', authError);
+        if (authError.message.includes('session') || authError.message.includes('Auth')) {
+          throw new Error('登录会话已过期, 请刷新页面重新登录');
+        }
+        throw authError;
+      }
 
-      // 4. 更新数据库 users 表
-      // 建议将 is_first_login 和 nickname 一起更新
-      console.log('💾 更新数据库信息...');
+      console.log('✅ 密码修改成功:', updateData);
+
+      // 4. 更新数据库标记
+      console.log('💾 开始更新数据库标记...');
       const { error: dbError } = await supabase
         .from('users')
-        .update({ 
-          is_first_login: false,
-          nickname: nickname, // 假设你的表字段叫 nickname
-          updated_at: new Date() 
-        })
-        .eq('id', session.user.id); // 使用 session 中的最新 ID
-        
+        .update({ is_first_login: false })
+        .eq('id', user.id);
+
       if (dbError) {
         console.error('⚠️ 数据库标记更新失败:', dbError.message);
         // 不阻断流程，因为密码已经修改成功了
