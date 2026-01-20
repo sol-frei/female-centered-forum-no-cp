@@ -445,23 +445,21 @@ export async function updatePost(postId: string, updates: {
 }
 /**
  * 获取特定用户的帖子列表 (用于个人主页)
- * @param user_id 目标用户的 UUID
  */
 export const get_posts_by_user = async (user_id: string) => {
   const { data, error } = await supabase
     .from('posts')
     .select('*')
-    .eq('user_id', user_id) // 筛选该作者的帖子
-    .order('created_at', { ascending: false }); // 按时间倒序排列
+    .eq('author_id', user_id) // ✅ 必须改为 author_id，因为数据库 posts 表里只有这一列
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('获取用户帖子失败:', error.message);
     throw error;
   }
 
-  return data || []; // 确保即使没帖子也返回一个空数组，防止前端 map 报错
+  return data || [];
 };
-
 
 /**
  * 切换用户封禁状态
