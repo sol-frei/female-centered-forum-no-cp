@@ -396,7 +396,6 @@ export const create_collection = async (user_id: string, name: string) => {
   const { error } = await supabase.from('collections').insert([{
     user_id,
     name,
-    post_ids: [] // 初始收藏夹是空的
   }]);
   if (error) throw error;
 };
