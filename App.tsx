@@ -555,6 +555,9 @@ const PostDetail = ({
                               <MoreVertical className="w-4 h-4 cursor-pointer text-zinc-500 hover:text-black p-0.5" />
                               <div className="absolute right-0 top-[80%] pt-2 w-24 hidden group-hover:block z-20">
                                 <div className="bg-white border border-zinc-200 rounded-md shadow-lg overflow-hidden">
+                                  
+                                <button onClick={() => handleReplyClick(c.id, commentAuthor?.user_name || '未知用户')} className="block w-full text-left px-3 py-2 text-zinc-700 hover:bg-zinc-50">回复</button>
+
                                 {isAuthor && c.id === editingCommentId ? (
                                   <button onClick={() => setEditingCommentId(null)} className="block w-full text-left px-3 py-2 text-red-600 hover:bg-zinc-50">取消编辑</button>
                                 ) : isAuthor && (
@@ -563,7 +566,7 @@ const PostDetail = ({
                                 {(isAuthor || isAdminOrInver) && (
                                   <button onClick={() => handleDeleteComment(c.id)} className="block w-full text-left px-3 py-2 text-red-600 hover:bg-zinc-50">删除</button>
                                 )}
-                                <button onClick={() => handleReplyClick(c.id, commentAuthor?.user_name || '未知用户')} className="block w-full text-left px-3 py-2 text-zinc-700 hover:bg-zinc-50">回复</button>
+                                
                                 </div>
                               </div>
                             </div>
