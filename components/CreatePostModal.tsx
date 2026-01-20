@@ -270,7 +270,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
               onChange={e => setTitle(e.target.value)}
               maxLength={100}
               disabled={isSubmitting}
-              placeholder="给你的帖子起个标题..."
+              placeholder="标题 (建议加上前缀如 [推书])"
               className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
             />
           </div>
