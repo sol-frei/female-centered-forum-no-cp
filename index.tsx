@@ -17,11 +17,12 @@ root.render(
 
 
 
+import { HashRouter } from 'react-router-dom';
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {/* Router 包裹整个 App */}
-    <BrowserRouter>
+    <HashRouter>
       <App />
-    </BrowserRouter>
+    </HashRouter>
   </React.StrictMode>
 );
