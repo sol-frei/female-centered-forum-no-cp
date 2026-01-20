@@ -185,10 +185,8 @@ export const vote_poll = async (post_id: string, opt_id: string, user_id: string
 };
 
 //评论功能
-
 /**
- * 添加评论（替换原有的 add_comment 函数）
- * 新增功能：支持图片上传和点赞数组
+ * 添加评论（精简版：通知由数据库触发器处理）
  */
 export async function add_comment(
   commentData: {
@@ -197,15 +195,16 @@ export async function add_comment(
     user_name: string;
     content: string;
     reply_to_id: string | null;
-    images?: string[] | null;  // 新增：图片 URL 数组
-    likes?: string[];          // 新增：点赞用户 ID 数组
+    images?: string[] | null;
+    likes?: string[];
   },
-  post_user_id: string,
-  post_title: string
+  post_user_id: string, // 触发器会自动处理，这个参数后续可以不用传了
+  post_title: string    // 同上，这个也可以不用传了
 ) {
-
-  // ✅ ① 发布前敏感词拦截（只拦截，不替换）
+  // 1. 发布前敏感词拦截
   await check_sensitive_words(commentData.content);
+
+  // 2. 插入评论本身
   const { data, error } = await supabase
     .from('comments')
     .insert([{
@@ -214,8 +213,8 @@ export async function add_comment(
       user_name: commentData.user_name,
       content: commentData.content,
       reply_to_id: commentData.reply_to_id,
-      images: commentData.images || [],      // 新增字段
-      likes: commentData.likes || [],        // 新增字段
+      images: commentData.images || [],
+      likes: commentData.likes || [],
       created_at: new Date().toISOString(),
     }])
     .select()
@@ -223,45 +222,11 @@ export async function add_comment(
 
   if (error) throw error;
 
-  // 创建通知（如果评论的不是自己的帖子）
-  if (commentData.user_id !== post_user_id) {
-    await supabase
-      .from('notifications')
-      .insert([{
-        user_id: post_user_id,
-        type: commentData.reply_to_id ? 'reply' : 'comment',
-        content: `${commentData.user_name} ${commentData.reply_to_id ? '回复了' : '评论了'}你的帖子: ${post_title}`,
-        post_id: commentData.post_id,
-        is_read: false,
-        created_at: new Date().toISOString(),
-      }]);
-  }
-
-  // 如果是回复评论，通知被回复的用户
-  if (commentData.reply_to_id) {
-    const { data: repliedComment } = await supabase
-      .from('comments')
-      .select('user_id')
-      .eq('id', commentData.reply_to_id)
-      .single();
-
-    if (repliedComment && repliedComment.user_id !== commentData.user_id) {
-      await supabase
-        .from('notifications')
-        .insert([{
-          user_id: repliedComment.user_id,
-          type: 'reply',
-          content: `${commentData.user_name} 回复了你的评论`,
-          post_id: commentData.post_id,
-          is_read: false,
-          created_at: new Date().toISOString(),
-        }]);
-    }
-  }
+  // 🎉 注意：这里删除了原来几十行关于 notifications 的判断和插入逻辑
+  // 数据库触发器检测到 comments 表有新行时，会自动完成通知任务
 
   return data;
 }
-
 /**
  * 更新评论（替换原有的 update_comment 函数）
  * 新增功能：支持更新图片
@@ -306,13 +271,8 @@ export async function delete_comment(commentId: string) {
   if (error) throw error;
 }
 
-// ========================================
-// 以下是需要 **新增** 的函数
-// ========================================
-
 /**
- * 切换评论点赞（新增函数）
- * 功能：点赞/取消点赞评论，并发送通知
+ * 切换评论点赞（精简版）
  */
 export async function toggle_like_comment(commentId: string, userId: string) {
   // 1. 获取当前评论信息
@@ -339,25 +299,8 @@ export async function toggle_like_comment(commentId: string, userId: string) {
 
   if (updateError) throw updateError;
 
-  // 3. 如果是点赞（不是取消点赞）且不是自己的评论，创建通知
-  if (!hasLiked && comment.user_id !== userId) {
-    const { data: liker } = await supabase
-      .from('users')
-      .select('user_name')
-      .eq('id', userId)
-      .single();
-
-    await supabase
-      .from('notifications')
-      .insert([{
-        user_id: comment.user_id,
-        type: 'like',
-        content: `${liker?.user_name || '某人'} 赞了你的评论`,
-        post_id: comment.post_id,
-        is_read: false,
-        created_at: new Date().toISOString(),
-      }]);
-  }
+  // 🎉 这里原本有一大段手动 insert notifications 的代码，现在也删掉了
+  // 如果你为“点赞表”也写了触发器，它会自动生效
 
   return { hasLiked: !hasLiked, likesCount: newLikes.length };
 }
