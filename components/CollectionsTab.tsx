@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Loader2, Trash2, FolderOpen } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
-export function CollectionsTab({ userId }: { userId: string }) {
+
+export function CollectionsTab({ 
+  userId, 
+  onPostClick 
+}: { 
+  userId: string, 
+  onPostClick: (id: string) => void 
+}) {
   const [collections, setCollections] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-
+  
   // 加载所有收藏夹
   useEffect(() => {
     const fetchCollections = async () => {
@@ -75,7 +80,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
         {posts.length ? posts.map(p => (
           <div 
             key={p.id}
-            onClick={() => navigate(`/post/${p.id}`)}
+            onClick={() => onPostClick(p.id)}
             className="p-4 border border-zinc-200 rounded-lg hover:border-zinc-400 cursor-pointer transition-all"
           >
             <h4 className="font-bold text-zinc-900 mb-1">{p.title}</h4>
