@@ -412,7 +412,7 @@ return (
             </div>
             <button
               onClick={(e) => {
-                e.stopPropagation(); // 防止触发选中切换
+                e.stopPropagation();
                 deleteCollection(collection.id);
               }}
               className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
@@ -454,7 +454,7 @@ return (
                       className="flex-1 min-w-0 cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
-                        window.location.hash = `/post/${post.id}`;
+                        navigate(`/post/${post.id}`);
                       }}
                     >
                       {/* 标题：增加 hover 颜色变化 */}
