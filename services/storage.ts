@@ -106,20 +106,32 @@ export const toggle_like_post = async (post_id: string, user_id: string, current
 
 // 收藏逻辑 (Collections)
 
-export const toggle_collection = async (user_id: string, post_id: string) => {
+export const toggle_collection = async (collection_id: string, post_id: string) => {
+  // 1. 在关联表中查找是否存在该收藏记录
   const { data: existing } = await supabase
-    .from('collections')
+    .from('collection_posts') // 改为查询关联表
     .select('*')
-    .eq('user_id', user_id)
+    .eq('collection_id', collection_id)
     .eq('post_id', post_id)
     .maybeSingle();
 
   if (existing) {
-    await supabase.from('collections').delete().eq('id', existing.id);
-    return false; // 代表取消收藏
+    // 2. 如果已存在，则删除记录（取消收藏）
+    await supabase
+      .from('collection_posts')
+      .delete()
+      .eq('id', existing.id);
+    return false;
   } else {
-    await supabase.from('collections').insert([{ user_id: user_id, post_id: post_id }]);
-    return true; // 代表收藏成功
+    // 3. 如果不存在，则插入记录（收藏成功）
+    // 注意：这里只写 collection_id 和 post_id
+    await supabase
+      .from('collection_posts')
+      .insert([{ 
+        collection_id: collection_id, 
+        post_id: post_id 
+      }]);
+    return true;
   }
 };
 
@@ -477,55 +489,47 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
 }
 
 /**
- * 将帖子添加到收藏夹
- * @param collectionId 收藏夹ID
- * @param postId 帖子ID
- * @returns 添加结果
+ * 将帖子添加到收藏夹 (修正版)
+ * @param collectionId 收藏夹的 UUID
+ * @param postId 帖子的 UUID
  */
 export async function addToCollection(collectionId: string, postId: string) {
   try {
-    // 首先检查是否已经收藏
-    const { data: existing } = await supabase
-      .from('collections')
-      .select('*')
-      .eq('user_id', collectionId)
+    // 1. 检查是否已经收藏：操作目标改为 collection_posts 关联表
+    const { data: existing, error: checkError } = await supabase
+      .from('collection_posts')
+      .select('id')
+      .eq('collection_id', collectionId)
       .eq('post_id', postId)
-      .single();
+      .maybeSingle(); // 使用 maybeSingle 避免找不到记录时抛出异常
+
+    if (checkError) throw checkError;
 
     if (existing) {
       throw new Error('该帖子已在此收藏夹中');
     }
 
-    // 添加到收藏夹
+    // 2. 添加到关联表：建立收藏夹与帖子的绑定关系
     const { data, error } = await supabase
-      .from('collections')
+      .from('collection_posts')
       .insert({
-        user_id: collectionId,
-        post_id: postId,
-        created_at: new Date().toISOString()
+        collection_id: collectionId,
+        post_id: postId
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    // 更新收藏夹的帖子数量
-    const { error: updateError } = await supabase.rpc('increment_collection_count', {
-      user_id: collectionId
-    });
-
-    if (updateError) {
-      console.warn('更新收藏夹计数失败:', updateError);
-      // 不抛出错误，因为主要操作已成功
-    }
-
+    // 3. (可选) 更新计数逻辑：如果你的数据库有 rpc，请确保参数名正确
+    // 通常关联表模式下，计数可以通过 SQL 聚合函数完成，不一定需要手动维护
+    
     return data;
   } catch (error: any) {
     console.error('添加到收藏夹失败:', error);
-    throw new Error(`添加到收藏夹失败: ${error.message}`);
+    throw new Error(error.message || '添加到收藏夹失败');
   }
 }
-
 /**
  * 更新帖子信息（这个函数和 update_post 功能重复，保留兼容性）
  * @param postId 帖子ID
