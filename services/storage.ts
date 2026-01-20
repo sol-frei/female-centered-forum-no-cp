@@ -4,16 +4,23 @@ import { ToastType,User, Post, Category, Collection, Notification, SensitiveWord
 
 // 敏感词处理逻辑
 
-export const filter_sensitive_words = async (text: string): Promise<string> => {
-  const { data: words } = await supabase.from('sensitive_words').select('word');
-  if (!words || words.length === 0) return text;
-  
-  let filteredText = text;
-  words.forEach(({ word }) => {
-    const regex = new RegExp(word, 'gi');
-    filteredText = filteredText.replace(regex, '***');
-  });
-  return filteredText;
+// 只负责：发布前校验，发现敏感词直接拦截
+export const check_sensitive_words = async (text: string): Promise<void> => {
+  if (!text) return;
+
+  const { data: words } = await supabase
+    .from('sensitive_words')
+    .select('word');
+
+  if (!words || words.length === 0) return;
+
+  const hit = words.some(({ word }) =>
+    text.toLowerCase().includes(word.toLowerCase())
+  );
+
+  if (hit) {
+    throw new Error('内容包含违禁词，发布失败');
+  }
 };
 
 
@@ -22,26 +29,27 @@ export const filter_sensitive_words = async (text: string): Promise<string> => {
 
 export const create_post = async (post_data: any) => {
 
+  // ✅ 1️⃣ 统一敏感词拦截（发布前）
+  const check_text =
+    (post_data.title || '') + (post_data.content || '');
 
-  const { data: banned_words} = await supabase.from('sensitive_words').select('word');
-  const check_text = (post_data.title || '') + (post_data.content || '');
-  const has_banned = banned_words?.some(b => check_text.includes(b.word));
-  if (has_banned) throw new Error("内容包含违禁词，发布失败");// 敏感词预检
+  await check_sensitive_words(check_text);
 
+  // ✅ 2️⃣ 真正插入数据库
   const { data, error } = await supabase
     .from('posts')
     .insert([{
       title: post_data.title,
       content: post_data.content,
       category: post_data.category,
-      user_id: post_data.user_id,      // 对应 SQL 的 user_id
-      user_name: post_data.user_name,   // 对应 SQL 的 user_name
+      user_id: post_data.user_id,
+      user_name: post_data.user_name,
       images: post_data.images || [],
       poll: post_data.poll || null,
-      likes: [],                     // 初始化空数组
-      view_count: 0 ,                 // 初始化浏览量
-      is_essence: false,              // 图片里叫 is_essence
-      is_locked: false,           // 图片里叫 is_locked
+      likes: [],
+      view_count: 0,
+      is_essence: false,
+      is_locked: false,
     }])
     .select()
     .single();
@@ -50,8 +58,9 @@ export const create_post = async (post_data: any) => {
     console.error('Supabase 插入失败详情:', error);
     throw new Error(error.message);
   }
+
   return data;
-};//  插入数据库 (严格对应你 SQL 中的字段名)
+};
 
 
 
@@ -182,6 +191,9 @@ export async function add_comment(
   post_user_id: string,
   post_title: string
 ) {
+
+  // ✅ ① 发布前敏感词拦截（只拦截，不替换）
+  await check_sensitive_words(commentData.content);
   const { data, error } = await supabase
     .from('comments')
     .insert([{
