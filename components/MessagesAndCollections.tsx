@@ -1,3 +1,6 @@
+import { useNavigate } from 'react-router-dom';
+
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Loader2, Bell, MessageCircle, Heart, Trash2, ExternalLink } from 'lucide-react';
@@ -386,6 +389,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
       </div>
     );
   }
+const navigate = useNavigate();
 
 return (
   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
