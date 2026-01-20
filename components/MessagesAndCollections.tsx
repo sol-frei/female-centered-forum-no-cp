@@ -29,23 +29,24 @@ export function MessagesTab({ userId }: { userId: string }) {
     };
   }, [userId]);
 
-  const loadNotifications = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+const loadNotifications = async () => {
+  setLoading(true);
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId);
 
-      if (error) throw error;
-      setNotifications(data || []);
-    } catch (err: any) {
-      console.error('加载消息失败:', err?.message || err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.log('查询结果:', data); // 打印这里，看有没有数据
+    if (error) console.error('数据库错误:', error);
+    
+    setNotifications(data || []);
+  } catch (err) {
+    console.error('捕获异常:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const markAsRead = async (notificationId: string) => {
     try {
