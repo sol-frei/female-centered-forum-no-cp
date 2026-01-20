@@ -8,7 +8,7 @@ import ChangePasswordModal from './components/ChangePasswordModal';
 import UserProfile from './components/UserProfile';
 import Toast, { ToastType } from './components/Toast';
 import CreatePostModal from "./components/CreatePostModal";
-import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageCircle, MessageSquare, Trash2, X, Plus, Check, Star, Lock, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical } from 'lucide-react';
+import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageCircle, MessageSquare, Trash2, X, Plus, Check, Star, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical } from 'lucide-react';
 
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
@@ -414,8 +414,7 @@ const PostDetail = ({
                 <span onClick={() => onViewProfile(post.user_id)} className="hover:underline cursor-pointer hover:text-black transition-colors">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
                 <span>{timeAgo(postCreatedAt)}</span>
                 {(post.is_essence || post.isEssence) && <span className="bg-black text-white px-1.5 text-xs flex items-center">蒂</span>}
-                {post.is_locked && <span className="bg-red-600 text-white px-1.5 text-xs flex items-center">🔒</span>}
-
+  
                 {canEditPostInTime && !isEditingPost && (
                   <button onClick={() => { setEditTitle(post.title); setEditContent(post.content); setEditCategory(post.category); setIsEditingPost(true); }} className="flex items-center gap-1 text-blue-600 hover:underline ml-2">
                     <Edit2 className="w-3 h-3" /> 修改
@@ -429,9 +428,7 @@ const PostDetail = ({
                 <button onClick={async () => { await toggle_essence_post(post.id, !post.is_essence); }} title="设为精华/取消" className="p-2 hover:bg-zinc-100 rounded">
                   <Star className={`w-4 h-4 ${post.is_essence ? 'fill-yellow-500 text-yellow-500' : ''}`} />
                 </button>
-                <button onClick={async () => { await toggle_lock_post(post.id, !post.is_locked); }} title="锁定/解锁帖子" className="p-2 hover:bg-zinc-100 rounded">
-                  <Lock className={`w-4 h-4 ${post.is_locked ? 'fill-red-500 text-red-500' : ''}`} />
-                </button>
+
                 <button onClick={handleDeletePost} title="删除" className="p-2 hover:bg-red-50 text-red-600 rounded">
                   <Trash2 className="w-4 h-4" />
                 </button>
