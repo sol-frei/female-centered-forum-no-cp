@@ -732,7 +732,7 @@ const PostDetail = ({
                 className="w-full p-2 border border-zinc-300 rounded"
                 aria-label="新收藏夹名称"
               />
-              <button onClick={handleCreateCollection} className="w-full bg-black text-white p-2 rounded hover:bg-zinc-800">创建并收藏</button>
+              <button onClick={handleCreateCollection} className="w-full bg-black text-white p-2 rounded hover:bg-zinc-800">创建</button>
             </div>
             <div className="max-h-40 overflow-y-auto border-t border-zinc-200 pt-3">
               {userCollections.length === 0 ? (
