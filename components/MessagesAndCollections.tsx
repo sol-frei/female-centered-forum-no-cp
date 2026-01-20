@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 
 import React, { useState, useEffect } from 'react';
@@ -389,8 +389,10 @@ export function CollectionsTab({ userId }: { userId: string }) {
       </div>
     );
   }
-const navigate = useNavigate();
 
+
+
+// 2. 完整的 return 代码
 return (
   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
     {/* 左侧：收藏夹列表 */}
@@ -449,13 +451,10 @@ return (
                   className="group p-4 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors"
                 >
                   <div className="flex justify-between gap-3">
-                    {/* 点击此处区域跳转 */}
-                    <div 
-                      className="flex-1 min-w-0 cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/post/${post.id}`);
-                      }}
+                    {/* 点击此处区域跳转 - 使用 Link 组件 */}
+                    <Link 
+                      to={`/post/${post.id}`}
+                      className="flex-1 min-w-0 cursor-pointer no-underline"
                     >
                       {/* 标题：增加 hover 颜色变化 */}
                       <h4 className="font-medium mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">
@@ -473,7 +472,7 @@ return (
                         <span>•</span>
                         <span>{new Date(post.created_at).toLocaleDateString('zh-CN')}</span>
                       </div>
-                    </div>
+                    </Link>
 
                     {/* 移除按钮：独立点击，不触发跳转 */}
                     <button
