@@ -8,10 +8,21 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
-      /* 这里保留一些基础字体设置，让中文更好看 */
+      /* 1. 基础字体设置 */
       body {
         margin: 0;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        
+        /* 2. 核心：禁用浏览器默认的下拉刷新和左右滑动手势 */
+        overscroll-behavior: none !important;
+      }
+
+      /* 3. 确保内容区可以正常滚动且不抖动 */
+      #root {
+        height: 100vh;
+        width: 100vw;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* 让 iOS 滚动更顺滑 */
       }
     </style>
   </head>
