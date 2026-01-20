@@ -19,8 +19,8 @@ export interface User {
 
 export interface Post {
   id: string;
-  author_id: string;
-  author_name: string;
+  user_id: string;
+  user_name: string;
   title: string;
   content: string;
   images?: string[]; // 存储来自 Storage forum_images 桶的图片网址
