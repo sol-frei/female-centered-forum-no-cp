@@ -548,30 +548,49 @@ const PostDetail = ({
                             </span>
                           )}
                         </div>
-                        <div className="text-zinc-400 font-normal text-xs flex items-center gap-2">
-                          <span>{timeAgo(c.created_at)}</span>
-                          {(isAuthor || isAdminOrInver) && (
-                            <div className="relative group">
-                              <MoreVertical className="w-4 h-4 cursor-pointer text-zinc-500 hover:text-black p-0.5" />
-                              <div className="absolute right-0 top-[80%] pt-2 w-24 hidden group-hover:block z-20">
-                                <div className="bg-white border border-zinc-200 rounded-md shadow-lg overflow-hidden">
-                                  
-                                <button onClick={() => handleReplyClick(c.id, commentAuthor?.user_name || '未知用户')} className="block w-full text-left px-3 py-2 text-zinc-700 hover:bg-zinc-50">回复</button>
+                       <div className="text-zinc-400 font-normal text-xs flex items-center gap-2">
+                       <span>{timeAgo(c.created_at)}</span>
+  
+                      {/* ✅ 1. 将 group 容器移出权限判断，让所有人都能看到“三个点”图标 */}
+                      <div className="relative group">
+                      <MoreVertical className="w-4 h-4 cursor-pointer text-zinc-500 hover:text-black p-0.5" />
+    
+                     <div className="absolute right-0 top-[80%] pt-2 w-24 hidden group-hover:block z-20">
+                     <div className="bg-white border border-zinc-200 rounded-md shadow-lg overflow-hidden py-1">
+        
+                      {/* ✅ 2. 回复按钮：不设权限拦截，所有人点击任何评论都能看到 */}
+                      <button 
+                      onClick={(e) => {
+                      e.stopPropagation();
+                      handleReplyClick(c.id, c.user_name || '管理员');
+                      }} 
+                      className="block w-full text-left px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100"
+                      >
+                     回复
+                     </button>
 
-                                {isAuthor && c.id === editingCommentId ? (
-                                  <button onClick={() => setEditingCommentId(null)} className="block w-full text-left px-3 py-2 text-red-600 hover:bg-zinc-50">取消编辑</button>
-                                ) : isAuthor && (
-                                  <button onClick={() => startEditComment(c)} className="block w-full text-left px-3 py-2 text-blue-600 hover:bg-zinc-50">编辑</button>
-                                )}
-                                {(isAuthor || isAdminOrInver) && (
-                                  <button onClick={() => handleDeleteComment(c.id)} className="block w-full text-left px-3 py-2 text-red-600 hover:bg-zinc-50">删除</button>
-                                )}
-                                
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                    {/* ✅ 3. 编辑和删除：保留原有的权限判断，只有符合条件才显示按钮 */}
+                    {isAuthor && (
+                      <button 
+                    onClick={() => startEditComment(c)} 
+                    className="block w-full text-left px-3 py-1.5 text-sm text-blue-600 hover:bg-zinc-100"
+                    >
+                    编辑
+                  </button>
+                   )}
+
+                   {(isAuthor || isAdminOrInver) && (
+                     <button 
+                     onClick={() => handleDeleteComment(c.id)} 
+                      className="block w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-zinc-100"
+                      >
+                    删除
+                  </button>
+                    )}
+                  </div>
+                    </div
+                      </div>
+                      </div>
                       </div>
 
                       {/* 显示被回复的评论内容 */}
