@@ -172,8 +172,8 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
 
       // 2. 创建帖子数据
       const postData: any = {
-        author_id: user.id,
-        author_name: user.user_name,
+        user_id: user.id,
+        user_name: user.user_name,
         title: title.trim(),
         content: content.trim(),
         category,
