@@ -259,6 +259,9 @@ export async function update_comment(
   content: string, 
   images?: string[]  // 新增：可选的图片数组
 ) {
+  // ✅ ① 编辑前敏感词拦截（只拦截发布）
+  await check_sensitive_words(content);
+
   const updateData: any = {
     content,
     updated_at: new Date().toISOString(),
@@ -276,6 +279,7 @@ export async function update_comment(
 
   if (error) throw error;
 }
+
 
 /**
  * 删除评论（替换原有的 delete_comment 函数）
@@ -529,21 +533,33 @@ export async function addToCollection(collectionId: string, postId: string) {
  * @param updates 要更新的字段
  * @returns 更新后的帖子对象
  */
-export async function updatePost(postId: string, updates: {
-  title?: string;
-  content?: string;
-  category?: string;
-  images?: string[];
-  is_essence?: boolean;
-  is_locked?: boolean;
-  [key: string]: any;
-}) {
+export async function updatePost(
+  postId: string,
+  updates: {
+    title?: string;
+    content?: string;
+    category?: string;
+    images?: string[];
+    is_essence?: boolean;
+    is_locked?: boolean;
+    [key: string]: any;
+  }
+) {
   try {
+    // ✅ ① 只有在更新文字时才拦截
+    const checkText =
+      (updates.title ?? '') + (updates.content ?? '');
+
+    if (checkText) {
+      await check_sensitive_words(checkText);
+    }
+
+    // ✅ ② 再执行真正的更新
     const { data, error } = await supabase
       .from('posts')
       .update({
         ...updates,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', postId)
       .select()
@@ -556,6 +572,7 @@ export async function updatePost(postId: string, updates: {
     throw new Error(`更新帖子失败: ${error.message}`);
   }
 }
+
 /**
  * 获取特定用户的帖子列表 (用于个人主页)
  */
