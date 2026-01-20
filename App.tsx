@@ -395,7 +395,7 @@ const PostDetail = ({
   return (
     <div className="flex flex-col min-h-screen">
       <div className="max-w-3xl mx-auto py-8 px-4 flex-1 pb-32 w-full relative">
-        <button onClick={onBack} className="sticky top-0 z-40 w-full text-left py-2 bg-white/80 backdrop-blur-md mb-4 text-sm text-zinc-500 hover:text-black transition-all border-b border-transparent hover:border-zinc-100">← 返回列表</button>
+        <button onClick={onBack} className="sticky top-28 z-40 w-full text-left py-2 bg-white/80 backdrop-blur-md mb-4 text-sm text-zinc-500 hover:text-black transition-all border-b border-transparent hover:border-zinc-100">← 返回列表</button>
 
         {/* 帖子内容 */}
         <div className="bg-white border border-zinc-200 p-6 shadow-sm mb-6">
