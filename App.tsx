@@ -568,25 +568,6 @@ const PostDetail = ({
                       >
                      回复
                      </button>
-
-                    {/* ✅ 3. 编辑和删除：保留原有的权限判断，只有符合条件才显示按钮 */}
-                    {isAuthor && (
-                      <button 
-                    onClick={() => startEditComment(c)} 
-                    className="block w-full text-left px-3 py-1.5 text-sm text-blue-600 hover:bg-zinc-100"
-                    >
-                    编辑
-                  </button>
-                   )}
-
-                   {(isAuthor || isAdminOrInver) && (
-                     <button 
-                     onClick={() => handleDeleteComment(c.id)} 
-                      className="block w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-zinc-100"
-                      >
-                    删除
-                  </button>
-                    )}
                   </div>
                </div> 
              </div>
