@@ -1157,7 +1157,7 @@ export default function App() {
                     <div className="flex gap-4 text-sm">
                       <label className="flex items-center gap-1 cursor-pointer select-none">
                         <input type="checkbox" checked={onlyEssence} onChange={e => setOnlyEssence(e.target.checked)} className="accent-black" />
-                        只看精华 <span className="bg-black text-white text-[10px] px-1">蒂</span>
+                         <span className="bg-black text-white text-[10px] px-1">蒂</span>
                       </label>
                     </div>
                     <button 
