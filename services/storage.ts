@@ -487,7 +487,7 @@ export async function addToCollection(collectionId: string, postId: string) {
   try {
     // 首先检查是否已经收藏
     const { data: existing } = await supabase
-      .from('collection_posts')
+      .from('collections')
       .select('*')
       .eq('collection_id', collectionId)
       .eq('post_id', postId)
@@ -499,7 +499,7 @@ export async function addToCollection(collectionId: string, postId: string) {
 
     // 添加到收藏夹
     const { data, error } = await supabase
-      .from('collection_posts')
+      .from('collections')
       .insert({
         collection_id: collectionId,
         post_id: postId,

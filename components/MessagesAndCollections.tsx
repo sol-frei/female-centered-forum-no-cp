@@ -295,7 +295,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
   const loadCollectedPosts = async (collectionId: string) => {
     try {
       const { data: collectionPosts, error: cpError } = await supabase
-        .from('collection_posts')
+        .from('collections')
         .select('post_id')
         .eq('collection_id', collectionId);
 
@@ -327,7 +327,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
 
     try {
       const { error } = await supabase
-        .from('collection_posts')
+        .from('collections')
         .delete()
         .eq('collection_id', selectedCollection)
         .eq('post_id', postId);
@@ -345,7 +345,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
 
     try {
       await supabase
-        .from('collection_posts')
+        .from('collections')
         .delete()
         .eq('collection_id', collectionId);
 
