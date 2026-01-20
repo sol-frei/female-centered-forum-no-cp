@@ -192,7 +192,7 @@ const PostDetail = ({
   // --- 权限计算 ---
   const isAdminOrInver = user ? ['admin', 'i女er'].includes(user.role) : false;
   const postCreatedAt = post.created_at || post.createdAt || new Date().toISOString();
-  const canEditPost = user && user.id === post.author_id;
+  const canEditPost = user && user.id === post.user_id;
   // --- 处理图片选择 ---
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
