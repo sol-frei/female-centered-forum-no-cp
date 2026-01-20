@@ -2,7 +2,7 @@ import { supabase } from './services/supabaseClient';
 import React, { useState, useEffect, useRef } from 'react';
 import Landing from './components/Landing';
 import { User, Post, Category, Collection, Notification, SensitiveWords } from './types';
-import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment } from './services/storage';
+import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment,check_sensitive_words } from './services/storage';
 import AdminPanel from './components/AdminPanel';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import UserProfile from './components/UserProfile';
@@ -330,17 +330,24 @@ const PostDetail = ({
 
   const savePostEdit = async () => {
     try {
-      await update_post(post.id, {
-        title: editTitle,
-        content: editContent,
-        category: editCategory,
-        updated_at: new Date().toISOString(),
-      });
-      setIsEditingPost(false);
-      showToast('帖子修改成功', 'success');
-    } catch (e: any) {
-      showToast(`修改失败: ${e.message}`, 'error');
-    }
+    // 1. 先进行敏感词校验 (如果不通过，它会直接 throw Error)
+    // 校验标题和内容
+    await check_sensitive_words(editTitle + editContent);
+
+    // 2. 校验通过后，执行更新
+    await update_post(post.id, {
+      title: editTitle,
+      content: editContent,
+      category: editCategory,
+      updated_at: new Date().toISOString(),
+    });
+
+    setIsEditingPost(false);
+    showToast('帖子修改成功', 'success');
+  } catch (e: any) {
+    // 这里会捕获到 check_sensitive_words 抛出的 "内容包含违禁词，发布失败"
+    showToast(e.message || '修改失败', 'error');
+  }
   };
 
   const handleDeletePost = async () => {
