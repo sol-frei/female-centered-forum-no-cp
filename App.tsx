@@ -71,6 +71,11 @@ const PostDetail = ({
   const [newComment, setNewComment] = useState('');
   const [replyToCommentId, setReplyToCommentId] = useState<string | null>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 新增：评论图片上传
+  const [commentImages, setCommentImages] = useState<File[]>([]);
+  const [uploadingComment, setUploadingComment] = useState(false);
 
   // 3. 收藏状态
   const [showCollectionModal, setShowCollectionModal] = useState(false);
@@ -141,7 +146,6 @@ const PostDetail = ({
          table: 'comments', 
          filter: `post_id=eq.${postId}` 
          }, async (payload) => {
-    // 直接在这里处理，不需要 .then() 或 .catch()
      try {
       const { data } = await supabase
         .from('comments')
@@ -190,28 +194,113 @@ const PostDetail = ({
   const postCreatedAt = post.created_at || post.createdAt || new Date().toISOString();
   const canEditPostInTime = user && user.id === post.author_id && (Date.now() - new Date(postCreatedAt).getTime() < 10 * 60 * 1000);
 
-  // --- 处理函数 ---
-  const handleComment = async () => {
-    if (!newComment.trim()) {
-      showToast("评论内容不能为空", 'error');
+  // --- 处理图片选择 ---
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    
+    const files = Array.from(e.target.files);
+    if (files.length + commentImages.length > 3) {
+      showToast("最多只能上传3张图片", "error");
       return;
     }
+
+    setCommentImages(prev => [...prev, ...files]);
+    
+    // 清空 input 的值，允许重复选择同一文件
+    e.target.value = '';
+  };
+
+  const removeCommentImage = (index: number) => {
+    setCommentImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // --- 上传图片到 Supabase Storage ---
+  const uploadCommentImages = async (): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+    
+    for (const file of commentImages) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('comment_images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw new Error(`图片上传失败: ${uploadError.message}`);
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('comment_images')
+        .getPublicUrl(filePath);
+
+      uploadedUrls.push(publicUrl);
+    }
+
+    return uploadedUrls;
+  };
+
+  // --- 处理评论提交 ---
+  const handleComment = async () => {
+    if (!newComment.trim() && commentImages.length === 0) {
+      showToast("评论内容或图片不能为空", 'error');
+      return;
+    }
+
     try {
+      setUploadingComment(true);
+
+      // 上传图片
+      let imageUrls: string[] = [];
+      if (commentImages.length > 0) {
+        imageUrls = await uploadCommentImages();
+      }
+
       await add_comment({
         post_id: postId,
         user_id: user.id,
         user_name: user.user_name,
         content: newComment,
         reply_to_id: replyToCommentId || null,
+        images: imageUrls.length > 0 ? imageUrls : null,
+        likes: [],
       },
-      post.user_id, // post_user_id（帖子作者）
-      post.title      // post_title（帖子标题）
+      post.user_id,
+      post.title
       );
+
       setNewComment('');
       setReplyToCommentId(null);
+      setCommentImages([]);
       showToast("评论成功", "success");
     } catch (e: any) {
       showToast(`评论失败: ${e.message}`, 'error');
+    } finally {
+      setUploadingComment(false);
+    }
+  };
+
+  // --- 点赞评论 ---
+  const handleLikeComment = async (commentId: string) => {
+    try {
+      const comment = comments.find(c => c.id === commentId);
+      if (!comment) return;
+
+      const currentLikes = comment.likes || [];
+      const hasLiked = currentLikes.includes(user.id);
+      const newLikes = hasLiked 
+        ? currentLikes.filter((id: string) => id !== user.id)
+        : [...currentLikes, user.id];
+
+      const { error } = await supabase
+        .from('comments')
+        .update({ likes: newLikes })
+        .eq('id', commentId);
+
+      if (error) throw error;
+    } catch (e: any) {
+      showToast(`操作失败: ${e.message}`, 'error');
     }
   };
 
@@ -453,55 +542,98 @@ const PostDetail = ({
               const isReply = c.reply_to_id;
               const repliedToComment = isReply ? comments.find(com => com.id === c.reply_to_id) : null;
               const repliedToAuthor = repliedToComment ? usersMap[repliedToComment.user_id] : null;
+              const hasLiked = (c.likes || []).includes(user.id);
 
               return (
-                <div key={c.id} className="bg-white p-4 border-b border-zinc-200 text-sm flex gap-3">
-                  <div className="flex-shrink-0">
-                    <Avatar url={commentAuthor?.avatar} className="w-8 h-8" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-1">
-                      <div className="font-bold flex items-center gap-1">
-                        <span onClick={() => onViewProfile(c.user_id)} className="hover:underline cursor-pointer">{commentAuthor?.user_name || '未知用户'}</span>
-                        {isReply && repliedToAuthor && (
-                          <span className="text-zinc-500 font-normal">回复
-                            <span onClick={() => onViewProfile(repliedToAuthor.id)} className="hover:underline cursor-pointer ml-1">@{repliedToAuthor.user_name}</span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-zinc-400 font-normal text-xs flex items-center gap-2">
-                        <span>{timeAgo(c.created_at)}</span>
-                        {(isAuthor || isAdminOrInver) && (
-                          <div className="relative group">
-                            <MoreVertical className="w-4 h-4 cursor-pointer text-zinc-500 hover:text-black p-0.5" />
-                            <div className="absolute right-0 top-[80%] pt-2 w-24 hidden group-hover:block z-20">
-                              <div className="bg-white border border-zinc-200 rounded-md shadow-lg overflow-hidden">
-                              {isAuthor && c.id === editingCommentId ? (
-                                <button onClick={() => setEditingCommentId(null)} className="block w-full text-left px-3 py-2 text-red-600 hover:bg-zinc-50">取消编辑</button>
-                              ) : isAuthor && (
-                                <button onClick={() => startEditComment(c)} className="block w-full text-left px-3 py-2 text-blue-600 hover:bg-zinc-50">编辑</button>
-                              )}
-                              {(isAuthor || isAdminOrInver) && (
-                                <button onClick={() => handleDeleteComment(c.id)} className="block w-full text-left px-3 py-2 text-red-600 hover:bg-zinc-50">删除</button>
-                              )}
-                              <button onClick={() => handleReplyClick(c.id, commentAuthor?.user_name || '未知用户')} className="block w-full text-left px-3 py-2 text-zinc-700 hover:bg-zinc-50">回复</button>
+                <div key={c.id} className="bg-white p-4 border-b border-zinc-200 text-sm">
+                  <div className="flex gap-3">
+                    <div className="flex-shrink-0">
+                      <Avatar url={commentAuthor?.avatar} className="w-8 h-8" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center mb-1">
+                        <div className="font-bold flex items-center gap-1">
+                          <span onClick={() => onViewProfile(c.user_id)} className="hover:underline cursor-pointer">{commentAuthor?.user_name || '未知用户'}</span>
+                          {isReply && repliedToAuthor && (
+                            <span className="text-zinc-500 font-normal">回复
+                              <span onClick={() => onViewProfile(repliedToAuthor.id)} className="hover:underline cursor-pointer ml-1">@{repliedToAuthor.user_name}</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-zinc-400 font-normal text-xs flex items-center gap-2">
+                          <span>{timeAgo(c.created_at)}</span>
+                          {(isAuthor || isAdminOrInver) && (
+                            <div className="relative group">
+                              <MoreVertical className="w-4 h-4 cursor-pointer text-zinc-500 hover:text-black p-0.5" />
+                              <div className="absolute right-0 top-[80%] pt-2 w-24 hidden group-hover:block z-20">
+                                <div className="bg-white border border-zinc-200 rounded-md shadow-lg overflow-hidden">
+                                {isAuthor && c.id === editingCommentId ? (
+                                  <button onClick={() => setEditingCommentId(null)} className="block w-full text-left px-3 py-2 text-red-600 hover:bg-zinc-50">取消编辑</button>
+                                ) : isAuthor && (
+                                  <button onClick={() => startEditComment(c)} className="block w-full text-left px-3 py-2 text-blue-600 hover:bg-zinc-50">编辑</button>
+                                )}
+                                {(isAuthor || isAdminOrInver) && (
+                                  <button onClick={() => handleDeleteComment(c.id)} className="block w-full text-left px-3 py-2 text-red-600 hover:bg-zinc-50">删除</button>
+                                )}
+                                <button onClick={() => handleReplyClick(c.id, commentAuthor?.user_name || '未知用户')} className="block w-full text-left px-3 py-2 text-zinc-700 hover:bg-zinc-50">回复</button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {c.id === editingCommentId ? (
-                      <div className="space-y-2 mt-2">
-                        <textarea className="w-full border p-2 h-20 text-sm" value={editCommentContent} onChange={e => setEditCommentContent(e.target.value)} />
-                        <div className="flex gap-2">
-                          <button onClick={() => saveCommentEdit(c.id)} className="bg-black text-white px-3 py-1 text-xs">保存</button>
-                          <button onClick={() => setEditingCommentId(null)} className="bg-zinc-200 px-3 py-1 text-xs">取消</button>
+                          )}
                         </div>
                       </div>
-                    ) : (
-                      <p className="whitespace-pre-wrap">{c.content}</p>
-                    )}
+
+                      {/* 显示被回复的评论内容 */}
+                      {isReply && repliedToComment && (
+                        <div className="bg-zinc-50 border-l-2 border-zinc-300 pl-3 py-2 mb-2 text-xs text-zinc-600">
+                          <div className="font-semibold mb-1">@{repliedToAuthor?.user_name}:</div>
+                          <div className="line-clamp-2">{repliedToComment.content}</div>
+                          {repliedToComment.images && repliedToComment.images.length > 0 && (
+                            <div className="text-zinc-400 mt-1">[图片]</div>
+                          )}
+                        </div>
+                      )}
+
+                      {c.id === editingCommentId ? (
+                        <div className="space-y-2 mt-2">
+                          <textarea className="w-full border p-2 h-20 text-sm" value={editCommentContent} onChange={e => setEditCommentContent(e.target.value)} />
+                          <div className="flex gap-2">
+                            <button onClick={() => saveCommentEdit(c.id)} className="bg-black text-white px-3 py-1 text-xs">保存</button>
+                            <button onClick={() => setEditingCommentId(null)} className="bg-zinc-200 px-3 py-1 text-xs">取消</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="whitespace-pre-wrap mb-2">{c.content}</p>
+                          
+                          {/* 评论图片展示 */}
+                          {c.images && c.images.length > 0 && (
+                            <div className="grid grid-cols-3 gap-2 mt-2">
+                              {c.images.map((img: string, idx: number) => (
+                                <img 
+                                  key={idx} 
+                                  src={img} 
+                                  alt={`评论图片 ${idx + 1}`} 
+                                  className="w-full h-24 object-cover rounded border border-zinc-200 cursor-pointer hover:opacity-80"
+                                  onClick={() => window.open(img, '_blank')}
+                                />
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 评论点赞按钮 */}
+                          <div className="flex items-center gap-4 mt-2 text-xs">
+                            <button
+                              onClick={() => handleLikeComment(c.id)}
+                              className={`flex items-center gap-1 transition-colors ${hasLiked ? 'text-red-600' : 'text-zinc-400 hover:text-red-600'}`}
+                            >
+                              <Heart className={`w-3.5 h-3.5 ${hasLiked ? 'fill-current' : ''}`} />
+                              {(c.likes?.length || 0) > 0 && <span>{c.likes.length}</span>}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -511,26 +643,76 @@ const PostDetail = ({
       </div>
 
       {/* 底部评论输入框 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-3 shadow-lg">
-        <div className="max-w-3xl mx-auto flex gap-2">
-          <textarea
-            ref={commentInputRef}
-            value={newComment}
-            onChange={e => setNewComment(e.target.value)}
-            className="flex-1 border rounded p-2 h-12 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-            placeholder={replyToCommentId ? `回复 @${usersMap[comments.find(c => c.id === replyToCommentId)?.user_id]?.user_name || '未知用户'}:` : "发表评论..."}
-            aria-label="评论输入框"
-          />
-          <button onClick={handleComment} className="bg-black text-white px-4 rounded-md flex items-center justify-center hover:bg-zinc-800 transition-colors" aria-label="发送评论">
-            <Send className="w-4 h-4 mr-1" /> 发送
-          </button>
-        </div>
-        {replyToCommentId && (
-          <div className="max-w-3xl mx-auto text-xs text-zinc-500 mt-1">
-            正在回复 @{usersMap[comments.find(c => c.id === replyToCommentId)?.user_id]?.user_name || '未知用户'}
-            <button onClick={() => { setReplyToCommentId(null); setNewComment(''); }} className="ml-2 text-red-500 hover:underline">取消回复</button>
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
+        <div className="max-w-3xl mx-auto p-3">
+          {/* 已选择图片显示 */}
+          {commentImages.length > 0 && (
+            <div className="flex gap-2 mb-2 text-sm text-zinc-600">
+              <span>已选择 {commentImages.length} 张图片</span>
+              {commentImages.map((file, idx) => (
+                <span key={idx} className="flex items-center gap-1">
+                  {file.name.substring(0, 10)}...
+                  <button
+                    onClick={() => removeCommentImage(idx)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingComment || commentImages.length >= 3}
+              className="p-2 hover:bg-zinc-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              title="添加图片 (最多3张)"
+            >
+              <ImageIcon className="w-5 h-5 text-zinc-500" />
+            </button>
+            
+            <textarea
+              ref={commentInputRef}
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              disabled={uploadingComment}
+              className="flex-1 border rounded p-2 h-12 text-sm focus:outline-none focus:ring-2 focus:ring-black resize-none disabled:opacity-50"
+              placeholder={replyToCommentId ? `回复 @${usersMap[comments.find(c => c.id === replyToCommentId)?.user_id]?.user_name || '未知用户'}:` : "发表评论..."}
+              aria-label="评论输入框"
+            />
+            <button 
+              onClick={handleComment} 
+              disabled={uploadingComment}
+              className="bg-black text-white px-4 rounded-md flex items-center justify-center hover:bg-zinc-800 transition-colors disabled:bg-zinc-400 disabled:cursor-not-allowed" 
+              aria-label="发送评论"
+            >
+              {uploadingComment ? (
+                <span className="text-xs">发送中...</span>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-1" /> 发送
+                </>
+              )}
+            </button>
           </div>
-        )}
+
+          {replyToCommentId && (
+            <div className="text-xs text-zinc-500 mt-1">
+              正在回复 @{usersMap[comments.find(c => c.id === replyToCommentId)?.user_id]?.user_name || '未知用户'}
+              <button onClick={() => { setReplyToCommentId(null); setNewComment(''); }} className="ml-2 text-red-500 hover:underline">取消回复</button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 收藏模态框 */}
@@ -743,7 +925,6 @@ const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
   );
 };
 
-// 主应用组件
 // 主应用组件
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
