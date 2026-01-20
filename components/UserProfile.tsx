@@ -277,7 +277,10 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
           )}
 
           {activeTab === 'collections' && isOwnProfile && (
-            <CollectionsTab userId={userId} />
+           <CollectionsTab 
+           userId={userId} 
+           onPostClick={onPostClick} // <-- 必须加上这一行
+          />
           )}
         </div>
       </div>
