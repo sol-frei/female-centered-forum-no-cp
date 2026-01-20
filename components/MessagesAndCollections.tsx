@@ -387,9 +387,9 @@ export function CollectionsTab({ userId }: { userId: string }) {
     );
   }
 
-  return (
+ return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      {/* 收藏夹列表 */}
+      {/* 左侧：收藏夹列表 */}
       <div className="md:col-span-1 space-y-2">
         <h3 className="text-sm font-bold text-zinc-600 mb-3">我的收藏夹</h3>
         {collections.map(collection => (
@@ -408,7 +408,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
               </div>
               <button
                 onClick={(e) => {
-                  e.stopPropagation(); // 阻止触发切换收藏夹
+                  e.stopPropagation(); // 防止触发选中切换
                   deleteCollection(collection.id);
                 }}
                 className={`p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${
@@ -425,7 +425,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
         ))}
       </div>
 
-      {/* 收藏夹帖子列表 */}
+      {/* 右侧：所选收藏夹内的帖子列表 */}
       <div className="md:col-span-3">
         {selectedCollection && (
           <>
@@ -442,24 +442,27 @@ export function CollectionsTab({ userId }: { userId: string }) {
                 {collectedPosts.map(post => (
                   <div
                     key={post.id}
-                    // 添加 cursor-pointer 并绑定点击跳转事件
-                    className="group p-4 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer"
-                    onClick={() => {
-                      // 跳转到帖子详情页
-                      window.location.hash = `#/post/${post.id}`;
-                    }}
+                    // 1. 整个卡片添加悬停效果
+                    className="group p-4 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors"
                   >
                     <div className="flex justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        {/* 标题 */}
+                      {/* 点击此处区域跳转 */}
+                      <div 
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() => {
+                          // 跳转逻辑：确保与你主页帖子的跳转路径一致
+                          window.location.hash = `#/post/${post.id}`;
+                        }}
+                      >
+                        {/* 标题：增加 hover 颜色变化 */}
                         <h4 className="font-medium mb-2 line-clamp-1 group-hover:text-blue-600 transition-colors">
                           {post.title}
                         </h4>
-                        {/* 内容摘要 */}
+                        {/* 摘要 */}
                         <p className="text-sm text-zinc-500 line-clamp-2 mb-2">
                           {post.content}
                         </p>
-                        {/* 帖子信息页脚 */}
+                        {/* 底部信息 */}
                         <div className="flex items-center gap-3 text-xs text-zinc-400">
                           <span className="bg-zinc-100 px-2 py-0.5 rounded text-zinc-600">
                             {post.category}
@@ -469,10 +472,10 @@ export function CollectionsTab({ userId }: { userId: string }) {
                         </div>
                       </div>
 
-                      {/* 移除收藏按钮 */}
+                      {/* 移除按钮：独立点击，不触发跳转 */}
                       <button
                         onClick={(e) => {
-                          e.stopPropagation(); // ✨ 关键：阻止冒泡，点击删除时不会触发跳转帖子
+                          e.stopPropagation(); // ✨ 阻止触发外层 div 的跳转
                           removeFromCollection(post.id);
                         }}
                         className="flex-shrink-0 p-2 text-zinc-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
@@ -484,9 +487,9 @@ export function CollectionsTab({ userId }: { userId: string }) {
                   </div>
                 ))}
               </div>
-              )}
-            </>
-          )}
+            )}
+          </>
+        )}
         </div>
       </div>
     );
