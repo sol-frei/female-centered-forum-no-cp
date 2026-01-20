@@ -151,6 +151,19 @@ export function MessagesTab({ userId }: { userId: string }) {
     return date.toLocaleDateString('zh-CN');
   };
 
+  // 安全的跳转函数
+  const handleNotificationClick = (notification: any) => {
+    if (!notification.is_read) {
+      markAsRead(notification.id);
+    }
+    if (notification.post_id) {
+      // 使用 requestAnimationFrame 延迟跳转
+      requestAnimationFrame(() => {
+        navigate(`/post/${notification.post_id}`);
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -194,10 +207,7 @@ export function MessagesTab({ userId }: { userId: string }) {
                   ? 'bg-white border-zinc-200'
                   : 'bg-blue-50 border-blue-200'
               }`}
-              onClick={() => {
-                if (!notification.is_read) markAsRead(notification.id);
-                if (notification.post_id) navigate(`/post/${notification.post_id}`);
-              }}
+              onClick={() => handleNotificationClick(notification)}
             >
               <div className="flex gap-3">
                 <div className="flex-shrink-0 pt-1">
@@ -361,6 +371,13 @@ export function CollectionsTab({ userId }: { userId: string }) {
     }
   };
 
+  // 安全的跳转函数
+  const handlePostClick = (postId: string) => {
+    requestAnimationFrame(() => {
+      navigate(`/post/${postId}`);
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -437,7 +454,7 @@ export function CollectionsTab({ userId }: { userId: string }) {
                   <div
                     key={post.id}
                     className="group p-4 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/post/${post.id}`)}
+                    onClick={() => handlePostClick(post.id)}
                   >
                     <div className="flex justify-between gap-3">
                       <div className="flex-1 min-w-0">
