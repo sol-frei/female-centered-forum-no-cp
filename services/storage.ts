@@ -34,8 +34,8 @@ export const create_post = async (post_data: any) => {
       title: post_data.title,
       content: post_data.content,
       category: post_data.category,
-      author_id: post_data.author_id,      // 对应 SQL 的 author_id
-      author_name: post_data.author_name,   // 对应 SQL 的 author_name
+      user_id: post_data.user_id,      // 对应 SQL 的 user_id
+      user_name: post_data.user_name,   // 对应 SQL 的 user_name
       images: post_data.images || [],
       poll: post_data.poll || null,
       likes: [],                     // 初始化空数组
@@ -76,12 +76,12 @@ export const get_posts = async (category: Category | '全部', sort: 'new' | 'es
 
 // 点赞/取消点赞
 
-export const toggle_like_post = async (post_id: string, author_id: string, current_likes: string[] = []) => {
+export const toggle_like_post = async (post_id: string, user_id: string, current_likes: string[] = []) => {
   const safe_likes = Array.isArray(current_likes) ? current_likes : [];
-  const is_liked= safe_likes.includes(author_id);
+  const is_liked= safe_likes.includes(user_id);
   const new_likes = is_liked
-    ? safe_likes.filter(id => id !== author_id) 
-    : [...safe_likes, author_id];
+    ? safe_likes.filter(id => id !== user_id) 
+    : [...safe_likes, user_id];
 
   const { error } = await supabase
     .from('posts')
@@ -450,7 +450,7 @@ export const get_posts_by_user = async (user_id: string) => {
   const { data, error } = await supabase
     .from('posts')
     .select('*')
-    .eq('author_id', user_id) // ✅ 必须改为 author_id，因为数据库 posts 表里只有这一列
+    .eq('user_id', user_id) // ✅ 必须改为 user_id，因为数据库 posts 表里只有这一列
     .order('created_at', { ascending: false });
 
   if (error) {
