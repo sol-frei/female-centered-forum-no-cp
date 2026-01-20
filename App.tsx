@@ -192,8 +192,7 @@ const PostDetail = ({
   // --- 权限计算 ---
   const isAdminOrInver = user ? ['admin', 'i女er'].includes(user.role) : false;
   const postCreatedAt = post.created_at || post.createdAt || new Date().toISOString();
-  const canEditPostInTime = user && user.id === post.author_id && (Date.now() - new Date(postCreatedAt).getTime() < 10 * 60 * 1000);
-
+  const canEditPost = user && user.id === post.author_id;
   // --- 处理图片选择 ---
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -413,12 +412,24 @@ const PostDetail = ({
                 {!isEditingPost && <span className="bg-zinc-100 px-2 py-0.5 rounded text-xs">{post.category}</span>}
                 <span onClick={() => onViewProfile(post.user_id)} className="hover:underline cursor-pointer hover:text-black transition-colors">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
                 <span>{timeAgo(postCreatedAt)}</span>
+                 {/* 如果更新时间晚于创建时间，显示“已编辑” */}
+                {post.updated_at && post.updated_at !== post.created_at && (
+                <span className="text-[10px] text-zinc-400 ml-1">(已编辑)</span>
+                 )}
                 {(post.is_essence || post.isEssence) && <span className="bg-black text-white px-1.5 text-xs flex items-center">蒂</span>}
   
-                {canEditPostInTime && !isEditingPost && (
-                  <button onClick={() => { setEditTitle(post.title); setEditContent(post.content); setEditCategory(post.category); setIsEditingPost(true); }} className="flex items-center gap-1 text-blue-600 hover:underline ml-2">
-                    <Edit2 className="w-3 h-3" /> 修改
-                  </button>
+               {canEditPost && !isEditingPost && (
+                   <button 
+                  onClick={() => { 
+                  setEditTitle(post.title); 
+                  setEditContent(post.content); 
+                  setEditCategory(post.category); 
+                  setIsEditingPost(true); 
+                 }} 
+                className="flex items-center gap-1 text-blue-600 hover:underline ml-2"
+                >
+               <Edit2 className="w-3 h-3" /> 修改
+               </button>
                 )}
               </div>
             </div>
