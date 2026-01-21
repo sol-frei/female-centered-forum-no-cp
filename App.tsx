@@ -464,7 +464,7 @@ const PostDetail = ({
               </div>
             </div>
           ) : (
-            <div className="prose prose-zinc max-w-none mb-8 whitespace-pre-wrap leading-relaxed text-zinc-800">
+            <div className="prose prose-zinc w-full max-w-full mb-8 whitespace-pre-wrap leading-relaxed text-zinc-800">
               {post.content}
             </div>
           )}
