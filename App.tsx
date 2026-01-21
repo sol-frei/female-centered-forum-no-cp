@@ -534,6 +534,78 @@ const PostDetail = ({
           </div>
         </div>
 
+
+{/* ✅ 收藏夹选择弹窗 - 添加到帖子内容区域之后 */}
+{showCollectionModal && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCollectionModal(false)}>
+    <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-bold">选择收藏夹</h3>
+        <button onClick={() => setShowCollectionModal(false)} className="p-1 hover:bg-zinc-100 rounded">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* 创建新收藏夹 */}
+      <div className="mb-4 p-3 bg-zinc-50 rounded-lg">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newCollectionName}
+            onChange={e => setNewCollectionName(e.target.value)}
+            placeholder="新建收藏夹名称..."
+            className="flex-1 px-3 py-2 border border-zinc-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-black"
+          />
+          <button
+            onClick={async () => {
+              if (!newCollectionName.trim()) {
+                showToast('请输入收藏夹名称', 'error');
+                return;
+              }
+              try {
+                await create_collection(user.id, newCollectionName.trim());
+                showToast('收藏夹创建成功', 'success');
+                setNewCollectionName('');
+                // 重新加载收藏夹列表
+                const { data } = await supabase
+                  .from('collections')
+                  .select('*')
+                  .eq('user_id', user.id);
+                setUserCollections(data || []);
+              } catch (e: any) {
+                showToast(`创建失败: ${e.message}`, 'error');
+              }
+            }}
+            className="px-4 py-2 bg-black text-white rounded text-sm hover:bg-zinc-800 flex items-center gap-1"
+          >
+            <Plus className="w-4 h-4" /> 创建
+          </button>
+        </div>
+      </div>
+
+      {/* 收藏夹列表 */}
+      <div className="space-y-2">
+        {userCollections.length === 0 ? (
+          <div className="text-center py-8 text-zinc-400 text-sm">
+            暂无收藏夹，请先创建一个
+          </div>
+        ) : (
+          userCollections.map((collection) => (
+            <button
+              key={collection.id}
+              onClick={() => handleAddToCollection(collection.id, collection.name)}
+              className="w-full text-left px-4 py-3 border border-zinc-200 rounded-lg hover:bg-zinc-50 hover:border-zinc-300 transition-all flex items-center justify-between group"
+            >
+              <span className="font-medium">{collection.name}</span>
+              <Check className="w-5 h-5 text-zinc-400 group-hover:text-black opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
         {/* 评论列表 */}
         <div className="space-y-4 mt-6">
           {comments.length === 0 ? (
