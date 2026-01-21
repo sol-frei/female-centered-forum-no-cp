@@ -446,10 +446,6 @@ const PostDetail = ({
                 <button onClick={async () => { await toggle_essence_post(post.id, !post.is_essence); }} title="设为精华/取消" className="p-2 hover:bg-zinc-100 rounded">
                   <Star className={`w-4 h-4 ${post.is_essence ? 'fill-yellow-500 text-yellow-500' : ''}`} />
                 </button>
-
-                <button onClick={handleDeletePost} title="删除" className="p-2 hover:bg-red-50 text-red-600 rounded">
-                  <Trash2 className="w-4 h-4" />
-                </button>
               </div>
             )}
           </div>
