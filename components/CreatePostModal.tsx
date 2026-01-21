@@ -218,7 +218,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
-      <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
         {/* 头部 */}
         <div className="sticky top-0 bg-white border-b border-zinc-200 p-4 flex justify-between items-center z-10">
           <h2 className="text-xl font-bold">发布新帖</h2>
