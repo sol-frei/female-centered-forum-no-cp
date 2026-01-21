@@ -394,7 +394,7 @@ const PostDetail = ({
 
   return (
     <div className="flex flex-col min-h-screen">
-      <div className="max-w-full mx-auto py-8 px-4 flex-1 pb-32 w-full relative">
+      <div className="max-w-[95%] mx-auto py-8 px-4 flex-1 pb-32 w-full relative">
         <button onClick={onBack} className="sticky top-28 z-40 w-full text-left py-2 bg-white/80 backdrop-blur-md mb-4 text-sm text-zinc-500 hover:text-black transition-all border-b border-transparent hover:border-zinc-100">← 返回列表</button>
 
         {/* 帖子内容 */}
@@ -722,7 +722,7 @@ const PostDetail = ({
 
       {/* 底部评论输入框 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
-        <div className="max-w-full mx-auto p-3">
+        <div className="max-w-[95%]  mx-auto p-3">
           {/* 已选择图片显示 */}
           {commentImages.length > 0 && (
             <div className="flex gap-2 mb-2 text-sm text-zinc-600">
