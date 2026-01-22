@@ -399,6 +399,7 @@ const PostDetail = ({
 
         {/* 帖子内容 */}
          <div className="bg-white border-t border-b border-zinc-200 shadow-sm mb-6">
+          <div className="px-3 py-4">
           <div className="flex items-start gap-4 mb-4">
             <div className="flex-shrink-0 cursor-pointer" onClick={() => onViewProfile(post.user_id)}>
               <Avatar url={usersMap[post.user_id]?.avatar} className="w-12 h-12" />
@@ -529,6 +530,7 @@ const PostDetail = ({
             </button>
           </div>
         </div>
+      </div>
 
 
 {/* ✅ 收藏夹选择弹窗 - 添加到帖子内容区域之后 */}
