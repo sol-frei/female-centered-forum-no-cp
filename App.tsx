@@ -394,11 +394,11 @@ const PostDetail = ({
 
   return (
     <div className="flex flex-col min-h-screen">
-      <div className="max-w-[95%] mx-auto py-8 px-4 flex-1 pb-32 w-full relative">
-        <button onClick={onBack} className="sticky top-28 z-40 w-full text-left py-2 bg-white/80 backdrop-blur-md mb-4 text-sm text-zinc-500 hover:text-black transition-all border-b border-transparent hover:border-zinc-100">← 返回列表</button>
+      <div className="w-full py-8 px-0 flex-1 pb-32 relative">
+        <button onClick={onBack} className="sticky top-[7.5rem] md:top-14 z-40 w-full text-left py-2 px-4 bg-white/80 backdrop-blur-md mb-4 text-sm text-zinc-500 hover:text-black transition-all border-b border-transparent hover:border-zinc-100">← 返回列表</button>
 
         {/* 帖子内容 */}
-        <div className="bg-white border border-zinc-200 p-6 shadow-sm mb-6">
+         <div className="bg-white border-t border-b border-zinc-200 p-6 shadow-sm mb-6">
           <div className="flex items-start gap-4 mb-4">
             <div className="flex-shrink-0 cursor-pointer" onClick={() => onViewProfile(post.user_id)}>
               <Avatar url={usersMap[post.user_id]?.avatar} className="w-12 h-12" />
@@ -605,7 +605,7 @@ const PostDetail = ({
         {/* 评论列表 */}
         <div className="space-y-4 mt-6">
           {comments.length === 0 ? (
-            <div className="text-center text-zinc-500 p-8 border border-zinc-200 rounded-md">暂无评论，快来发表你的看法吧！</div>
+            <div className="text-center text-zinc-500 p-8 border-t border-b border-zinc-200">暂无评论，快来发表你的看法吧！</div>
           ) : (
             comments.map((c: any) => {
               const commentAuthor = usersMap[c.user_id];
@@ -616,7 +616,7 @@ const PostDetail = ({
               const hasLiked = (c.likes || []).includes(user.id);
 
               return (
-                <div key={c.id} className="bg-white p-4 border-b border-zinc-200 text-sm">
+                <div key={c.id} className="bg-white px-4 py-4 border-b border-zinc-200 text-sm">
                   <div className="flex gap-3">
                     <div className="flex-shrink-0">
                       <Avatar url={commentAuthor?.avatar} className="w-8 h-8" />
