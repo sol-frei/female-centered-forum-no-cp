@@ -610,7 +610,7 @@ const PostDetail = ({
         {/* 评论列表 */}
         <div className="space-y-4 mt-6">
           {comments.length === 0 ? (
-            <div className="text-center text-zinc-500 p-8 border-t border-b border-zinc-200">暂无评论，快来发表你的看法吧！</div>
+            <div className="text-center text-zinc-500 p-8 border border-zinc-200">暂无评论，快来发表你的看法吧！</div>
           ) : (
             comments.map((c: any) => {
               const commentAuthor = usersMap[c.user_id];
