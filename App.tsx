@@ -413,10 +413,10 @@ const PostDetail = ({
                   <select value={editCategory} onChange={e => setEditCategory(e.target.value as Category)} className="border p-1 text-sm">
                     {CATEGORIES.filter(c => c !== '全部').map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <input className="w-full border p-2 font-bold text-xl" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
+                  <input className="w-full border p-2 font-bold text-xl text-center" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
                 </div>
               ) : (
-                <h1 className="text-2xl font-bold mb-2">{post.title}</h1>
+                <h1 className="text-2xl font-bold mb-2 text-center">{post.title}</h1>
               )}
 
               <div className="text-sm text-zinc-500 flex gap-3 items-center">
