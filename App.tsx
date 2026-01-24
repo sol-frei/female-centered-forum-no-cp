@@ -401,7 +401,7 @@ const PostDetail = ({
     </button>
  </div>
         {/* 帖子内容 */}
-         <div className="bg-white border-t border-b border-zinc-200 shadow-sm mb-6">
+         <div className="bg-white border-t border-b border-zinc-200 mb-6">
           <div className="px-3 py-4">
           <div className="flex items-start gap-4 mb-4">
             <div className="flex-shrink-0 cursor-pointer" onClick={() => onViewProfile(post.user_id)}>
