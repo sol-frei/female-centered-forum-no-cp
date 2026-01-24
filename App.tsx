@@ -395,7 +395,7 @@ const PostDetail = ({
   return (
     <div className="flex flex-col min-h-screen">
     <div className="w-full flex-1 pb-32 relative">
-   <div className="sticky top-[7.5rem] md:top-14 z-40 w-full bg-white px-3">
+   <div className="sticky top-[7.5rem] md:top-12 z-40 w-full bg-white px-3">
     <button onClick={onBack} className="inline-flex items-center gap-1 py-2 text-sm font-medium text-zinc-700 hover:text-black transition-all">
       ← 返回
     </button>
