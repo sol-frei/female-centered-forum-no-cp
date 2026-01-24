@@ -420,14 +420,14 @@ const PostDetail = ({
               )}
 
               <div className="text-sm text-zinc-500 flex gap-3 items-center">
-                {!isEditingPost && <span className="bg-zinc-100 px-2 py-0.5 rounded text-xs">{post.category}</span>}
+            
                 <span onClick={() => onViewProfile(post.user_id)} className="hover:underline cursor-pointer hover:text-black transition-colors">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
                 <span>{timeAgo(postCreatedAt)}</span>
                  {/* 如果更新时间晚于创建时间，显示“已编辑” */}
                 {post.updated_at && post.updated_at !== post.created_at && (
                 <span className="text-[10px] text-zinc-400 ml-1">(已编辑)</span>
                  )}
-                {(post.is_essence || post.isEssence) && <span className="bg-black text-white px-1.5 text-xs flex items-center">蒂</span>}
+                
   
                {canEditPost && !isEditingPost && (
                    <button 
