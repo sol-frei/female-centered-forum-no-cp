@@ -394,12 +394,12 @@ const PostDetail = ({
 
   return (
     <div className="flex flex-col min-h-screen">
-      <div className="w-full flex-1 pb-32 relative">
-        <div className="sticky top-[7.5rem] md:top-14 z-40 w-full py-0 pl-2 pr-4 bg-white">
-  <button onClick={onBack} className="inline-flex items-center gap-1 px-4 py-2 bg-zinc-100 border border-zinc-300 rounded-full text-sm font-medium text-zinc-700 hover:bg-zinc-200 hover:text-black transition-all active:bg-zinc-300 shadow-sm">
-    ← 返回
-  </button>
-</div>
+    <div className="w-full flex-1 pb-32 relative">
+   <div className="sticky top-[7.5rem] md:top-14 z-40 w-full bg-white px-3">
+    <button onClick={onBack} className="inline-flex items-center gap-1 py-2 text-sm font-medium text-zinc-700 hover:text-black transition-all">
+      ← 返回
+    </button>
+ </div>
         {/* 帖子内容 */}
          <div className="bg-white border-t border-b border-zinc-200 shadow-sm mb-6">
           <div className="px-3 py-4">
@@ -621,7 +621,7 @@ const PostDetail = ({
               const hasLiked = (c.likes || []).includes(user.id);
 
               return (
-                <div key={c.id} className="bg-white px-4 py-4 border-b border-zinc-200 text-sm">
+                <div key={c.id} className="bg-white px-0 py-4 border-b border-zinc-200">
                   <div className="flex gap-3">
                     <div className="flex-shrink-0">
                       <Avatar url={commentAuthor?.avatar} className="w-8 h-8" />
@@ -675,7 +675,7 @@ const PostDetail = ({
 
                       {c.id === editingCommentId ? (
                         <div className="space-y-2 mt-2">
-                          <textarea className="w-full border p-2 h-20 text-sm" value={editCommentContent} onChange={e => setEditCommentContent(e.target.value)} />
+                         <textarea className="w-full border p-2 h-20 text-base leading-relaxed" value={editCommentContent} onChange={e => setEditCommentContent(e.target.value)} />
                           <div className="flex gap-2">
                             <button onClick={() => saveCommentEdit(c.id)} className="bg-black text-white px-3 py-1 text-xs">保存</button>
                             <button onClick={() => setEditingCommentId(null)} className="bg-zinc-200 px-3 py-1 text-xs">取消</button>
@@ -683,7 +683,7 @@ const PostDetail = ({
                         </div>
                       ) : (
                         <>
-                          <p className="whitespace-pre-wrap mb-2">{c.content}</p>
+                          <p className="whitespace-pre-wrap mb-2 leading-relaxed text-zinc-800">{c.content}</p>
                           
                           {/* 评论图片展示 */}
                           {c.images && c.images.length > 0 && (
