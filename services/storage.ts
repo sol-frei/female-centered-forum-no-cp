@@ -227,7 +227,7 @@ export async function add_comment(
 ) {
   // 1. 发布前敏感词拦截
   await check_sensitive_words(commentData.content);
-
+  
   // 2. 插入评论本身
   const { data, error } = await supabase
     .from('comments')
@@ -243,14 +243,24 @@ export async function add_comment(
     }])
     .select()
     .single();
-
   if (error) throw error;
-
+  
+  // 3. ✅ 更新帖子的最后评论时间（用于顶帖排序）
+  const { error: updateError } = await supabase
+    .from('posts')
+    .update({ last_comment_at: new Date().toISOString() })
+    .eq('id', commentData.post_id);
+  
+  if (updateError) {
+    console.error('更新帖子最后评论时间失败:', updateError);
+    // 不抛出错误，因为评论已经成功添加
+  }
+  
   // 🎉 注意：这里删除了原来几十行关于 notifications 的判断和插入逻辑
   // 数据库触发器检测到 comments 表有新行时，会自动完成通知任务
-
   return data;
 }
+
 /**
  * 更新评论（替换原有的 update_comment 函数）
  * 新增功能：支持更新图片
@@ -262,22 +272,18 @@ export async function update_comment(
 ) {
   // ✅ ① 编辑前敏感词拦截（只拦截发布）
   await check_sensitive_words(content);
-
   const updateData: any = {
     content,
     updated_at: new Date().toISOString(),
   };
-
   // 如果传入了 images 参数，则更新图片
   if (images !== undefined) {
     updateData.images = images;
   }
-
   const { error } = await supabase
     .from('comments')
     .update(updateData)
     .eq('id', commentId);
-
   if (error) throw error;
 }
 
