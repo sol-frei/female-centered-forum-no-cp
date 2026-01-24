@@ -419,7 +419,7 @@ const PostDetail = ({
                 <h1 className="text-2xl font-bold mb-2 text-center">{post.title}</h1>
               )}
 
-              <div className="text-sm text-zinc-500 flex gap-3 items-center">
+              <div className="text-sm text-zinc-500 flex gap-3 items-center justify-center">
             
                 <span onClick={() => onViewProfile(post.user_id)} className="hover:underline cursor-pointer hover:text-black transition-colors">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
                 <span>{timeAgo(postCreatedAt)}</span>
@@ -439,7 +439,7 @@ const PostDetail = ({
                  }} 
                 className="flex items-center gap-1 text-blue-600 hover:underline ml-2"
                 >
-               <Edit2 className="w-3 h-3" /> 修改
+               <Edit2 className="w-3 h-3" /> 
                </button>
                 )}
               </div>
