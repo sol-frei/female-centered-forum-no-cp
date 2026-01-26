@@ -1369,18 +1369,18 @@ useEffect(() => {
                                     </div>
                                   </div>
                                 </div>
-                              );
-                            })
+                               );
+                              })
                         ) : (
                           <div className="py-20 text-center text-zinc-400 text-sm">暂无内容</div>
                         )}
                       </>
                     )}
                   </div>
-                </div>  {/* ✅ 第1个新增:闭合 space-y-4 */}
-              )}  {/* ✅ 第2个新增:闭合三元运算符 */}
-            </div>  {/* ✅ 第3个新增:闭合 flex-1 */}
-          </div>  {/* ← 这个应该已经存在,闭合 flex flex-col md:flex-row */}
+                </div>  
+              )} 
+            </div>  
+          </div>  
         )}
 
         {isCreatingPost && (
