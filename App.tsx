@@ -1329,13 +1329,14 @@ useEffect(() => {
                               const isRead = readPosts.has(post.id);
                               
                               return (
-                                <div 
-                                  key={post.id} 
-                                  onClick={() => { setSelectedPostId(post.id); setView('post'); }}
-                                  className={`py-4 hover:bg-zinc-50 cursor-pointer group transition-colors px-2 ${
-                                    isRead ? 'opacity-50' : ''
-                                  }`}
-                                >
+                                      <div 
+                                        key={post.id} 
+                                        onClick={() => { setSelectedPostId(post.id); setView('post'); }}
+                                        className={`py-4 cursor-pointer group transition-colors px-2
+                                        ${isRead ? 'opacity-50' : 'hover:bg-zinc-50'}
+                                        `}
+                                       >
+
                                   <div className="flex items-start gap-3">
                                     <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.user_id); }}>
                                       <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
@@ -1344,11 +1345,14 @@ useEffect(() => {
                                       <div className="flex items-center gap-2 mb-1">
                                         {post.is_essence && <span className="bg-black text-white px-1 text-xs" title="精华帖">荐</span>}
                                         {isRead && <span className="text-xs text-zinc-400">[已读]</span>}
-                                        <h3 className={`font-medium text-base group-hover:text-blue-800 transition-colors line-clamp-1 ${
-                                          isRead ? 'text-zinc-500' : ''
-                                        }`}>
-                                          {post.title}
-                                        </h3>
+                                    <h3
+                                       className={`font-medium text-base transition-colors line-clamp-1
+                                       ${isRead ? 'text-zinc-500' : 'group-hover:text-blue-800'}
+                                        `}
+                                    >
+                                     {post.title}
+                                    </h3>
+
                                       </div>
                                       <p className={`text-sm line-clamp-2 mb-2 ${
                                         isRead ? 'text-zinc-400' : 'text-zinc-500'
