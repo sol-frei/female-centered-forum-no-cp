@@ -128,6 +128,34 @@ const PostDetail = ({
     }
   }, [postId]);
 
+  // ✅ 新增:标记帖子为已读
+  
+  useEffect(() => {
+  const markAsRead = async () => {
+    if (!postId || !user) return;
+    
+    try {
+      // 从 storage 读取已读列表
+      const result = await window.storage.get(`read_posts_${user.id}`);
+      const readPostIds = result?.value ? JSON.parse(result.value) : [];
+      
+      // 如果未读过,添加到列表
+      if (!readPostIds.includes(postId)) {
+        readPostIds.push(postId);
+        await window.storage.set(`read_posts_${user.id}`, JSON.stringify(readPostIds));
+        
+        // 通知父组件更新状态
+        window.dispatchEvent(new CustomEvent('post-read', { detail: { postId } }));
+      }
+    } catch (err) {
+      console.error('标记已读失败:', err);
+    }
+  };
+
+  markAsRead();
+}, [postId, user]);
+
+
   // --- 实时订阅 ---
   useEffect(() => {
     if (!postId) return;
@@ -981,6 +1009,7 @@ export default function App() {
   const [usersMap, setUsersMap] = useState<Record<string, User>>({});
   const [displayPosts, setDisplayPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [readPosts, setReadPosts] = useState<Set<string>>(new Set());
 
   // Toast 状态
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
@@ -1072,7 +1101,42 @@ useEffect(() => {
 
     refreshData();
   }, [user]);
+  
+  // 加载已读记录
+  useEffect(() => {
+    const loadReadPosts = async () => {
+      if (!user) return;
+      
+      try {
+        const result = await window.storage.get(`read_posts_${user.id}`);
+        if (result?.value) {
+          const readPostIds = JSON.parse(result.value);
+          setReadPosts(new Set(readPostIds));
+        }
+      } catch (err) {
+        console.log('未找到已读记录,使用空集合');
+        setReadPosts(new Set());
+      }
+    };
 
+    loadReadPosts();
+  }, [user]);
+
+  // ✅ 第2段新增代码:监听已读事件 (就是你问的这段!)
+  useEffect(() => {
+    const handlePostRead = (e: CustomEvent) => {
+      const { postId } = e.detail;
+      setReadPosts(prev => new Set([...prev, postId]));
+    };
+
+    window.addEventListener('post-read', handlePostRead as EventListener);
+    return () => {
+      window.removeEventListener('post-read', handlePostRead as EventListener);
+    };
+  }, []);
+
+
+  
   const showToast = (msg: string, type: ToastType) => {
     setToast({ msg, type });
   };
@@ -1250,54 +1314,65 @@ useEffect(() => {
                       <PenSquare className="w-4 h-4" /> 发帖
                     </button>
                   </div>
-
-                  {/* 帖子列表 */}
-                  <div className="space-y-0 divide-y divide-zinc-100">
-                    {isLoading ? (
-                      <div className="py-20 text-center text-zinc-400">正在加载内容...</div>
-                    ) : (
-                      <>
-                        {(displayPosts || []).length > 0 ? (
-                          displayPosts
-                            .filter(p => (p.title || '').includes(searchQuery) || (p.content || '').includes(searchQuery))
-                            .map(post => (
-                              <div 
-                                key={post.id} 
-                                onClick={() => { setSelectedPostId(post.id); setView('post'); }}
-                                className="py-4 hover:bg-zinc-50 cursor-pointer group transition-colors px-2"
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.user_id); }}>
-                                    <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
-                                  </div>
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      {post.is_essence && <span className="bg-black text-white px-1 text-xs" title="精华帖">蒂</span>}
-                                      <h3 className="font-medium text-base group-hover:text-blue-800 transition-colors line-clamp-1">{post.title}</h3>
-                                    </div>
-                                    <p className="text-zinc-500 text-sm line-clamp-2 mb-2">{(post.content || '').substring(0, 100)}...</p>
-                                    <div className="text-xs text-zinc-400 flex gap-3">
-                                      <span>{post.category}</span>
-                                      <span>•</span>
-                                      <span className="hover:text-black hover:underline">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
-                                      <span>•</span>
-                                      <span>{timeAgo(post.created_at)}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))
-                        ) : (
-                          <div className="py-20 text-center text-zinc-400 text-sm">暂无内容</div>
-                        )}
-                      </>
-                    )}
+ {/* 帖子列表 */}
+<div className="space-y-0 divide-y divide-zinc-100">
+  {isLoading ? (
+    <div className="py-20 text-center text-zinc-400">正在加载内容...</div>
+  ) : (
+    <>
+      {(displayPosts || []).length > 0 ? (
+        displayPosts
+          .filter(p => (p.title || '').includes(searchQuery) || (p.content || '').includes(searchQuery))
+          .map(post => {
+            // ✅ 检查是否已读
+            const isRead = readPosts.has(post.id);
+            
+            return (
+              <div 
+                key={post.id} 
+                onClick={() => { setSelectedPostId(post.id); setView('post'); }}
+                className={`py-4 hover:bg-zinc-50 cursor-pointer group transition-colors px-2 ${
+                  isRead ? 'opacity-50' : ''  // ✅ 已读帖子变灰
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.user_id); }}>
+                    <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      {post.is_essence && <span className="bg-black text-white px-1 text-xs" title="精华帖">荐</span>}
+                      {/* ✅ 已读标记 */}
+                      {isRead && <span className="text-xs text-zinc-400">[已读]</span>}
+                      <h3 className={`font-medium text-base group-hover:text-blue-800 transition-colors line-clamp-1 ${
+                        isRead ? 'text-zinc-500' : ''  // ✅ 标题变灰
+                      }`}>
+                        {post.title}
+                      </h3>
+                    </div>
+                    <p className={`text-sm line-clamp-2 mb-2 ${
+                      isRead ? 'text-zinc-400' : 'text-zinc-500'  // ✅ 内容变灰
+                    }`}>
+                      {(post.content || '').substring(0, 100)}...
+                    </p>
+                    <div className="text-xs text-zinc-400 flex gap-3">
+                      <span>{post.category}</span>
+                      <span>•</span>
+                      <span className="hover:text-black hover:underline">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
+                      <span>•</span>
+                      <span>{timeAgo(post.created_at)}</span>
+                    </div>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
+              </div>
+            );
+          })
+      ) : (
+        <div className="py-20 text-center text-zinc-400 text-sm">暂无内容</div>
+      )}
+    </>
+  )}
+</div>
 
         {isCreatingPost && (
           <CreatePostModal 
