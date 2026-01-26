@@ -1029,22 +1029,31 @@ export default function App() {
   }, []);
 
   // 加载帖子列表
-  useEffect(() => {
-    const loadPosts = async () => {
-      setIsLoading(true);
-      try {
-        const data = await get_posts(currentCategory, onlyEssence ? 'essence' : 'new');
-        setDisplayPosts(data || []);
-      } catch (err) {
-        console.error("加载帖子失败:", err);
-        showToast("加载帖子失败", "error");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+// 加载帖子列表
+useEffect(() => {
+  const loadPosts = async () => {
+    setIsLoading(true);
+    try {
+      const data = await get_posts(currentCategory, onlyEssence ? 'essence' : 'new');
+      
+      // ✅ 按最后评论时间排序(有评论的帖子自动顶上来)
+      const sortedData = (data || []).sort((a, b) => {
+        const timeA = new Date(a.last_comment_at || a.created_at).getTime();
+        const timeB = new Date(b.last_comment_at || b.created_at).getTime();
+        return timeB - timeA; // 降序排列
+      });
+      
+      setDisplayPosts(sortedData);
+    } catch (err) {
+      console.error("加载帖子失败:", err);
+      showToast("加载帖子失败", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    loadPosts();
-  }, [currentCategory, onlyEssence, refreshKey]);
+  loadPosts();
+}, [currentCategory, onlyEssence, refreshKey]);
 
   // 加载用户映射
   useEffect(() => {
