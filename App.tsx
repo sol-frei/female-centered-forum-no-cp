@@ -1314,65 +1314,70 @@ useEffect(() => {
                       <PenSquare className="w-4 h-4" /> 发帖
                     </button>
                   </div>
- {/* 帖子列表 */}
-<div className="space-y-0 divide-y divide-zinc-100">
-  {isLoading ? (
-    <div className="py-20 text-center text-zinc-400">正在加载内容...</div>
-  ) : (
-    <>
-      {(displayPosts || []).length > 0 ? (
-        displayPosts
-          .filter(p => (p.title || '').includes(searchQuery) || (p.content || '').includes(searchQuery))
-          .map(post => {
-            // ✅ 检查是否已读
-            const isRead = readPosts.has(post.id);
-            
-            return (
-              <div 
-                key={post.id} 
-                onClick={() => { setSelectedPostId(post.id); setView('post'); }}
-                className={`py-4 hover:bg-zinc-50 cursor-pointer group transition-colors px-2 ${
-                  isRead ? 'opacity-50' : ''  // ✅ 已读帖子变灰
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.user_id); }}>
-                    <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
+
+                  
+                 {/* 帖子列表 */}
+                  <div className="space-y-0 divide-y divide-zinc-100">
+                    {isLoading ? (
+                      <div className="py-20 text-center text-zinc-400">正在加载内容...</div>
+                    ) : (
+                      <>
+                        {(displayPosts || []).length > 0 ? (
+                          displayPosts
+                            .filter(p => (p.title || '').includes(searchQuery) || (p.content || '').includes(searchQuery))
+                            .map(post => {
+                              const isRead = readPosts.has(post.id);
+                              
+                              return (
+                                <div 
+                                  key={post.id} 
+                                  onClick={() => { setSelectedPostId(post.id); setView('post'); }}
+                                  className={`py-4 hover:bg-zinc-50 cursor-pointer group transition-colors px-2 ${
+                                    isRead ? 'opacity-50' : ''
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.user_id); }}>
+                                      <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        {post.is_essence && <span className="bg-black text-white px-1 text-xs" title="精华帖">荐</span>}
+                                        {isRead && <span className="text-xs text-zinc-400">[已读]</span>}
+                                        <h3 className={`font-medium text-base group-hover:text-blue-800 transition-colors line-clamp-1 ${
+                                          isRead ? 'text-zinc-500' : ''
+                                        }`}>
+                                          {post.title}
+                                        </h3>
+                                      </div>
+                                      <p className={`text-sm line-clamp-2 mb-2 ${
+                                        isRead ? 'text-zinc-400' : 'text-zinc-500'
+                                      }`}>
+                                        {(post.content || '').substring(0, 100)}...
+                                      </p>
+                                      <div className="text-xs text-zinc-400 flex gap-3">
+                                        <span>{post.category}</span>
+                                        <span>•</span>
+                                        <span className="hover:text-black hover:underline">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
+                                        <span>•</span>
+                                        <span>{timeAgo(post.created_at)}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                        ) : (
+                          <div className="py-20 text-center text-zinc-400 text-sm">暂无内容</div>
+                        )}
+                      </>
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      {post.is_essence && <span className="bg-black text-white px-1 text-xs" title="精华帖">荐</span>}
-                      {/* ✅ 已读标记 */}
-                      {isRead && <span className="text-xs text-zinc-400">[已读]</span>}
-                      <h3 className={`font-medium text-base group-hover:text-blue-800 transition-colors line-clamp-1 ${
-                        isRead ? 'text-zinc-500' : ''  // ✅ 标题变灰
-                      }`}>
-                        {post.title}
-                      </h3>
-                    </div>
-                    <p className={`text-sm line-clamp-2 mb-2 ${
-                      isRead ? 'text-zinc-400' : 'text-zinc-500'  // ✅ 内容变灰
-                    }`}>
-                      {(post.content || '').substring(0, 100)}...
-                    </p>
-                    <div className="text-xs text-zinc-400 flex gap-3">
-                      <span>{post.category}</span>
-                      <span>•</span>
-                      <span className="hover:text-black hover:underline">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
-                      <span>•</span>
-                      <span>{timeAgo(post.created_at)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-      ) : (
-        <div className="py-20 text-center text-zinc-400 text-sm">暂无内容</div>
-      )}
-    </>
-  )}
-</div>
+                </div>  {/* ✅ 第1个新增:闭合 space-y-4 */}
+              )}  {/* ✅ 第2个新增:闭合三元运算符 */}
+            </div>  {/* ✅ 第3个新增:闭合 flex-1 */}
+          </div>  {/* ← 这个应该已经存在,闭合 flex flex-col md:flex-row */}
+        )}
 
         {isCreatingPost && (
           <CreatePostModal 
