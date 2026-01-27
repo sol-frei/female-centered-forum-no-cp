@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, ImageIcon, Plus, Trash2, Loader } from 'lucide-react';
 import { User, Category } from '../types';
 import { create_post } from '../services/storage';
@@ -15,15 +15,29 @@ interface CreatePostModalProps {
 
 const CATEGORIES: Category[] = ['推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
+// 新增:内容块类型定义
+type ContentBlock = {
+  id: string;
+  type: 'text' | 'image';
+  content: string; // 文本内容或图片预览URL
+  file?: File; // 图片文件对象
+};
+
 export default function CreatePostModal({ user, onClose, onSuccess, showToast }: CreatePostModalProps) {
   // 基础表单状态
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
   const [category, setCategory] = useState<Category>('讨论👊🏻i女');
-  const [images, setImages] = useState<string[]>([]);
-  const [imageFiles, setImageFiles] = useState<File[]>([]); // 存储文件对象
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+
+  // 新增:图文混合内容块
+  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([
+    { id: `text-${Date.now()}`, type: 'text', content: '' }
+  ]);
+  
+  const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
 
   // 投票功能状态
   const [enablePoll, setEnablePoll] = useState(false);
@@ -32,18 +46,46 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   const [isMultiple, setIsMultiple] = useState(false);
   const [pollDeadline, setPollDeadline] = useState('');
 
-  // 图片上传处理
+  // 新增:添加文本块
+  const addTextBlock = (afterId?: string) => {
+    const newBlock: ContentBlock = {
+      id: `text-${Date.now()}`,
+      type: 'text',
+      content: ''
+    };
+
+    if (afterId) {
+      const index = contentBlocks.findIndex(b => b.id === afterId);
+      const newBlocks = [...contentBlocks];
+      newBlocks.splice(index + 1, 0, newBlock);
+      setContentBlocks(newBlocks);
+    } else {
+      setContentBlocks([...contentBlocks, newBlock]);
+    }
+
+    // 自动聚焦到新文本块
+    setTimeout(() => {
+      textareaRefs.current[newBlock.id]?.focus();
+    }, 0);
+  };
+
+  // 新增:添加图片块
+  const addImageBlock = (afterId: string) => {
+    setActiveBlockId(afterId);
+    fileInputRef.current?.click();
+  };
+
+  // 新增:处理图片上传
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || !activeBlockId) return;
 
-    if (images.length + files.length > 9) {
+    const currentImageCount = contentBlocks.filter(b => b.type === 'image').length;
+    
+    if (currentImageCount + files.length > 9) {
       showToast('最多只能上传9张图片', 'warning');
       return;
     }
-
-    const newFiles: File[] = [];
-    const newPreviews: string[] = [];
 
     Array.from(files).forEach((file: File) => {
       if (file.size > 5 * 1024 * 1024) {
@@ -51,37 +93,77 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         return;
       }
 
-      // 验证文件类型
       if (!file.type.startsWith('image/')) {
         showToast('只能上传图片文件', 'error');
         return;
       }
 
-      newFiles.push(file);
-
-      // 生成预览
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
-        newPreviews.push(result);
         
-        // 当所有图片都加载完成后更新状态
-        if (newPreviews.length === newFiles.length) {
-          setImages(prev => [...prev, ...newPreviews]);
-          setImageFiles(prev => [...prev, ...newFiles]);
-        }
+        const newBlock: ContentBlock = {
+          id: `image-${Date.now()}-${Math.random()}`,
+          type: 'image',
+          content: result,
+          file: file
+        };
+
+        const index = contentBlocks.findIndex(b => b.id === activeBlockId);
+        const newBlocks = [...contentBlocks];
+        newBlocks.splice(index + 1, 0, newBlock);
+        setContentBlocks(newBlocks);
       };
       reader.readAsDataURL(file);
     });
+
+    // 重置文件输入
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
-  // 删除图片
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
+  // 新增:更新文本块内容
+  const updateTextBlock = (id: string, content: string) => {
+    setContentBlocks(blocks =>
+      blocks.map(block =>
+        block.id === id ? { ...block, content } : block
+      )
+    );
   };
 
-  // 添加投票选项
+  // 新增:删除内容块
+  const removeBlock = (id: string) => {
+    // 至少保留一个文本块
+    if (contentBlocks.length === 1 && contentBlocks[0].type === 'text') {
+      showToast('至少需要保留一个文本框', 'warning');
+      return;
+    }
+    
+    setContentBlocks(blocks => blocks.filter(block => block.id !== id));
+  };
+
+  // 新增:向上移动块
+  const moveBlockUp = (id: string) => {
+    const index = contentBlocks.findIndex(b => b.id === id);
+    if (index === 0) return;
+    
+    const newBlocks = [...contentBlocks];
+    [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
+    setContentBlocks(newBlocks);
+  };
+
+  // 新增:向下移动块
+  const moveBlockDown = (id: string) => {
+    const index = contentBlocks.findIndex(b => b.id === id);
+    if (index === contentBlocks.length - 1) return;
+    
+    const newBlocks = [...contentBlocks];
+    [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
+    setContentBlocks(newBlocks);
+  };
+
+  // 投票功能处理
   const addPollOption = () => {
     if (pollOptions.length >= 10) {
       showToast('最多只能添加10个选项', 'warning');
@@ -90,7 +172,6 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     setPollOptions([...pollOptions, '']);
   };
 
-  // 删除投票选项
   const removePollOption = (index: number) => {
     if (pollOptions.length <= 2) {
       showToast('至少需要2个选项', 'warning');
@@ -99,7 +180,6 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     setPollOptions(pollOptions.filter((_, i) => i !== index));
   };
 
-  // 更新投票选项
   const updatePollOption = (index: number, value: string) => {
     const newOptions = [...pollOptions];
     newOptions[index] = value;
@@ -116,11 +196,23 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
       showToast('标题不能超过100字', 'error');
       return false;
     }
-    if (!content.trim()) {
+
+    // 检查是否有文本内容
+    const hasTextContent = contentBlocks.some(
+      block => block.type === 'text' && block.content.trim()
+    );
+    
+    if (!hasTextContent) {
       showToast('请输入内容', 'error');
       return false;
     }
-    if (content.length > 10000) {
+
+    // 计算总文本长度
+    const totalTextLength = contentBlocks
+      .filter(b => b.type === 'text')
+      .reduce((sum, b) => sum + b.content.length, 0);
+    
+    if (totalTextLength > 10000) {
       showToast('内容不能超过10000字', 'error');
       return false;
     }
@@ -157,7 +249,12 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     let uploadedImageUrls: string[] = [];
 
     try {
-      // 1. 先上传图片到 Supabase Storage
+      // 1. 收集所有图片文件
+      const imageFiles = contentBlocks
+        .filter(block => block.type === 'image' && block.file)
+        .map(block => block.file!);
+
+      // 2. 上传图片
       if (imageFiles.length > 0) {
         showToast('正在上传图片...', 'info');
         uploadedImageUrls = await uploadImages(
@@ -170,17 +267,34 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         );
       }
 
-      // 2. 创建帖子数据
+      // 3. 构建混合内容
+      // 创建图片URL映射
+      let imageUrlIndex = 0;
+      const mixedContent = contentBlocks.map(block => {
+        if (block.type === 'text') {
+          return {
+            type: 'text',
+            content: block.content
+          };
+        } else {
+          return {
+            type: 'image',
+            url: uploadedImageUrls[imageUrlIndex++]
+          };
+        }
+      });
+
+      // 4. 创建帖子数据
       const postData: any = {
         user_id: user.id,
         user_name: user.user_name,
         title: title.trim(),
-        content: content.trim(),
+        content: JSON.stringify(mixedContent), // 将混合内容序列化
         category,
         images: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
       };
 
-      // 3. 添加投票数据
+      // 5. 添加投票数据
       if (enablePoll) {
         const validOptions = pollOptions.filter(opt => opt.trim());
         postData.poll = {
@@ -195,7 +309,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         };
       }
 
-      // 4. 创建帖子
+      // 6. 创建帖子
       await create_post(postData);
       showToast('发帖成功！', 'success');
       onSuccess();
@@ -216,13 +330,20 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     }
   };
 
+  // 计算总字数
+  const totalTextLength = contentBlocks
+    .filter(b => b.type === 'text')
+    .reduce((sum, b) => sum + b.content.length, 0);
+
+  const imageCount = contentBlocks.filter(b => b.type === 'image').length;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
       <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
         {/* 头部 */}
         <div className="sticky top-0 bg-white border-b border-zinc-200 p-4 flex justify-between items-center z-10">
           <h2 className="text-xl font-bold">发布新帖</h2>
-          <button onClick={onClose} disabled={isSubmitting} className="text-zinc-500 hover:text-black disabled:opacity-50" aria-label="关闭">
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-700" disabled={isSubmitting}>
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -275,56 +396,137 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
             />
           </div>
 
-          {/* 内容 */}
+          {/* 图文混合内容编辑区 */}
           <div>
             <label className="block text-sm font-bold mb-2 text-zinc-700">
-              内容 * <span className="text-xs text-zinc-400 font-normal">({content.length}/10000)</span>
+              内容 * 
+              <span className="text-xs text-zinc-400 font-normal ml-2">
+                ({totalTextLength}/10000 字 · {imageCount}/9 图)
+              </span>
             </label>
-            <textarea
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              maxLength={10000}
-              rows={10}
-              disabled={isSubmitting}
-              placeholder="详细描述你的想法..."
-              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none disabled:opacity-50"
-            />
-          </div>
-
-          {/* 图片上传 */}
-          <div>
-            <label className="block text-sm font-bold mb-2 text-zinc-700">
-              图片 <span className="text-xs text-zinc-400 font-normal">(最多9张，每张最大5MB)</span>
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {images.map((img, index) => (
-                <div key={index} className="relative group">
-                  <img src={img} alt={`预览 ${index + 1}`} className="w-full h-32 object-cover rounded-lg border border-zinc-200" />
-                  <button
-                    onClick={() => removeImage(index)}
-                    disabled={isSubmitting}
-                    className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                    aria-label="删除图片"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            
+            <div className="space-y-3 border border-zinc-300 rounded-lg p-4 bg-zinc-50">
+              {contentBlocks.map((block, index) => (
+                <div key={block.id} className="bg-white rounded-lg border border-zinc-200 p-3">
+                  {block.type === 'text' ? (
+                    // 文本块
+                    <div className="space-y-2">
+                      <textarea
+                        ref={el => textareaRefs.current[block.id] = el}
+                        value={block.content}
+                        onChange={e => updateTextBlock(block.id, e.target.value)}
+                        disabled={isSubmitting}
+                        placeholder="输入文字内容..."
+                        className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none disabled:opacity-50"
+                        rows={6}
+                      />
+                      <div className="flex items-center justify-between">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => addImageBlock(block.id)}
+                            disabled={isSubmitting || imageCount >= 9}
+                            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ImageIcon className="w-4 h-4" />
+                            插入图片
+                          </button>
+                          <button
+                            onClick={() => addTextBlock(block.id)}
+                            disabled={isSubmitting}
+                            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+                          >
+                            <Plus className="w-4 h-4" />
+                            添加文本
+                          </button>
+                        </div>
+                        <div className="flex gap-1">
+                          {index > 0 && (
+                            <button
+                              onClick={() => moveBlockUp(block.id)}
+                              disabled={isSubmitting}
+                              className="p-1.5 text-zinc-600 hover:bg-zinc-100 rounded"
+                              title="上移"
+                            >
+                              ↑
+                            </button>
+                          )}
+                          {index < contentBlocks.length - 1 && (
+                            <button
+                              onClick={() => moveBlockDown(block.id)}
+                              disabled={isSubmitting}
+                              className="p-1.5 text-zinc-600 hover:bg-zinc-100 rounded"
+                              title="下移"
+                            >
+                              ↓
+                            </button>
+                          )}
+                          <button
+                            onClick={() => removeBlock(block.id)}
+                            disabled={isSubmitting}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                            title="删除"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // 图片块
+                    <div className="space-y-2">
+                      <img 
+                        src={block.content} 
+                        alt="预览" 
+                        className="w-full max-h-96 object-contain rounded-lg border border-zinc-200" 
+                      />
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-zinc-500">图片</span>
+                        <div className="flex gap-1">
+                          {index > 0 && (
+                            <button
+                              onClick={() => moveBlockUp(block.id)}
+                              disabled={isSubmitting}
+                              className="p-1.5 text-zinc-600 hover:bg-zinc-100 rounded"
+                              title="上移"
+                            >
+                              ↑
+                            </button>
+                          )}
+                          {index < contentBlocks.length - 1 && (
+                            <button
+                              onClick={() => moveBlockDown(block.id)}
+                              disabled={isSubmitting}
+                              className="p-1.5 text-zinc-600 hover:bg-zinc-100 rounded"
+                              title="下移"
+                            >
+                              ↓
+                            </button>
+                          )}
+                          <button
+                            onClick={() => removeBlock(block.id)}
+                            disabled={isSubmitting}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                            title="删除"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
-              {images.length < 9 && (
-                <label className={`w-full h-32 border-2 border-dashed border-zinc-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-black transition-colors ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                  <ImageIcon className="w-8 h-8 text-zinc-400 mb-2" />
-                  <span className="text-sm text-zinc-500">上传图片</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImageUpload}
-                    disabled={isSubmitting}
-                    className="hidden"
-                  />
-                </label>
-              )}
             </div>
+
+            {/* 隐藏的文件输入 */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageUpload}
+              className="hidden"
+            />
           </div>
 
           {/* 投票功能 */}
