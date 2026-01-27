@@ -419,7 +419,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
               placeholder="输入内容，点击上方"插入图片"按钮可在光标位置插入图片..."
               className="w-full p-4 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none disabled:opacity-50 font-mono text-sm"
               rows={12}
-            />
+              />
 
             {/* 图片预览和注释编辑 */}
             {insertedImages.length > 0 && (
