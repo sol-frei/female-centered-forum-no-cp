@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { X, ImageIcon, Plus, Trash2, Loader } from 'lucide-react';
+import { X, ImageIcon, Trash2, Loader } from 'lucide-react';
 import { User, Category } from '../types';
 import { create_post } from '../services/storage';
-import { uploadImages, deleteImage } from '../services/storageService';
+import { uploadImages } from '../services/storageService';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -15,29 +15,27 @@ interface CreatePostModalProps {
 
 const CATEGORIES: Category[] = ['推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
-// 新增:内容块类型定义
-type ContentBlock = {
+// 内容项类型
+type ContentItem = {
   id: string;
   type: 'text' | 'image';
   content: string; // 文本内容或图片预览URL
-  file?: File; // 图片文件对象
+  file?: File; // 图片文件
+  caption?: string; // 图片注释
 };
 
 export default function CreatePostModal({ user, onClose, onSuccess, showToast }: CreatePostModalProps) {
-  // 基础表单状态
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<Category>('讨论👊🏻i女');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
-  // 新增:图文混合内容块
-  const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([
-    { id: `text-${Date.now()}`, type: 'text', content: '' }
-  ]);
-  
-  const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>({});
+  // 内容编辑
+  const [content, setContent] = useState(''); // 主文本框内容
+  const [cursorPosition, setCursorPosition] = useState(0); // 光标位置
+  const [insertedImages, setInsertedImages] = useState<ContentItem[]>([]); // 插入的图片
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
 
   // 投票功能状态
   const [enablePoll, setEnablePoll] = useState(false);
@@ -46,43 +44,38 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   const [isMultiple, setIsMultiple] = useState(false);
   const [pollDeadline, setPollDeadline] = useState('');
 
-  // 新增:添加文本块
-  const addTextBlock = (afterId?: string) => {
-    const newBlock: ContentBlock = {
-      id: `text-${Date.now()}`,
-      type: 'text',
-      content: ''
-    };
-
-    if (afterId) {
-      const index = contentBlocks.findIndex(b => b.id === afterId);
-      const newBlocks = [...contentBlocks];
-      newBlocks.splice(index + 1, 0, newBlock);
-      setContentBlocks(newBlocks);
-    } else {
-      setContentBlocks([...contentBlocks, newBlock]);
-    }
-
-    // 自动聚焦到新文本块
-    setTimeout(() => {
-      textareaRefs.current[newBlock.id]?.focus();
-    }, 0);
+  // 处理文本框光标位置
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+    setCursorPosition(e.target.selectionStart);
   };
 
-  // 新增:添加图片块
-  const addImageBlock = (afterId: string) => {
-    setActiveBlockId(afterId);
+  const handleTextClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    const target = e.target as HTMLTextAreaElement;
+    setCursorPosition(target.selectionStart);
+  };
+
+  // 插入图片到光标位置
+  const handleInsertImage = () => {
+    if (insertedImages.length >= 9) {
+      showToast('最多只能上传9张图片', 'warning');
+      return;
+    }
+    
+    // 保存当前光标位置
+    if (textareaRef.current) {
+      setCursorPosition(textareaRef.current.selectionStart);
+    }
+    
     fileInputRef.current?.click();
   };
 
-  // 新增:处理图片上传
+  // 处理图片上传
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || !activeBlockId) return;
+    if (!files) return;
 
-    const currentImageCount = contentBlocks.filter(b => b.type === 'image').length;
-    
-    if (currentImageCount + files.length > 9) {
+    if (insertedImages.length + files.length > 9) {
       showToast('最多只能上传9张图片', 'warning');
       return;
     }
@@ -102,17 +95,34 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
       reader.onload = (e) => {
         const result = e.target?.result as string;
         
-        const newBlock: ContentBlock = {
-          id: `image-${Date.now()}-${Math.random()}`,
+        const imageId = `[图片${insertedImages.length + 1}]`;
+        const newImage: ContentItem = {
+          id: `img-${Date.now()}-${Math.random()}`,
           type: 'image',
           content: result,
-          file: file
+          file: file,
+          caption: ''
         };
 
-        const index = contentBlocks.findIndex(b => b.id === activeBlockId);
-        const newBlocks = [...contentBlocks];
-        newBlocks.splice(index + 1, 0, newBlock);
-        setContentBlocks(newBlocks);
+        // 在光标位置插入图片占位符
+        const before = content.substring(0, cursorPosition);
+        const after = content.substring(cursorPosition);
+        const newContent = before + `\n${imageId}\n` + after;
+        
+        setContent(newContent);
+        setInsertedImages(prev => [...prev, newImage]);
+        
+        // 更新光标位置到图片占位符之后
+        const newCursorPos = cursorPosition + imageId.length + 2;
+        setCursorPosition(newCursorPos);
+        
+        // 聚焦到文本框
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+            textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+          }
+        }, 0);
       };
       reader.readAsDataURL(file);
     });
@@ -123,44 +133,36 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     }
   };
 
-  // 新增:更新文本块内容
-  const updateTextBlock = (id: string, content: string) => {
-    setContentBlocks(blocks =>
-      blocks.map(block =>
-        block.id === id ? { ...block, content } : block
-      )
+  // 删除图片
+  const removeImage = (imageId: string, index: number) => {
+    const placeholder = `[图片${index + 1}]`;
+    
+    // 从文本中移除占位符
+    const newContent = content.replace(new RegExp(`\\n?${placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n?`, 'g'), '');
+    setContent(newContent);
+    
+    // 移除图片
+    setInsertedImages(prev => prev.filter(img => img.id !== imageId));
+    
+    // 重新编号剩余图片的占位符
+    setTimeout(() => {
+      let updatedContent = newContent;
+      insertedImages.forEach((img, idx) => {
+        if (img.id !== imageId) {
+          const oldNum = idx < index ? idx + 1 : idx + 2;
+          const newNum = idx < index ? idx + 1 : idx + 1;
+          updatedContent = updatedContent.replace(`[图片${oldNum}]`, `[图片${newNum}]`);
+        }
+      });
+      setContent(updatedContent);
+    }, 0);
+  };
+
+  // 更新图片注释
+  const updateImageCaption = (imageId: string, caption: string) => {
+    setInsertedImages(prev =>
+      prev.map(img => img.id === imageId ? { ...img, caption } : img)
     );
-  };
-
-  // 新增:删除内容块
-  const removeBlock = (id: string) => {
-    // 至少保留一个文本块
-    if (contentBlocks.length === 1 && contentBlocks[0].type === 'text') {
-      showToast('至少需要保留一个文本框', 'warning');
-      return;
-    }
-    
-    setContentBlocks(blocks => blocks.filter(block => block.id !== id));
-  };
-
-  // 新增:向上移动块
-  const moveBlockUp = (id: string) => {
-    const index = contentBlocks.findIndex(b => b.id === id);
-    if (index === 0) return;
-    
-    const newBlocks = [...contentBlocks];
-    [newBlocks[index - 1], newBlocks[index]] = [newBlocks[index], newBlocks[index - 1]];
-    setContentBlocks(newBlocks);
-  };
-
-  // 新增:向下移动块
-  const moveBlockDown = (id: string) => {
-    const index = contentBlocks.findIndex(b => b.id === id);
-    if (index === contentBlocks.length - 1) return;
-    
-    const newBlocks = [...contentBlocks];
-    [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
-    setContentBlocks(newBlocks);
   };
 
   // 投票功能处理
@@ -197,22 +199,14 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
       return false;
     }
 
-    // 检查是否有文本内容
-    const hasTextContent = contentBlocks.some(
-      block => block.type === 'text' && block.content.trim()
-    );
-    
-    if (!hasTextContent) {
-      showToast('请输入内容', 'error');
+    // 移除图片占位符后检查是否有文本内容
+    const contentWithoutPlaceholders = content.replace(/\[图片\d+\]/g, '').trim();
+    if (!contentWithoutPlaceholders && insertedImages.length === 0) {
+      showToast('请输入内容或上传图片', 'error');
       return false;
     }
 
-    // 计算总文本长度
-    const totalTextLength = contentBlocks
-      .filter(b => b.type === 'text')
-      .reduce((sum, b) => sum + b.content.length, 0);
-    
-    if (totalTextLength > 10000) {
+    if (content.length > 10000) {
       showToast('内容不能超过10000字', 'error');
       return false;
     }
@@ -249,12 +243,8 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     let uploadedImageUrls: string[] = [];
 
     try {
-      // 1. 收集所有图片文件
-      const imageFiles = contentBlocks
-        .filter(block => block.type === 'image' && block.file)
-        .map(block => block.file!);
-
-      // 2. 上传图片
+      // 1. 上传图片
+      const imageFiles = insertedImages.map(img => img.file!);
       if (imageFiles.length > 0) {
         showToast('正在上传图片...', 'info');
         uploadedImageUrls = await uploadImages(
@@ -267,34 +257,41 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         );
       }
 
-      // 3. 构建混合内容
-      // 创建图片URL映射
-      let imageUrlIndex = 0;
-      const mixedContent = contentBlocks.map(block => {
-        if (block.type === 'text') {
-          return {
+      // 2. 构建混合内容
+      // 将文本按图片占位符分割
+      let mixedContent: any[] = [];
+      let textParts = content.split(/(\[图片\d+\])/);
+      
+      textParts.forEach((part, index) => {
+        const match = part.match(/\[图片(\d+)\]/);
+        if (match) {
+          const imageIndex = parseInt(match[1]) - 1;
+          if (imageIndex < insertedImages.length) {
+            mixedContent.push({
+              type: 'image',
+              url: uploadedImageUrls[imageIndex],
+              caption: insertedImages[imageIndex].caption || ''
+            });
+          }
+        } else if (part.trim()) {
+          mixedContent.push({
             type: 'text',
-            content: block.content
-          };
-        } else {
-          return {
-            type: 'image',
-            url: uploadedImageUrls[imageUrlIndex++]
-          };
+            content: part.trim()
+          });
         }
       });
 
-      // 4. 创建帖子数据
+      // 3. 创建帖子数据
       const postData: any = {
         user_id: user.id,
         user_name: user.user_name,
         title: title.trim(),
-        content: JSON.stringify(mixedContent), // 将混合内容序列化
+        content: JSON.stringify(mixedContent),
         category,
         images: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
       };
 
-      // 5. 添加投票数据
+      // 4. 添加投票数据
       if (enablePoll) {
         const validOptions = pollOptions.filter(opt => opt.trim());
         postData.poll = {
@@ -309,7 +306,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         };
       }
 
-      // 6. 创建帖子
+      // 5. 创建帖子
       await create_post(postData);
       showToast('发帖成功！', 'success');
       onSuccess();
@@ -330,16 +327,12 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     }
   };
 
-  // 计算总字数
-  const totalTextLength = contentBlocks
-    .filter(b => b.type === 'text')
-    .reduce((sum, b) => sum + b.content.length, 0);
-
-  const imageCount = contentBlocks.filter(b => b.type === 'image').length;
+  // 计算字数(不包括图片占位符)
+  const textLength = content.replace(/\[图片\d+\]/g, '').length;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         {/* 头部 */}
         <div className="sticky top-0 bg-white border-b border-zinc-200 p-4 flex justify-between items-center z-10">
           <h2 className="text-xl font-bold">发布新帖</h2>
@@ -396,127 +389,78 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
             />
           </div>
 
-          {/* 图文混合内容编辑区 */}
+          {/* 内容编辑区 */}
           <div>
-            <label className="block text-sm font-bold mb-2 text-zinc-700">
-              内容 * 
-              <span className="text-xs text-zinc-400 font-normal ml-2">
-                ({totalTextLength}/10000 字 · {imageCount}/9 图)
-              </span>
-            </label>
-            
-            <div className="space-y-3 border border-zinc-300 rounded-lg p-4 bg-zinc-50">
-              {contentBlocks.map((block, index) => (
-                <div key={block.id} className="bg-white rounded-lg border border-zinc-200 p-3">
-                  {block.type === 'text' ? (
-                    // 文本块
-                    <div className="space-y-2">
-                      <textarea
-                        ref={el => textareaRefs.current[block.id] = el}
-                        value={block.content}
-                        onChange={e => updateTextBlock(block.id, e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="输入文字内容..."
-                        className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none disabled:opacity-50"
-                        rows={6}
-                      />
-                      <div className="flex items-center justify-between">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => addImageBlock(block.id)}
-                            disabled={isSubmitting || imageCount >= 9}
-                            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <ImageIcon className="w-4 h-4" />
-                            插入图片
-                          </button>
-                          <button
-                            onClick={() => addTextBlock(block.id)}
-                            disabled={isSubmitting}
-                            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
-                          >
-                            <Plus className="w-4 h-4" />
-                            添加文本
-                          </button>
-                        </div>
-                        <div className="flex gap-1">
-                          {index > 0 && (
-                            <button
-                              onClick={() => moveBlockUp(block.id)}
-                              disabled={isSubmitting}
-                              className="p-1.5 text-zinc-600 hover:bg-zinc-100 rounded"
-                              title="上移"
-                            >
-                              ↑
-                            </button>
-                          )}
-                          {index < contentBlocks.length - 1 && (
-                            <button
-                              onClick={() => moveBlockDown(block.id)}
-                              disabled={isSubmitting}
-                              className="p-1.5 text-zinc-600 hover:bg-zinc-100 rounded"
-                              title="下移"
-                            >
-                              ↓
-                            </button>
-                          )}
-                          <button
-                            onClick={() => removeBlock(block.id)}
-                            disabled={isSubmitting}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                            title="删除"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    // 图片块
-                    <div className="space-y-2">
-                      <img 
-                        src={block.content} 
-                        alt="预览" 
-                        className="w-full max-h-96 object-contain rounded-lg border border-zinc-200" 
-                      />
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-zinc-500">图片</span>
-                        <div className="flex gap-1">
-                          {index > 0 && (
-                            <button
-                              onClick={() => moveBlockUp(block.id)}
-                              disabled={isSubmitting}
-                              className="p-1.5 text-zinc-600 hover:bg-zinc-100 rounded"
-                              title="上移"
-                            >
-                              ↑
-                            </button>
-                          )}
-                          {index < contentBlocks.length - 1 && (
-                            <button
-                              onClick={() => moveBlockDown(block.id)}
-                              disabled={isSubmitting}
-                              className="p-1.5 text-zinc-600 hover:bg-zinc-100 rounded"
-                              title="下移"
-                            >
-                              ↓
-                            </button>
-                          )}
-                          <button
-                            onClick={() => removeBlock(block.id)}
-                            disabled={isSubmitting}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                            title="删除"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-bold text-zinc-700">
+                内容 * 
+                <span className="text-xs text-zinc-400 font-normal ml-2">
+                  ({textLength}/10000 字 · {insertedImages.length}/9 图)
+                </span>
+              </label>
+              <button
+                onClick={handleInsertImage}
+                disabled={isSubmitting || insertedImages.length >= 9}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ImageIcon className="w-4 h-4" />
+                插入图片
+              </button>
             </div>
+
+            {/* 主文本框 */}
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={handleTextChange}
+              onClick={handleTextClick}
+              onKeyUp={handleTextClick}
+              disabled={isSubmitting}
+              placeholder="输入内容，点击上方"插入图片"按钮可在光标位置插入图片..."
+              className="w-full p-4 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none disabled:opacity-50 font-mono text-sm"
+              rows={12}
+            />
+
+            {/* 图片预览和注释编辑 */}
+            {insertedImages.length > 0 && (
+              <div className="mt-4 space-y-3">
+                <div className="text-sm font-bold text-zinc-700">已插入的图片:</div>
+                {insertedImages.map((image, index) => (
+                  <div key={image.id} className="border border-zinc-200 rounded-lg p-3 bg-zinc-50">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 w-20 h-20">
+                        <img
+                          src={image.content}
+                          alt={`图片${index + 1}`}
+                          className="w-full h-full object-cover rounded"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-zinc-600">图片 {index + 1}</span>
+                          <button
+                            onClick={() => removeImage(image.id, index)}
+                            disabled={isSubmitting}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                            title="删除图片"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={image.caption}
+                          onChange={e => updateImageCaption(image.id, e.target.value)}
+                          disabled={isSubmitting}
+                          placeholder="添加图片注释(可选)"
+                          className="w-full p-2 border border-zinc-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* 隐藏的文件输入 */}
             <input
@@ -527,6 +471,10 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
               onChange={handleImageUpload}
               className="hidden"
             />
+
+            <div className="mt-2 text-xs text-zinc-500">
+              💡 提示: 点击"插入图片"按钮可在当前光标位置插入图片,图片会以[图片1]、[图片2]等形式显示在文本中
+            </div>
           </div>
 
           {/* 投票功能 */}
@@ -590,7 +538,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                       disabled={isSubmitting}
                       className="mt-2 flex items-center gap-1 text-sm text-blue-600 hover:underline disabled:opacity-50"
                     >
-                      <Plus className="w-4 h-4" /> 添加选项
+                      <ImageIcon className="w-4 h-4" /> 添加选项
                     </button>
                   )}
                 </div>
