@@ -195,100 +195,54 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     return true;
   };
 
-  // 提交帖子
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
+const handleSubmit = async () => {
+  // 1. 基础校验
+  if (!title.trim()) return showToast('请输入标题', 'error');
+  if (blocks.every(b => b.type === 'text' && !b.value.trim())) {
+    return showToast('请输入内容', 'error');
+  }
 
-    setIsSubmitting(true);
-    setUploadProgress(0);
-    let uploadedImageUrls: string[] = [];
-
-    try {
-      // 1. 收集并上传图片
-      const imageBlocks = blocks.filter(b => b.type === 'image') as { type: 'image'; file: File; preview: string }[];
-      
-      if (imageBlocks.length > 0) {
-        showToast('正在上传图片...', 'info');
-        uploadedImageUrls = await uploadImages(
-          imageBlocks.map(b => b.file),
-          'forum_images',
-          `posts/${user.id}`,
-          (current, total) => {
-            setUploadProgress(Math.round((current / total) * 100));
-          }
-        );
+  setIsSubmitting(true);
+  try {
+    // 2. 【关键】处理图片上传
+    // 遍历所有 block，如果是图片且带有 file 对象，则调用上传接口
+    const uploadedBlocks = await Promise.all(blocks.map(async (block) => {
+      if (block.type === 'image' && block.file) {
+        // 调用你 storageService.ts 中的上传函数
+        const publicUrl = await uploadImage(block.file, 'forum_images');
+        return { type: 'image', url: publicUrl }; // 将 block 替换为带有远程 URL 的格式
       }
+      return block; // 文本块保持原样
+    }));
 
-      // 2. 构建混合内容(将图片预览URL替换为实际上传URL)
-      let imageUrlIndex = 0;
-      const finalContent = blocks
-        .map(block => {
-          if (block.type === 'text') {
-            // 只保留非空文本块
-            return block.value.trim() 
-              ? { type: 'text', value: block.value.trim() }
-              : null;
-          } else {
-            // 图片块:使用上传后的URL
-            return {
-              type: 'image',
-              url: uploadedImageUrls[imageUrlIndex++]
-            };
-          }
-        })
-        .filter(Boolean); // 过滤掉null值
+    // 3. 准备最终提交给后端的数据
+    const postData = {
+      title,
+      category,
+      // 必须将数组 JSON.stringify，否则后端存入的是 "[object Object]"
+      content: JSON.stringify(uploadedBlocks),
+      user_id: user.id,
+      user_name: user.user_name,
+      // 提取图片 URL 到 images 数组，方便列表页快速展示缩略图
+      images: uploadedBlocks
+        .filter(b => b.type === 'image')
+        .map(b => (b as any).url)
+    };
 
-      // 3. 创建帖子数据
-      const postData: any = {
-        user_id: user.id,
-        user_name: user.user_name,
-        title: title.trim(),
-        content: JSON.stringify(finalContent), // 将混合内容序列化为JSON
-        category,
-        images: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
-      };
+    // 4. 调用后端 storage.ts 的创建接口
+    await create_post(postData);
+    
+    showToast('发布成功', 'success');
+    onSuccess();
+  } catch (error: any) {
+    console.error('发布失败:', error);
+    showToast(error.message || '发布失败', 'error');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
-      // 4. 添加投票数据
-      if (enablePoll) {
-        const validOptions = pollOptions.filter(opt => opt.trim());
-        
-        // 计算截止时间: 当前时间 + 选择的天数
-        const deadlineDate = new Date();
-        deadlineDate.setDate(deadlineDate.getDate() + parseInt(pollDeadline));
-        
-        postData.poll = {
-          question: pollQuestion.trim(),
-          options: validOptions.map((text, index) => ({
-            id: `opt_${Date.now()}_${index}`,
-            text: text.trim(),
-            votes: []
-          })),
-          isMultiple,
-          deadline: deadlineDate.toISOString()
-        };
-      }
-
-      // 5. 创建帖子
-      await create_post(postData);
-      showToast('发帖成功！', 'success');
-      onSuccess();
-    } catch (error: any) {
-      // 如果创建帖子失败,删除已上传的图片
-      if (uploadedImageUrls.length > 0) {
-        try {
-          const { deleteImages } = await import('../services/storageService');
-          await deleteImages(uploadedImageUrls, 'forum_images');
-        } catch (deleteError) {
-          console.error('清理图片失败:', deleteError);
-        }
-      }
-      showToast(`发帖失败: ${error.message}`, 'error');
-    } finally {
-      setIsSubmitting(false);
-      setUploadProgress(0);
-    }
-  };
-
+  
   // 计算统计信息
   const totalTextLength = blocks
     .filter(b => b.type === 'text')
