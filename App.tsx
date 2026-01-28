@@ -163,6 +163,19 @@ const PostDetail = ({
 }, [postId, user]);
 
 
+// ✅ 新增：监听图片预览事件
+useEffect(() => {
+  const handlePreviewImage = (e: any) => {
+    setPreviewImage(e.detail.url);
+  };
+  
+  window.addEventListener('preview-image', handlePreviewImage);
+  
+  return () => {
+    window.removeEventListener('preview-image', handlePreviewImage);
+  };
+}, []);
+
   // --- 实时订阅 ---
   useEffect(() => {
     if (!postId) return;
@@ -742,8 +755,6 @@ const savePostEdit = async () => {
   </div>
 )}
 
-
-{/* ✅ 图片预览模态框 */}
 {previewImage && (
   <div 
     className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4" 
@@ -1267,19 +1278,6 @@ useEffect(() => {
     };
   }, []);
 
-
-  // ✅ 新增：监听图片预览事件
-useEffect(() => {
-  const handlePreviewImage = (e: any) => {
-    setPreviewImage(e.detail.url);
-  };
-  
-  window.addEventListener('preview-image', handlePreviewImage);
-  
-  return () => {
-    window.removeEventListener('preview-image', handlePreviewImage);
-  };
-}, []);
 
   
   const showToast = (msg: string, type: ToastType) => {
