@@ -187,11 +187,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         return false;
       }
       if (!pollDeadline) {
-        showToast('请选择投票截止时间', 'error');
-        return false;
-      }
-      if (new Date(pollDeadline) <= new Date()) {
-        showToast('投票截止时间必须晚于当前时间', 'error');
+        showToast('请选择投票时长', 'error');
         return false;
       }
     }
@@ -255,6 +251,11 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
       // 4. 添加投票数据
       if (enablePoll) {
         const validOptions = pollOptions.filter(opt => opt.trim());
+        
+        // 计算截止时间: 当前时间 + 选择的天数
+        const deadlineDate = new Date();
+        deadlineDate.setDate(deadlineDate.getDate() + parseInt(pollDeadline));
+        
         postData.poll = {
           question: pollQuestion.trim(),
           options: validOptions.map((text, index) => ({
@@ -263,7 +264,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
             votes: []
           })),
           isMultiple,
-          deadline: new Date(pollDeadline).toISOString()
+          deadline: deadlineDate.toISOString()
         };
       }
 
@@ -505,7 +506,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                 </div>
 
                 {/* 投票设置 */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3">
                   <div>
                     <label className="flex items-center gap-2">
                       <input
@@ -519,15 +520,20 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                     </label>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium mb-1 text-zinc-700">截止时间 *</label>
-                    <input
-                      type="datetime-local"
+                    <label className="block text-xs font-medium mb-1 text-zinc-700">投票时长 *</label>
+                    <select
                       value={pollDeadline}
                       onChange={e => setPollDeadline(e.target.value)}
                       disabled={isSubmitting}
-                      min={new Date().toISOString().slice(0, 16)}
-                      className="w-full px-2 py-1.5 border border-zinc-300 rounded text-xs disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-black"
-                    />
+                      className="w-full px-2 py-1.5 border border-zinc-300 rounded text-xs disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-black bg-white"
+                    >
+                      <option value="">请选择时长</option>
+                      <option value="1">1天后结束</option>
+                      <option value="3">3天后结束</option>
+                      <option value="7">7天后结束</option>
+                      <option value="15">15天后结束</option>
+                      <option value="30">30天后结束</option>
+                    </select>
                   </div>
                 </div>
               </div>
