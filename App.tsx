@@ -9,9 +9,6 @@ import UserProfile from './components/UserProfile';
 import Toast, { ToastType } from './components/Toast';
 import CreatePostModal from "./components/CreatePostModal";
 import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageCircle, MessageSquare, Trash2, X, Plus, Check, Star, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical } from 'lucide-react';
-import PostContent from './components/PostContent';
-
-
 
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
@@ -423,23 +420,6 @@ const PostDetail = ({
     commentInputRef.current?.focus();
   };
 
-  
-const getPostPreview = (content: string) => {
-  try {
-    const blocks = JSON.parse(content);
-    if (Array.isArray(blocks)) {
-      return blocks
-        .filter(b => b.type === 'text')
-        .map(b => b.value)
-        .join('')
-        .slice(0, 100);
-    }
-  } catch {}
-  return content.slice(0, 100);
-};
-
-
-  
   return (
     <div className="flex flex-col min-h-screen">
     <div className="w-full flex-1 pb-32 relative">
@@ -512,10 +492,9 @@ const getPostPreview = (content: string) => {
               </div>
             </div>
           ) : (
-         <div className="mb-8">
-         <PostContent content={post.content} />
-         </div>
-
+            <div className="prose prose-zinc w-full max-w-full mb-8 whitespace-pre-wrap leading-relaxed text-zinc-800">
+              {post.content}
+            </div>
           )}
 
           {/* 图片展示 */}
@@ -1378,7 +1357,7 @@ useEffect(() => {
                                       <p className={`text-sm line-clamp-2 mb-2 ${
                                         isRead ? 'text-zinc-400' : 'text-zinc-500'
                                       }`}>
-                                        {getPostPreview(post.content)}...
+                                        {(post.content || '').substring(0, 100)}...
                                       </p>
                                       <div className="text-xs text-zinc-400 flex gap-3">
                                         <span>{post.category}</span>
