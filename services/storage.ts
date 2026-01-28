@@ -29,11 +29,29 @@ export const check_sensitive_words = async (text: string): Promise<void> => {
 
 export const create_post = async (post_data: any) => {
 
-  // ✅ 1️⃣ 统一敏感词拦截（发布前）
-  const check_text =
-    (post_data.title || '') + (post_data.content || '');
+  // ✅ 1️⃣ 提取真实文本内容进行敏感词检查（修复：正确处理JSON格式）
+  let textToCheck = post_data.title || '';
+  
+  try {
+    // 尝试解析content为JSON
+    const contentBlocks = JSON.parse(post_data.content);
+    if (Array.isArray(contentBlocks)) {
+      // 只提取文本块的内容
+      const textContent = contentBlocks
+        .filter(block => block.type === 'text')
+        .map(block => block.value)
+        .join(' ');
+      textToCheck += ' ' + textContent;
+    } else {
+      // 如果不是数组，当作普通文本处理
+      textToCheck += ' ' + post_data.content;
+    }
+  } catch {
+    // 解析失败，当作普通文本处理（兼容旧数据）
+    textToCheck += ' ' + (post_data.content || '');
+  }
 
-  await check_sensitive_words(check_text);
+  await check_sensitive_words(textToCheck);
 
   // ✅ 2️⃣ 真正插入数据库
   const { data, error } = await supabase
@@ -330,7 +348,7 @@ export async function toggle_like_comment(commentId: string, userId: string) {
   if (updateError) throw updateError;
 
   // 🎉 这里原本有一大段手动 insert notifications 的代码，现在也删掉了
-  // 如果你为“点赞表”也写了触发器，它会自动生效
+  // 如果你为"点赞表"也写了触发器，它会自动生效
 
   return { hasLiked: !hasLiked, likesCount: newLikes.length };
 }
@@ -504,7 +522,7 @@ export async function addToCollection(collectionId: string, postId: string) {
   }
 }
 /**
- * 更新帖子信息（这个函数和 update_post 功能重复，保留兼容性）
+ * 更新帖子信息（修复版：正确处理JSON格式的敏感词检查）
  * @param postId 帖子ID
  * @param updates 要更新的字段
  * @returns 更新后的帖子对象
@@ -522,12 +540,32 @@ export async function updatePost(
   }
 ) {
   try {
-    // ✅ ① 只有在更新文字时才拦截
-    const checkText =
-      (updates.title ?? '') + (updates.content ?? '');
+    // ✅ ① 提取真实文本内容进行敏感词检查（修复：正确处理JSON格式）
+    let textToCheck = updates.title || '';
+    
+    if (updates.content) {
+      try {
+        // 尝试解析content为JSON
+        const contentBlocks = JSON.parse(updates.content);
+        if (Array.isArray(contentBlocks)) {
+          // 只提取文本块的内容
+          const textContent = contentBlocks
+            .filter(block => block.type === 'text')
+            .map(block => block.value)
+            .join(' ');
+          textToCheck += ' ' + textContent;
+        } else {
+          // 如果不是数组，当作普通文本处理
+          textToCheck += ' ' + updates.content;
+        }
+      } catch {
+        // 解析失败，当作普通文本处理（兼容旧数据）
+        textToCheck += ' ' + updates.content;
+      }
+    }
 
-    if (checkText) {
-      await check_sensitive_words(checkText);
+    if (textToCheck.trim()) {
+      await check_sensitive_words(textToCheck);
     }
 
     // ✅ ② 再执行真正的更新
