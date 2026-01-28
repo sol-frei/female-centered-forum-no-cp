@@ -61,18 +61,22 @@ export default function PostContent({
           );
         }
         
-        if (block.type === 'image') {
-          return (
-            <div key={index} className="w-full">
-              <img
-                src={block.url}
-                alt=""
-                loading="lazy"
-                className="max-w-full rounded-lg border border-zinc-200 mx-auto"
-              />
-            </div>
-          );
-        }
+if (block.type === 'image') {
+  return (
+    <div key={index} className="w-full">
+      <img
+        src={block.url}
+        alt=""
+        loading="lazy"
+        onClick={() => {
+          // 触发父组件的图片预览
+          window.dispatchEvent(new CustomEvent('preview-image', { detail: { url: block.url } }));
+        }}
+        className="max-w-full rounded-lg border border-zinc-200 mx-auto cursor-pointer hover:opacity-90 transition-opacity"
+      />
+    </div>
+  );
+}
         
         return null;
       })}
