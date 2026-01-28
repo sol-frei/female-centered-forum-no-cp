@@ -501,14 +501,6 @@ const PostDetail = ({
         />
           )}
 
-          {/* 图片展示 */}
-          {post.images && post.images.length > 0 && (
-            <div className="mb-8 space-y-4">
-              {post.images.map((img: string, i: number) => (
-                <img key={i} src={img} alt={`帖子图片 ${i + 1}`} className="max-w-full rounded border border-zinc-100" />
-              ))}
-            </div>
-          )}
 
           {/* 投票区 */}
           {post.poll && (
