@@ -524,13 +524,59 @@ const savePostEdit = async () => {
                 alt={`图片 ${index + 1}`}
                 className="w-full max-h-96 object-contain rounded-lg border border-zinc-200"
               />
-              <button
-                onClick={() => setEditBlocks(editBlocks.filter((_, i) => i !== index))}
-                className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                title="删除图片"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* ✅ 新增：替换图片按钮 */}
+                <label className="bg-blue-600 text-white p-1.5 rounded-full cursor-pointer hover:bg-blue-700 shadow-lg transition-colors">
+                  <ImageIcon className="w-4 h-4" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      
+                      // 验证文件
+                      if (!file.type.startsWith('image/')) {
+                        showToast('只能上传图片文件', 'error');
+                        return;
+                      }
+                      if (file.size > 5 * 1024 * 1024) {
+                        showToast('图片不能超过5MB', 'error');
+                        return;
+                      }
+                      
+                      try {
+                        // 显示上传提示
+                        showToast('正在上传新图片...', 'info');
+                        
+                        // 上传新图片
+                        const { uploadImage } = await import('../services/storageService');
+                        const newUrl = await uploadImage(file, 'forum_images', `posts/${user.id}`);
+                        
+                        // 替换块中的图片URL
+                        const newBlocks = [...editBlocks];
+                        newBlocks[index] = { type: 'image', url: newUrl };
+                        setEditBlocks(newBlocks);
+                        
+                        showToast('图片替换成功', 'success');
+                        e.target.value = ''; // 清空input
+                      } catch (err: any) {
+                        showToast(`上传失败: ${err.message}`, 'error');
+                      }
+                    }}
+                  />
+                </label>
+                
+                {/* 删除图片按钮 */}
+                <button
+                  onClick={() => setEditBlocks(editBlocks.filter((_, i) => i !== index))}
+                  className="bg-red-600 text-white p-1.5 rounded-full hover:bg-red-700 shadow-lg transition-colors"
+                  title="删除图片"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           );
         }
@@ -539,7 +585,7 @@ const savePostEdit = async () => {
       })}
       
       <div className="text-xs text-zinc-500 bg-blue-50 p-2 rounded border border-blue-200">
-        💡 提示：可以修改文本内容、删除文本块或图片，编辑模式下暂不支持添加新图片
+        💡 提示：可以修改文本内容、删除文本块或图片、替换图片（鼠标悬停在图片上查看操作按钮）
       </div>
     </div>
     
@@ -564,7 +610,6 @@ const savePostEdit = async () => {
     className="prose prose-zinc w-full max-w-full mb-8" 
   />
 )}
-
           {/* 投票区 */}
           {post.poll && (
             <div className="bg-zinc-50 p-4 border border-zinc-200 mb-6 rounded-md">
