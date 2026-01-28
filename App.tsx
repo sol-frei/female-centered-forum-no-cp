@@ -742,6 +742,31 @@ const savePostEdit = async () => {
   </div>
 )}
 
+
+{/* ✅ 图片预览模态框 */}
+{previewImage && (
+  <div 
+    className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4" 
+    onClick={() => setPreviewImage(null)}
+  >
+    <div className="relative max-w-5xl max-h-[90vh] w-full h-full flex items-center justify-center">
+      <button
+        onClick={() => setPreviewImage(null)}
+        className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full backdrop-blur-sm transition-colors z-10"
+        title="关闭"
+      >
+        <X className="w-6 h-6" />
+      </button>
+      <img
+        src={previewImage}
+        alt="预览"
+        className="max-w-full max-h-full object-contain rounded-lg"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  </div>
+)}
+
         {/* 评论列表 */}
         <div className="space-y-4 mt-6">
           {comments.length === 0 ? (
@@ -1242,6 +1267,19 @@ useEffect(() => {
     };
   }, []);
 
+
+  // ✅ 新增：监听图片预览事件
+useEffect(() => {
+  const handlePreviewImage = (e: any) => {
+    setPreviewImage(e.detail.url);
+  };
+  
+  window.addEventListener('preview-image', handlePreviewImage);
+  
+  return () => {
+    window.removeEventListener('preview-image', handlePreviewImage);
+  };
+}, []);
 
   
   const showToast = (msg: string, type: ToastType) => {
