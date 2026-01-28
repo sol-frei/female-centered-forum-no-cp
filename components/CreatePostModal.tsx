@@ -296,7 +296,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-modal="true">
-      <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white w-full h-full overflow-y-auto">
         {/* 头部 */}
         <div className="sticky top-0 bg-white border-b border-zinc-200 p-4 flex justify-between items-center z-10">
           <h2 className="text-xl font-bold">发布新帖</h2>
@@ -519,14 +519,14 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                     </label>
                   </div>
                   <div>
-                    <label className="block text-sm mb-1">截止时间 *</label>
+                    <label className="block text-xs font-medium mb-1 text-zinc-700">截止时间 *</label>
                     <input
                       type="datetime-local"
                       value={pollDeadline}
                       onChange={e => setPollDeadline(e.target.value)}
                       disabled={isSubmitting}
                       min={new Date().toISOString().slice(0, 16)}
-                      className="w-full p-2 border border-zinc-300 rounded text-sm disabled:opacity-50"
+                      className="w-full px-2 py-1.5 border border-zinc-300 rounded text-xs disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-black"
                     />
                   </div>
                 </div>
