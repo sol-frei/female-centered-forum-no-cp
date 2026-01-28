@@ -96,6 +96,9 @@ const PostDetail = ({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentContent, setEditCommentContent] = useState('');
 
+  // ✅ 新增：图片预览状态
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  
   // --- 数据初始加载 ---
   const fetchPostAndComments = async () => {
     setLoading(true);
@@ -854,7 +857,7 @@ const savePostEdit = async () => {
       </div>
 
       {/* 底部评论输入框 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50">
         <div className="max-w-[95%]  mx-auto p-3">
           {/* 已选择图片显示 */}
           {commentImages.length > 0 && (
