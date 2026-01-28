@@ -40,7 +40,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   const [isMultiple, setIsMultiple] = useState(false);
   const [pollDeadline, setPollDeadline] = useState('');
 
-  // 新增:插入图片(在当前块后插入)
+  // 新增:插入图片(在最后添加)
   const insertImage = (file: File) => {
     const imageCount = blocks.filter(b => b.type === 'image').length;
     if (imageCount >= 9) {
@@ -61,11 +61,43 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     const reader = new FileReader();
     reader.onload = e => {
       const preview = e.target?.result as string;
-      // 在最后一个文本块之前插入图片,并在图片后添加新的文本块
+      // 在所有块的最后添加图片块和新的文本块
       setBlocks(prev => [
-        ...prev.slice(0, prev.length - 1),
+        ...prev,
         { type: 'image', file, preview },
         { type: 'text', value: '' }
+      ]);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 新增:在指定文本块后插入图片
+  const insertImageAfter = (textBlockIndex: number, file: File) => {
+    const imageCount = blocks.filter(b => b.type === 'image').length;
+    if (imageCount >= 9) {
+      showToast('最多只能插入9张图片', 'warning');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      showToast('只能上传图片文件', 'error');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('图片不能超过5MB', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      const preview = e.target?.result as string;
+      // 在指定位置后插入图片块和新的文本块
+      setBlocks(prev => [
+        ...prev.slice(0, textBlockIndex + 1),
+        { type: 'image', file, preview },
+        { type: 'text', value: '' },
+        ...prev.slice(textBlockIndex + 1)
       ]);
     };
     reader.readAsDataURL(file);
@@ -263,7 +295,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   const imageCount = blocks.filter(b => b.type === 'image').length;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-modal="true">
       <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
         {/* 头部 */}
         <div className="sticky top-0 bg-white border-b border-zinc-200 p-4 flex justify-between items-center z-10">
@@ -336,26 +368,46 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                 if (block.type === 'text') {
                   // 文本块
                   return (
-                    <div key={index} className="relative">
-                      <textarea
-                        value={block.value}
-                        onChange={e => updateTextBlock(index, e.target.value)}
-                        disabled={isSubmitting}
-                        placeholder="写点什么..."
-                        className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none disabled:opacity-50"
-                        rows={4}
-                      />
-                      {/* 只有当不是唯一的文本块时才显示删除按钮 */}
-                      {!(blocks.length === 1 && blocks[0].type === 'text') && (
-                        <button
-                          onClick={() => removeBlock(index)}
+                    <div key={index} className="space-y-2">
+                      <div className="relative">
+                        <textarea
+                          value={block.value}
+                          onChange={e => updateTextBlock(index, e.target.value)}
                           disabled={isSubmitting}
-                          className="absolute top-2 right-2 p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                          title="删除"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                          placeholder="写点什么..."
+                          className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none disabled:opacity-50"
+                          rows={4}
+                        />
+                        {/* 只有当不是唯一的文本块时才显示删除按钮 */}
+                        {!(blocks.length === 1 && blocks[0].type === 'text') && (
+                          <button
+                            onClick={() => removeBlock(index)}
+                            disabled={isSubmitting}
+                            className="absolute top-2 right-2 p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                            title="删除"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      {/* 在每个文本块后添加插入图片按钮 */}
+                      <label className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-zinc-700 hover:text-black cursor-pointer transition-colors">
+                        <ImageIcon className="w-4 h-4" />
+                        <span>在此后插入图片</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isSubmitting || imageCount >= 9}
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              insertImageAfter(index, file);
+                              e.target.value = '';
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
                     </div>
                   );
                 }
@@ -381,28 +433,8 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
               })}
             </div>
 
-            {/* 插入图片按钮 */}
-            <div className="mt-4">
-              <label className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                <ImageIcon className="w-4 h-4" />
-                插入图片
-                <input
-                  type="file"
-                  accept="image/*"
-                  disabled={isSubmitting || imageCount >= 9}
-                  onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      insertImage(file);
-                      e.target.value = ''; // 重置input
-                    }
-                  }}
-                  className="hidden"
-                />
-              </label>
-              <p className="text-xs text-zinc-500 mt-2">
-                💡 提示: 点击【插入图片】按钮可在当前内容后添加图片,支持图文混排
-              </p>
+            <div className="mt-2 text-xs text-zinc-500">
+              💡 提示: 每个文本框下方都有【在此后插入图片】按钮,可以在任意位置插入图片实现图文混排
             </div>
           </div>
 
