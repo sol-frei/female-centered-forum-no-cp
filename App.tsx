@@ -7,7 +7,8 @@ import AdminPanel from './components/AdminPanel';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import UserProfile from './components/UserProfile';
 import Toast, { ToastType } from './components/Toast';
-import CreatePostModal from "./components/CreatePostModal";
+import CreatePostModal from './components/CreatePostModal';
+import { uploadImage } from './services/storageService';  // ✅ 新增这行
 import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageCircle, MessageSquare, Trash2, X, Plus, Check, Star, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical } from 'lucide-react';
 import PostContent from './components/PostContent';
 
@@ -550,8 +551,7 @@ const savePostEdit = async () => {
                         // 显示上传提示
                         showToast('正在上传新图片...', 'info');
                         
-                        // 上传新图片
-                        const { uploadImage } = await import('../services/storageService');
+                        // ✅ 修复：直接使用已导入的 uploadImage（不再使用动态导入）
                         const newUrl = await uploadImage(file, 'forum_images', `posts/${user.id}`);
                         
                         // 替换块中的图片URL
