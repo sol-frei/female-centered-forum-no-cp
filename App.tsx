@@ -88,7 +88,7 @@ const PostDetail = ({
   // 4. 编辑帖子状态
   const [isEditingPost, setIsEditingPost] = useState(false);
   const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
+  const [editBlocks, setEditBlocks] = useState<any[]>([]); // ✅ 改为blocks数组
   const [editCategory, setEditCategory] = useState<Category>('讨论👊🏻i女');
 
   // 5. 编辑评论状态
@@ -359,16 +359,33 @@ const PostDetail = ({
     }
   };
 
-  const savePostEdit = async () => {
-    try {
-    // 1. 先进行敏感词校验 (如果不通过，它会直接 throw Error)
-    // 校验标题和内容
-    await check_sensitive_words(editTitle + editContent);
+const savePostEdit = async () => {
+  try {
+    // ✅ 1. 过滤掉空文本块
+    const finalBlocks = editBlocks.filter(block => {
+      if (block.type === 'text') {
+        return block.value.trim() !== '';
+      }
+      return true; // 保留所有图片块
+    });
+    
+    if (finalBlocks.length === 0) {
+      showToast('内容不能为空', 'error');
+      return;
+    }
+    
+    // ✅ 2. 提取文本内容进行敏感词校验
+    const textContent = finalBlocks
+      .filter(block => block.type === 'text')
+      .map(block => block.value)
+      .join(' ');
+    
+    await check_sensitive_words(editTitle + ' ' + textContent);
 
-    // 2. 校验通过后，执行更新
+    // ✅ 3. 校验通过后，执行更新（content序列化为JSON）
     await update_post(post.id, {
       title: editTitle,
-      content: editContent,
+      content: JSON.stringify(finalBlocks),
       category: editCategory,
       updated_at: new Date().toISOString(),
     });
@@ -376,46 +393,12 @@ const PostDetail = ({
     setIsEditingPost(false);
     showToast('帖子修改成功', 'success');
   } catch (e: any) {
-    // 这里会捕获到 check_sensitive_words 抛出的 "内容包含违禁词，发布失败"
     showToast(e.message || '修改失败', 'error');
   }
-  };
+};
 
-  const handleDeletePost = async () => {
-    if (!window.confirm("确定要删除这篇帖子吗？")) return;
-    try {
-      await delete_post(post.id);
-      showToast('帖子已删除', 'success');
-      onDelete();
-    } catch (e: any) {
-      showToast(`删除失败: ${e.message}`, 'error');
-    }
-  };
+ 
 
-  const startEditComment = (comment: any) => {
-    setEditingCommentId(comment.id);
-    setEditCommentContent(comment.content);
-  };
-
-  const saveCommentEdit = async (commentId: string) => {
-    try {
-      await update_comment(commentId, editCommentContent);
-      setEditingCommentId(null);
-      showToast('评论修改成功', 'success');
-    } catch (e: any) {
-      showToast(`修改失败: ${e.message}`, 'error');
-    }
-  };
-
-  const handleDeleteComment = async (commentId: string) => {
-    if (!window.confirm("确定要删除这条评论吗？")) return;
-    try {
-      await delete_comment(commentId);
-      showToast('评论已删除', 'success');
-    } catch (e: any) {
-      showToast(`删除失败: ${e.message}`, 'error');
-    }
-  };
 
   const handleReplyClick = (commentId: string, AuthorName: string) => {
     setReplyToCommentId(commentId);
@@ -462,16 +445,30 @@ const PostDetail = ({
   
                {canEditPost && !isEditingPost && (
                    <button 
-                  onClick={() => { 
-                  setEditTitle(post.title); 
-                  setEditContent(post.content); 
-                  setEditCategory(post.category); 
-                  setIsEditingPost(true); 
-                 }} 
-                className="flex items-center gap-1 text-blue-600 hover:underline ml-2"
-                >
-               <Edit2 className="w-3 h-3" /> 
-               </button>
+  onClick={() => { 
+    setEditTitle(post.title);
+    
+    // ✅ 解析现有内容为blocks
+    try {
+      const blocks = JSON.parse(post.content);
+      if (Array.isArray(blocks)) {
+        setEditBlocks(blocks);
+      } else {
+        // 旧格式，转换为单个文本块
+        setEditBlocks([{ type: 'text', value: post.content }]);
+      }
+    } catch {
+      // 解析失败，当作纯文本
+      setEditBlocks([{ type: 'text', value: post.content }]);
+    }
+    
+    setEditCategory(post.category); 
+    setIsEditingPost(true); 
+  }} 
+  className="flex items-center gap-1 text-blue-600 hover:underline ml-2"
+>
+  <Edit2 className="w-3 h-3" /> 
+</button>
                 )}
               </div>
             </div>
@@ -485,22 +482,88 @@ const PostDetail = ({
             )}
           </div>
 
-          {/* 帖子正文 */}
-          {isEditingPost ? (
-            <div className="mb-4">
-              <textarea className="w-full border p-2 h-64" value={editContent} onChange={e => setEditContent(e.target.value)} />
-              <div className="flex gap-2 mt-2">
-                <button onClick={savePostEdit} className="bg-black text-white px-3 py-1 text-sm">保存</button>
-                <button onClick={() => setIsEditingPost(false)} className="bg-zinc-200 px-3 py-1 text-sm">取消</button>
-              </div>
+{/* 帖子正文 */}
+{isEditingPost ? (
+  <div className="mb-4">
+    {/* ✅ 图文混排编辑器 */}
+    <div className="space-y-4 border border-zinc-300 rounded-lg p-4 bg-zinc-50">
+      {editBlocks.map((block, index) => {
+        if (block.type === 'text') {
+          return (
+            <div key={index} className="relative">
+              <textarea
+                value={block.value}
+                onChange={e => {
+                  const newBlocks = [...editBlocks];
+                  newBlocks[index] = { ...block, value: e.target.value };
+                  setEditBlocks(newBlocks);
+                }}
+                className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none bg-white"
+                rows={4}
+                placeholder="编辑文本..."
+              />
+              {/* 只有多个块时才显示删除按钮 */}
+              {editBlocks.length > 1 && (
+                <button
+                  onClick={() => setEditBlocks(editBlocks.filter((_, i) => i !== index))}
+                  className="absolute top-2 right-2 p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                  title="删除此文本块"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
-          ) : (
-         <PostContent 
-             content={post.content} 
-             className="prose prose-zinc w-full max-w-full mb-8" 
-        />
-          )}
-
+          );
+        }
+        
+        if (block.type === 'image') {
+          return (
+            <div key={index} className="relative group">
+              <img
+                src={block.url}
+                alt={`图片 ${index + 1}`}
+                className="w-full max-h-96 object-contain rounded-lg border border-zinc-200"
+              />
+              <button
+                onClick={() => setEditBlocks(editBlocks.filter((_, i) => i !== index))}
+                className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                title="删除图片"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          );
+        }
+        
+        return null;
+      })}
+      
+      <div className="text-xs text-zinc-500 bg-blue-50 p-2 rounded border border-blue-200">
+        💡 提示：可以修改文本内容、删除文本块或图片，编辑模式下暂不支持添加新图片
+      </div>
+    </div>
+    
+    <div className="flex gap-2 mt-4">
+      <button 
+        onClick={savePostEdit} 
+        className="bg-black text-white px-4 py-2 text-sm rounded hover:bg-zinc-800 transition-colors"
+      >
+        保存修改
+      </button>
+      <button 
+        onClick={() => setIsEditingPost(false)} 
+        className="bg-zinc-200 px-4 py-2 text-sm rounded hover:bg-zinc-300 transition-colors"
+      >
+        取消
+      </button>
+    </div>
+  </div>
+) : (
+  <PostContent 
+    content={post.content} 
+    className="prose prose-zinc w-full max-w-full mb-8" 
+  />
+)}
 
           {/* 投票区 */}
           {post.poll && (
