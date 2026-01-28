@@ -1354,11 +1354,31 @@ useEffect(() => {
                                     </h3>
 
                                       </div>
-                                      <p className={`text-sm line-clamp-2 mb-2 ${
-                                        isRead ? 'text-zinc-400' : 'text-zinc-500'
-                                      }`}>
-                                        {(post.content || '').substring(0, 100)}...
-                                      </p>
+ <p className={`text-sm line-clamp-2 mb-2 ${
+  isRead ? 'text-zinc-400' : 'text-zinc-500'
+}`}>
+  {(() => {
+    try {
+      // 1. 尝试解析 JSON
+      const parsed = JSON.parse(post.content);
+      
+      // 2. 如果是新版混排格式（数组）
+      if (Array.isArray(parsed)) {
+        // 找到第一个文本块的内容进行预览
+        const firstText = parsed.find(b => b.type === 'text')?.value || '';
+        return firstText.length > 100 
+          ? firstText.substring(0, 100) + '...' 
+          : (firstText || '图文内容');
+      }
+      
+      // 3. 如果解析成功但不是数组，按普通字符串处理
+      return (post.content || '').substring(0, 100) + '...';
+    } catch {
+      // 4. 解析失败说明是旧版纯文本，直接截取
+      return (post.content || '').substring(0, 100) + '...';
+    }
+  })()}
+</p>
                                       <div className="text-xs text-zinc-400 flex gap-3">
                                         <span>{post.category}</span>
                                         <span>•</span>
