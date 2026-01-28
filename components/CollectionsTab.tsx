@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Loader2, Trash2, FolderOpen } from 'lucide-react';
-
+import PostContent from './PostContent';
 
 export function CollectionsTab({ 
   userId, 
@@ -84,7 +84,9 @@ export function CollectionsTab({
             className="p-4 border border-zinc-200 rounded-lg hover:border-zinc-400 cursor-pointer transition-all"
           >
             <h4 className="font-bold text-zinc-900 mb-1">{p.title}</h4>
-            <p className="text-sm text-zinc-500 line-clamp-2">{p.content}</p>
+            <div className="text-sm text-zinc-500 line-clamp-2">
+             <PostContent content={p.content} />
+           </div>
           </div>
         )) : (
           <p className="text-center py-20 text-zinc-300 text-sm italic">这个收藏夹是空的</p>
