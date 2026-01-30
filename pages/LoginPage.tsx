@@ -1,3 +1,16 @@
+import { supabase } from './services/supabaseClient';
+import React, { useState, useEffect, useRef } from 'react';
+import Landing from './components/Landing';
+import { User, Post, Category, Collection, Notification, SensitiveWords } from './types';
+import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment,check_sensitive_words } from './services/storage';
+import AdminPanel from './components/AdminPanel';
+import ChangePasswordModal from './components/ChangePasswordModal';
+import UserProfile from './components/UserProfile';
+import Toast, { ToastType } from './components/Toast';
+import CreatePostModal from './components/CreatePostModal';
+import { uploadImage } from './services/storageService';  // ✅ 新增这行
+import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageCircle, MessageSquare, Trash2, X, Plus, Check, Star, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical } from 'lucide-react';
+import PostContent from './components/PostContent';
 
 //Login组件
 
