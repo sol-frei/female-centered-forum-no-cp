@@ -937,5 +937,3 @@ const savePostEdit = async () => {
   );
 };
 
-export default PostDetail;
-
