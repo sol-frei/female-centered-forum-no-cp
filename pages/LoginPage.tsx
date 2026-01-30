@@ -1,20 +1,27 @@
-import { supabase } from '../services/supabaseClient';
-import React, { useState } from 'react';
-import { User } from '../types';
-import { Eye, EyeOff, X } from 'lucide-react';
+import { supabase } from './services/supabaseClient';
+import React, { useState, useEffect, useRef } from 'react';
+import Landing from './components/Landing';
+import { User, Post, Category, Collection, Notification, SensitiveWords } from './types';
+import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment,check_sensitive_words } from './services/storage';
+import AdminPanel from './components/AdminPanel';
+import ChangePasswordModal from './components/ChangePasswordModal';
+import UserProfile from './components/UserProfile';
+import Toast, { ToastType } from './components/Toast';
+import CreatePostModal from './components/CreatePostModal';
+import { uploadImage } from './services/storageService';  // ✅ 新增这行
+import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageCircle, MessageSquare, Trash2, X, Plus, Check, Star, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical } from 'lucide-react';
+import PostContent from './components/PostContent';
 
-interface LoginProps {
-  onLogin: (u: User) => void;
-}
+//Login组件
 
-const LoginPage = ({ onLogin }: LoginProps) => {
+
+const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
   const [loginIdInput, setLoginIdInput] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // 从环境变量获取管理员密码（如果你配置了的话）
   const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 
   const handleLogin = async () => {
@@ -49,8 +56,9 @@ const LoginPage = ({ onLogin }: LoginProps) => {
         }
       }
 
-      // --- 情况 B：普通用户登录 ---
-      // 1. 获取 email
+      // --- 情况 B：普通用户登录（使用 Supabase Auth）---
+      
+      // 1. 先从数据库查询用户信息（通过 login_id 获取 email）
       const { data: userData, error: queryError } = await supabase
         .from('users')
         .select('*')
@@ -67,13 +75,14 @@ const LoginPage = ({ onLogin }: LoginProps) => {
         return;
       }
 
-      // 2. Supabase Auth 登录
+      // 2. 使用 Supabase Auth 登录（创建 session）
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: userData.email,
         password: password,
       });
 
       if (authError) {
+        console.error('登录失败:', authError);
         if (authError.message.includes('Invalid login credentials')) {
           setError('密码错误');
         } else {
@@ -82,13 +91,17 @@ const LoginPage = ({ onLogin }: LoginProps) => {
         return;
       }
 
-      // 3. 成功后回调给 App.tsx 处理跳转
+      console.log('✅ 登录成功, Session 已创建:', authData.session);
+      console.log('✅ 用户信息:', authData.user);
+
+      // 3. 登录成功，传递完整的用户信息
       onLogin({
         ...userData,
-        auth_id: authData.user?.id,
+        auth_id: authData.user.id, // Supabase Auth 的 ID
       });
 
     } catch (e: any) {
+      console.error('系统错误:', e);
       setError(`系统错误: ${e.message}`);
     } finally {
       setLoading(false);
@@ -139,7 +152,7 @@ const LoginPage = ({ onLogin }: LoginProps) => {
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-4 text-sm flex items-center gap-2">
+          <div className="bg-red-50 text-red-600 p-4 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
             <X className="w-4 h-4 flex-shrink-0" /> {error}
           </div>
         )}
@@ -153,12 +166,15 @@ const LoginPage = ({ onLogin }: LoginProps) => {
         </button>
 
         <div className="text-center space-y-1">
-          <p className="text-[10px] text-zinc-400">ID 是唯一的通行证，请妥善保管</p>
-          <p className="text-[10px] text-zinc-300">Supabase Cloud Backend Connected</p>
+          <p className="text-[10px] text-zinc-400">
+            ID 是唯一的通行证，请妥善保管
+          </p>
+          <p className="text-[10px] text-zinc-300">
+            Supabase Cloud Backend Connected
+          </p>
         </div>
       </div>
     </div>
   );
 };
 
-export default LoginPage;
