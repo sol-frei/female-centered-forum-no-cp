@@ -1503,7 +1503,7 @@ useEffect(() => {
                                     </div>
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-1">
-                                        {post.is_essence && <span className="bg-black text-white px-1 text-xs" title="精华帖">荐</span>}
+                                        {post.is_essence && <span className="bg-black text-white px-1 text-xs" title="精华帖">蒂</span>}
                                         {isRead && <span className="text-xs text-zinc-400">[已读]</span>}
                                     <h3
                                        className={`font-medium text-base transition-colors line-clamp-1
