@@ -9,8 +9,8 @@ import UserProfile from './components/UserProfile';
 import Toast, { ToastType } from './components/Toast';
 import CreatePostModal from './components/CreatePostModal';
 import { Search, LogOut, Menu, UserCircle, PenSquare } from 'lucide-react';
-import PostDetail from './PostDetailPage';
-import Login from './LoginPage';
+import PostDetail from './pages/PostDetailPage';
+import Login from './pages/LoginPage';
 
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
