@@ -1,9 +1,11 @@
 import { supabase } from '../services/supabaseClient';
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, X } from 'lucide-react';
 
 // Login组件
-export default function Login({ onLogin }: { onLogin: (u: any) => void }) {
+export default function Login() {
+  const navigate = useNavigate();
   const [loginIdInput, setLoginIdInput] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -36,7 +38,12 @@ export default function Login({ onLogin }: { onLogin: (u: any) => void }) {
             setError('管理员账号尚未在数据库中初始化');
             return;
           }
-          onLogin(data);
+          
+          // ✅ 保存用户信息到 sessionStorage
+          sessionStorage.setItem('currentUser', JSON.stringify(data));
+          
+          // ✅ 使用 navigate 跳转到首页
+          navigate('/');
           return;
         } else {
           setError('管理员密码错误');
@@ -82,11 +89,17 @@ export default function Login({ onLogin }: { onLogin: (u: any) => void }) {
       console.log('✅ 登录成功, Session 已创建:', authData.session);
       console.log('✅ 用户信息:', authData.user);
 
-      // 3. 登录成功,传递完整的用户信息
-      onLogin({
+      // 3. 登录成功,保存完整的用户信息
+      const fullUserData = {
         ...userData,
         auth_id: authData.user.id, // Supabase Auth 的 ID
-      });
+      };
+      
+      // ✅ 保存到 sessionStorage
+      sessionStorage.setItem('currentUser', JSON.stringify(fullUserData));
+      
+      // ✅ 使用 navigate 跳转到首页
+      navigate('/');
 
     } catch (e: any) {
       console.error('系统错误:', e);
@@ -126,6 +139,11 @@ export default function Login({ onLogin }: { onLogin: (u: any) => void }) {
                 disabled={loading}
                 className="w-full p-4 border border-zinc-200 outline-none focus:border-black transition-all bg-zinc-50 focus:bg-white pr-12 font-mono disabled:opacity-50"
                 placeholder="请输入密码"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !loading) {
+                    handleLogin();
+                  }
+                }}
               />
               <button
                 type="button"
