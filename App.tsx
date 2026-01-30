@@ -1,72 +1,35 @@
-import { supabase } from './services/supabaseClient';
-import { supabase } from './services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import React, { useState, useEffect, useRef } from 'react';
-import Landing from './components/Landing';
-import { User, Post, Category, Collection, Notification, SensitiveWords } from './types';
-import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment,check_sensitive_words } from './services/storage';
-import AdminPanel from './components/AdminPanel';
-import ChangePasswordModal from './components/ChangePasswordModal';
-import UserProfile from './components/UserProfile';
-import Toast, { ToastType } from './components/Toast';
-import CreatePostModal from './components/CreatePostModal';
-import { uploadImage } from './services/storageService';  // ✅ 新增这行
+import { useParams, useNavigate } from 'react-router-dom';
+import Landing from '../components/Landing';
+import { User, Post, Category, Collection, Notification, SensitiveWords } from '../types';
+import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment,check_sensitive_words } from '../services/storage';
+import AdminPanel from '../components/AdminPanel';
+import ChangePasswordModal from '../components/ChangePasswordModal';
+import UserProfile from '../components/UserProfile';
+import Toast, { ToastType } from '../components/Toast';
+import CreatePostModal from '../components/CreatePostModal';
+import { uploadImage } from '../services/storageService';  // ✅ 新增这行
 import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageCircle, MessageSquare, Trash2, X, Plus, Check, Star, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical } from 'lucide-react';
-import PostContent from './components/PostContent';
+import PostContent from '../components/PostContent';
 
-
-
-const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
-
-function timeAgo(dateInput: string | Date): string {
-  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-  const now = new Date();
-  const diffInSeconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
-
-  if (diffInSeconds < 60) return '刚刚';
-
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) return `${diffInMinutes}分钟前`;
-
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours}小时前`;
-
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 30) return `${diffInDays}天前`;
-
-  const diffInMonths = Math.floor(diffInDays / 30);
-  if (diffInMonths < 12) return `${diffInMonths}个月前`;
-
-  return `${Math.floor(diffInMonths / 12)}年前`;
-}
-
-// Helper to get avatar safely
-const Avatar = ({ url, className = "w-8 h-8" }: { url?: string, className?: string }) => {
-  if (url) {
-    return <img src={url} alt="用户头像" className={`${className} rounded-full object-cover bg-zinc-100 border border-zinc-100`} />;
-  }
-  return <UserCircle className={`${className} text-zinc-300`} />;
-};
 
 // 帖子详情组件
 interface PostDetailProps {
-  postId: string;
   user: User;
   usersMap: Record<string, User>;
-  onBack: () => void;
-  onViewProfile: (uid: string) => void;
-  onDelete: () => void;
   showToast: (msg: string, type: ToastType) => void;
 }
 
 const PostDetail = ({
-  postId,
   user,
   usersMap,
-  onBack,
-  onViewProfile,
-  onDelete,
   showToast,
 }: PostDetailProps) => {
+  // ✅ 使用 React Router 的 hooks
+  const { postId } = useParams<{ postId: string }>();
+  const navigate = useNavigate();
+
   // 1. 基础状态
   const [post, setPost] = useState<any | null>(null);
   const [comments, setComments] = useState<any[]>([]);
@@ -102,6 +65,8 @@ const PostDetail = ({
   
   // --- 数据初始加载 ---
   const fetchPostAndComments = async () => {
+    if (!postId) return;
+    
     setLoading(true);
     try {
       const { data: postData, error: postError } = await supabase
@@ -234,538 +199,483 @@ useEffect(() => {
     fetchCollections();
   }, [user, showCollectionModal]);
 
+  // ✅ 处理返回 - 使用 navigate
+  const handleBack = () => {
+    navigate(-1); // 返回上一页
+  };
+
+  // ✅ 处理查看用户资料 - 使用 navigate
+  const handleViewProfile = (uid: string) => {
+    navigate(`/profile/${uid}`);
+  };
+
+  // ✅ 处理删除帖子 - 使用 navigate
+  const handleDeletePost = async () => {
+    if (!post) return;
+    
+    try {
+      await delete_post(post.id);
+      showToast('帖子已删除', 'success');
+      navigate('/'); // 删除后返回首页
+    } catch (err: any) {
+      showToast(`删除失败: ${err.message}`, 'error');
+    }
+  };
+
   // --- 渲染拦截 ---
   if (loading) return <div className="p-20 text-center text-zinc-500">正在努力加载内容...</div>;
   if (!post) return <div className="p-20 text-center text-zinc-500">未找到该帖子</div>;
 
-  // --- 权限计算 ---
-  const isAdminOrInver = user ? ['admin', 'i女er'].includes(user.role) : false;
-  const postCreatedAt = post.created_at || post.createdAt || new Date().toISOString();
-  const canEditPost = user && user.id === post.user_id;
-  // --- 处理图片选择 ---
+  const author = usersMap[post.user_id];
+  const hasLiked = (post.likes || []).includes(user.id);
+
+  // --- 时间格式化 ---
+  const timeAgo = (timestamp: string) => {
+    const now = new Date();
+    const then = new Date(timestamp);
+    const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+
+    const intervals: { [key: string]: number } = {
+      年: 31536000,
+      月: 2592000,
+      周: 604800,
+      天: 86400,
+      小时: 3600,
+      分钟: 60,
+      秒: 1,
+    };
+
+    for (const [label, sec] of Object.entries(intervals)) {
+      const interval = Math.floor(seconds / sec);
+      if (interval >= 1) return `${interval} ${label}前`;
+    }
+    return '刚刚';
+  };
+
+  // --- 头像组件 ---
+  const Avatar = ({ url, className = "w-10 h-10" }: { url?: string; className?: string }) => {
+    const src = url || "https://via.placeholder.com/40";
+    return (
+      <img
+        src={src}
+        alt="avatar"
+        className={`${className} rounded-full border border-zinc-200 object-cover bg-zinc-100`}
+        onError={(e) => { e.currentTarget.src = "https://via.placeholder.com/40"; }}
+      />
+    );
+  };
+
+  // ✅ 点赞帖子逻辑
+  const handleLikePost = async () => {
+    try {
+      const updated = await toggle_like_post(post.id, user.id);
+      setPost(updated);
+    } catch (err: any) {
+      showToast(`点赞失败: ${err.message}`, 'error');
+    }
+  };
+
+  // ✅ 加精帖子逻辑
+  const handleEssencePost = async () => {
+    try {
+      const updated = await toggle_essence_post(post.id);
+      setPost(updated);
+      showToast(updated.is_essence ? '已加精' : '已取消加精', 'success');
+    } catch (err: any) {
+      showToast(`操作失败: ${err.message}`, 'error');
+    }
+  };
+
+  // ✅ 锁帖逻辑
+  const handleLockPost = async () => {
+    try {
+      const updated = await toggle_lock_post(post.id);
+      setPost(updated);
+      showToast(updated.is_locked ? '帖子已锁定' : '帖子已解锁', 'success');
+    } catch (err: any) {
+      showToast(`操作失败: ${err.message}`, 'error');
+    }
+  };
+
+  // ✅ 评论图片选择
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    
-    const files = Array.from(e.target.files);
-    if (files.length + commentImages.length > 3) {
-      showToast("最多只能上传3张图片", "error");
+    const files = Array.from(e.target.files || []);
+    if (commentImages.length + files.length > 3) {
+      showToast('最多上传3张图片', 'error');
       return;
     }
-
-    setCommentImages(prev => [...prev, ...files]);
-    
-    // 清空 input 的值，允许重复选择同一文件
-    e.target.value = '';
+    setCommentImages([...commentImages, ...files]);
   };
 
   const removeCommentImage = (index: number) => {
-    setCommentImages(prev => prev.filter((_, i) => i !== index));
+    setCommentImages(commentImages.filter((_, i) => i !== index));
   };
 
-  // --- 上传图片到 Supabase Storage ---
-  const uploadCommentImages = async (): Promise<string[]> => {
-    const uploadedUrls: string[] = [];
-    
-    for (const file of commentImages) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('comment_images')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw new Error(`图片上传失败: ${uploadError.message}`);
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('comment_images')
-        .getPublicUrl(filePath);
-
-      uploadedUrls.push(publicUrl);
-    }
-
-    return uploadedUrls;
-  };
-
-  // --- 处理评论提交 ---
+  // ✅ 评论逻辑（支持图片）
   const handleComment = async () => {
-    if (!newComment.trim() && commentImages.length === 0) {
-      showToast("评论内容或图片不能为空", 'error');
-      return;
-    }
+    if (!newComment.trim() && commentImages.length === 0) return;
 
+    setUploadingComment(true);
     try {
-      setUploadingComment(true);
+      // 检查敏感词
+      const sensitiveCheck = await check_sensitive_words(newComment);
+      if (!sensitiveCheck.allowed) {
+        showToast(`评论包含敏感词: ${sensitiveCheck.matched_words?.join(', ')}`, 'error');
+        setUploadingComment(false);
+        return;
+      }
 
       // 上传图片
       let imageUrls: string[] = [];
       if (commentImages.length > 0) {
-        imageUrls = await uploadCommentImages();
+        try {
+          imageUrls = await Promise.all(
+            commentImages.map(file => uploadImage(file, 'comment-images'))
+          );
+        } catch (uploadErr: any) {
+          showToast(`图片上传失败: ${uploadErr.message}`, 'error');
+          setUploadingComment(false);
+          return;
+        }
       }
 
-      await add_comment({
-        post_id: postId,
+      const newCommentObj = {
+        post_id: post.id,
         user_id: user.id,
-        user_name: user.user_name,
-        content: newComment,
-        reply_to_id: replyToCommentId || null,
-        images: imageUrls.length > 0 ? imageUrls : null,
+        content: newComment.trim(),
+        images: imageUrls,
+        reply_to_id: replyToCommentId,
         likes: [],
-      },
-      post.user_id,
-      post.title
-      );
+        created_at: new Date().toISOString(),
+      };
 
+      const { data, error } = await supabase.from('comments').insert([newCommentObj]).select();
+      if (error) throw error;
+
+      setComments([...comments, data[0]]);
       setNewComment('');
       setReplyToCommentId(null);
       setCommentImages([]);
-      showToast("评论成功", "success");
-    } catch (e: any) {
-      showToast(`评论失败: ${e.message}`, 'error');
+      
+      if (commentInputRef.current) {
+        commentInputRef.current.blur();
+      }
+    } catch (err: any) {
+      showToast(`评论失败: ${err.message}`, 'error');
     } finally {
       setUploadingComment(false);
     }
   };
 
-  // --- 点赞评论 ---
+  // ✅ 点赞评论逻辑
   const handleLikeComment = async (commentId: string) => {
+    const c = comments.find(c => c.id === commentId);
+    if (!c) return;
+
+    const likes = c.likes || [];
+    const hasLiked = likes.includes(user.id);
+    const newLikes = hasLiked ? likes.filter((id: string) => id !== user.id) : [...likes, user.id];
+
     try {
-      const comment = comments.find(c => c.id === commentId);
-      if (!comment) return;
-
-      const currentLikes = comment.likes || [];
-      const hasLiked = currentLikes.includes(user.id);
-      const newLikes = hasLiked 
-        ? currentLikes.filter((id: string) => id !== user.id)
-        : [...currentLikes, user.id];
-
       const { error } = await supabase
         .from('comments')
         .update({ likes: newLikes })
         .eq('id', commentId);
 
       if (error) throw error;
-    } catch (e: any) {
-      showToast(`操作失败: ${e.message}`, 'error');
+
+      setComments(comments.map(com => com.id === commentId ? { ...com, likes: newLikes } : com));
+    } catch (err: any) {
+      showToast(`点赞失败: ${err.message}`, 'error');
     }
   };
 
-  const handleVote = async (optId: string) => {
-    try {
-      if (new Date(post.poll.deadline) < new Date()) {
-        showToast("投票已截止", "error");
-        return;
-      }
-      await vote_poll(post.id, optId, user.id);
-      showToast("投票成功", "success");
-    } catch (e: any) {
-      showToast(`投票失败: ${e.message}`, 'error');
+  // ✅ 回复评论逻辑
+  const handleReplyClick = (commentId: string, userName: string) => {
+    setReplyToCommentId(commentId);
+    setNewComment('');
+    if (commentInputRef.current) {
+      commentInputRef.current.focus();
     }
   };
 
-
-
-  const handleAddToCollection = async (collectionId: string, collectionName: string) => {
-    try {
-      await addToCollection(collectionId, postId);
-      showToast(`已收藏到 ${collectionName}`, 'success');
-      setShowCollectionModal(false);
-    } catch (e: any) {
-      showToast(`收藏失败: ${e.message}`, 'error');
-    }
+  // ✅ 开始编辑评论
+  const startEditComment = (commentId: string, content: string) => {
+    setEditingCommentId(commentId);
+    setEditCommentContent(content);
   };
 
-const savePostEdit = async () => {
-  try {
-    // ✅ 1. 过滤掉空文本块
-    const finalBlocks = editBlocks.filter(block => {
-      if (block.type === 'text') {
-        return block.value.trim() !== '';
-      }
-      return true; // 保留所有图片块
-    });
-    
-    if (finalBlocks.length === 0) {
-      showToast('内容不能为空', 'error');
+  // ✅ 保存评论编辑
+  const saveCommentEdit = async (commentId: string) => {
+    if (!editCommentContent.trim()) {
+      showToast('评论内容不能为空', 'error');
       return;
     }
-    
-    // ✅ 2. 提取文本内容进行敏感词校验
-    const textContent = finalBlocks
-      .filter(block => block.type === 'text')
-      .map(block => block.value)
-      .join(' ');
-    
-    await check_sensitive_words(editTitle + ' ' + textContent);
 
-    // ✅ 3. 校验通过后，执行更新（content序列化为JSON）
-    await update_post(post.id, {
-      title: editTitle,
-      content: JSON.stringify(finalBlocks),
-      category: editCategory,
-      updated_at: new Date().toISOString(),
-    });
+    try {
+      // 检查敏感词
+      const sensitiveCheck = await check_sensitive_words(editCommentContent);
+      if (!sensitiveCheck.allowed) {
+        showToast(`评论包含敏感词: ${sensitiveCheck.matched_words?.join(', ')}`, 'error');
+        return;
+      }
 
-    setIsEditingPost(false);
-    showToast('帖子修改成功', 'success');
-  } catch (e: any) {
-    showToast(e.message || '修改失败', 'error');
-  }
-};
+      await update_comment(commentId, editCommentContent);
+      setComments(comments.map(c => c.id === commentId ? { ...c, content: editCommentContent } : c));
+      setEditingCommentId(null);
+      setEditCommentContent('');
+      showToast('评论已更新', 'success');
+    } catch (err: any) {
+      showToast(`更新失败: ${err.message}`, 'error');
+    }
+  };
 
- 
+  // ✅ 删除评论
+  const handleDeleteComment = async (commentId: string) => {
+    if (!window.confirm('确定删除这条评论吗？')) return;
 
+    try {
+      await delete_comment(commentId);
+      setComments(comments.filter(c => c.id !== commentId));
+      showToast('评论已删除', 'success');
+    } catch (err: any) {
+      showToast(`删除失败: ${err.message}`, 'error');
+    }
+  };
 
-  const handleReplyClick = (commentId: string, AuthorName: string) => {
-    setReplyToCommentId(commentId);
-    setNewComment(`@${AuthorName} `);
-    commentInputRef.current?.focus();
+  // ✅ 开始编辑帖子
+  const startEditPost = () => {
+    setEditTitle(post.title);
+    setEditBlocks(post.blocks || []);
+    setEditCategory(post.category);
+    setIsEditingPost(true);
+  };
+
+  // ✅ 保存帖子编辑
+  const savePostEdit = async () => {
+    if (!editTitle.trim()) {
+      showToast('标题不能为空', 'error');
+      return;
+    }
+
+    try {
+      // 检查敏感词
+      const titleCheck = await check_sensitive_words(editTitle);
+      if (!titleCheck.allowed) {
+        showToast(`标题包含敏感词: ${titleCheck.matched_words?.join(', ')}`, 'error');
+        return;
+      }
+
+      // 检查所有文本块的敏感词
+      for (const block of editBlocks) {
+        if (block.type === 'text' && block.content) {
+          const contentCheck = await check_sensitive_words(block.content);
+          if (!contentCheck.allowed) {
+            showToast(`内容包含敏感词: ${contentCheck.matched_words?.join(', ')}`, 'error');
+            return;
+          }
+        }
+      }
+
+      const updated = await updatePost(post.id, {
+        title: editTitle,
+        blocks: editBlocks,
+        category: editCategory,
+      });
+
+      setPost(updated);
+      setIsEditingPost(false);
+      showToast('帖子已更新', 'success');
+    } catch (err: any) {
+      showToast(`更新失败: ${err.message}`, 'error');
+    }
+  };
+
+  // ✅ 收藏逻辑
+  const handleAddToCollection = async (collectionId: string) => {
+    try {
+      await addToCollection(collectionId, post.id);
+      showToast('已添加到收藏夹', 'success');
+      setShowCollectionModal(false);
+    } catch (err: any) {
+      showToast(`收藏失败: ${err.message}`, 'error');
+    }
+  };
+
+  const handleCreateCollection = async () => {
+    if (!newCollectionName.trim()) {
+      showToast('收藏夹名称不能为空', 'error');
+      return;
+    }
+
+    try {
+      const newCollection = await create_collection(user.id, newCollectionName);
+      await addToCollection(newCollection.id, post.id);
+      showToast('已创建收藏夹并添加', 'success');
+      setNewCollectionName('');
+      setShowCollectionModal(false);
+    } catch (err: any) {
+      showToast(`创建失败: ${err.message}`, 'error');
+    }
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
-    <div className="w-full flex-1 pb-32 relative">
-   <div className="sticky top-[7.5rem] md:top-14 z-40 w-full bg-white px-3">
-    <button onClick={onBack} className="inline-flex items-center gap-1 py-2 text-sm font-medium text-zinc-700 hover:text-black transition-all">
-      ← 返回
-    </button>
- </div>
-        {/* 帖子内容 */}
-         <div className="bg-white border-t border-b border-zinc-200 mb-6">
-          <div className="px-3 py-4">
-          <div className="flex items-start gap-4 mb-4">
-            <div className="flex-shrink-0 cursor-pointer" onClick={() => onViewProfile(post.user_id)}>
-              <Avatar url={usersMap[post.user_id]?.avatar} className="w-12 h-12" />
-            </div>
-            <div className="flex-1">
-              {isEditingPost ? (
-                <div className="space-y-2 mb-4">
-                  <select value={editCategory} onChange={e => setEditCategory(e.target.value as Category)} className="border p-1 text-sm">
-                    {CATEGORIES.filter(c => c !== '全部').map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <input className="w-full border p-2 font-bold text-xl text-center" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
-                </div>
-              ) : (
-                <h1 className="text-2xl font-bold mb-2 text-center">{post.title}</h1>
-              )}
+    <div className="max-w-3xl mx-auto pb-32">
+      {/* 返回按钮 */}
+      <div className="p-4 flex items-center gap-3 border-b">
+        <button onClick={handleBack} className="text-zinc-600 hover:text-black">
+          <X className="w-6 h-6" />
+        </button>
+        <h2 className="text-lg font-bold">帖子详情</h2>
+      </div>
 
-              <div className="text-sm text-zinc-500 flex gap-3 items-center justify-center">
-            
-                <span onClick={() => onViewProfile(post.user_id)} className="hover:underline cursor-pointer hover:text-black transition-colors">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
-                <span>{timeAgo(postCreatedAt)}</span>
-                 {/* 如果更新时间晚于创建时间，显示“已编辑” */}
-                {post.updated_at && post.updated_at !== post.created_at && (
-                <span className="text-[10px] text-zinc-400 ml-1">(已编辑)</span>
-                 )}
-                
-  
-               {canEditPost && !isEditingPost && (
-                   <button 
-  onClick={() => { 
-    setEditTitle(post.title);
-    
-    // ✅ 解析现有内容为blocks
-    try {
-      const blocks = JSON.parse(post.content);
-      if (Array.isArray(blocks)) {
-        setEditBlocks(blocks);
-      } else {
-        // 旧格式，转换为单个文本块
-        setEditBlocks([{ type: 'text', value: post.content }]);
-      }
-    } catch {
-      // 解析失败，当作纯文本
-      setEditBlocks([{ type: 'text', value: post.content }]);
-    }
-    
-    setEditCategory(post.category); 
-    setIsEditingPost(true); 
-  }} 
-  className="flex items-center gap-1 text-blue-600 hover:underline ml-2"
->
-  <Edit2 className="w-3 h-3" /> 
-</button>
+      {/* 帖子内容区 */}
+      <div className="bg-white p-6">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex gap-3 items-start">
+            <Avatar url={author?.avatar} />
+            <div>
+              <div className="flex items-center gap-2">
+                <span 
+                  onClick={() => handleViewProfile(post.user_id)} 
+                  className="font-bold cursor-pointer hover:underline"
+                >
+                  {author?.user_name || '未知用户'}
+                </span>
+                {post.is_essence && (
+                  <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded">精华</span>
+                )}
+                {post.is_locked && (
+                  <span className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded">已锁定</span>
                 )}
               </div>
+              <div className="text-xs text-zinc-400 mt-1">{timeAgo(post.created_at)}</div>
             </div>
-
-            {isAdminOrInver && (
-              <div className="flex gap-2">
-                <button onClick={async () => { await toggle_essence_post(post.id, !post.is_essence); }} title="设为精华/取消" className="p-2 hover:bg-zinc-100 rounded">
-                  <Star className={`w-4 h-4 ${post.is_essence ? 'fill-yellow-500 text-yellow-500' : ''}`} />
-                </button>
-              </div>
-            )}
           </div>
 
-{/* 编辑帖子*/}
-{isEditingPost ? (
-  <div className="mb-4">
-    {/* ✅ 图文混排编辑器 */}
-    <div className="space-y-4 border border-zinc-300 rounded-lg p-4 bg-zinc-50">
-      {editBlocks.map((block, index) => {
-        if (block.type === 'text') {
-          return (
-            <div key={index} className="relative">
-              <textarea
-                value={block.value}
-                onChange={e => {
-                  const newBlocks = [...editBlocks];
-                  newBlocks[index] = { ...block, value: e.target.value };
-                  setEditBlocks(newBlocks);
-                }}
-                className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none bg-white"
-                rows={4}
-                placeholder="编辑文本..."
-              />
-              {/* 只有多个块时才显示删除按钮 */}
-              {editBlocks.length > 1 && (
-                <button
-                  onClick={() => setEditBlocks(editBlocks.filter((_, i) => i !== index))}
-                  className="absolute top-2 right-2 p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                  title="删除此文本块"
-                >
-                  <Trash2 className="w-4 h-4" />
+          {/* 操作按钮 */}
+          <div className="flex items-center gap-2">
+            {user.id === post.user_id && !isEditingPost && (
+              <button onClick={startEditPost} className="p-2 hover:bg-zinc-100 rounded">
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
+            {user.is_admin && (
+              <>
+                <button onClick={handleEssencePost} className="p-2 hover:bg-zinc-100 rounded">
+                  <Star className={`w-4 h-4 ${post.is_essence ? 'fill-yellow-500 text-yellow-500' : ''}`} />
                 </button>
-              )}
-            </div>
-          );
-        }
-        
-        if (block.type === 'image') {
-          return (
-            <div key={index} className="relative group">
-              <img
-                src={block.url}
-                alt={`图片 ${index + 1}`}
-                className="w-full max-h-96 object-contain rounded-lg border border-zinc-200"
-              />
-              <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                {/* ✅ 新增：替换图片按钮 */}
-                <label className="bg-blue-600 text-white p-1.5 rounded-full cursor-pointer hover:bg-blue-700 shadow-lg transition-colors">
-                  <ImageIcon className="w-4 h-4" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      
-                      // 验证文件
-                      if (!file.type.startsWith('image/')) {
-                        showToast('只能上传图片文件', 'error');
-                        return;
-                      }
-                      if (file.size > 5 * 1024 * 1024) {
-                        showToast('图片不能超过5MB', 'error');
-                        return;
-                      }
-                      
-                      try {
-                        // 显示上传提示
-                        showToast('正在上传新图片...', 'info');
-                        
-                        // ✅ 修复：直接使用已导入的 uploadImage（不再使用动态导入）
-                        const newUrl = await uploadImage(file, 'forum_images', `posts/${user.id}`);
-                        
-                        // 替换块中的图片URL
-                        const newBlocks = [...editBlocks];
-                        newBlocks[index] = { type: 'image', url: newUrl };
-                        setEditBlocks(newBlocks);
-                        
-                        showToast('图片替换成功', 'success');
-                        e.target.value = ''; // 清空input
-                      } catch (err: any) {
-                        showToast(`上传失败: ${err.message}`, 'error');
-                      }
-                    }}
-                  />
-                </label>
-                
-                {/* 删除图片按钮 */}
-                <button
-                  onClick={() => setEditBlocks(editBlocks.filter((_, i) => i !== index))}
-                  className="bg-red-600 text-white p-1.5 rounded-full hover:bg-red-700 shadow-lg transition-colors"
-                  title="删除图片"
-                >
-                  <Trash2 className="w-4 h-4" />
+                <button onClick={handleLockPost} className="p-2 hover:bg-zinc-100 rounded">
+                  {post.is_locked ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </button>
-              </div>
-            </div>
-          );
-        }
-        
-        return null;
-      })}
-      
-      <div className="text-xs text-zinc-500 bg-blue-50 p-2 rounded border border-blue-200">
-        💡 提示：可以修改文本内容、删除文本块或图片、替换图片（鼠标悬停在图片上查看操作按钮）
-      </div>
-    </div>
-    
-    <div className="flex gap-2 mt-4">
-      <button 
-        onClick={savePostEdit} 
-        className="bg-black text-white px-4 py-2 text-sm rounded hover:bg-zinc-800 transition-colors"
-      >
-        保存修改
-      </button>
-      <button 
-        onClick={() => setIsEditingPost(false)} 
-        className="bg-zinc-200 px-4 py-2 text-sm rounded hover:bg-zinc-300 transition-colors"
-      >
-        取消
-      </button>
-    </div>
-  </div>
-) : (
-  <PostContent 
-    content={post.content} 
-    className="prose prose-zinc w-full max-w-full mb-8" 
-  />
-)}
-          {/* 投票区 */}
-          {post.poll && (
-            <div className="bg-zinc-50 p-4 border border-zinc-200 mb-6 rounded-md">
-              <h3 className="font-bold mb-3 flex justify-between items-center">
-                <span>📊 {post.poll.question}</span>
-                <span className="text-xs font-normal text-zinc-500">{post.poll.isMultiple ? '多选' : '单选'} · {new Date(post.poll.deadline) < new Date() ? '已截止' : '进行中'}</span>
-              </h3>
-              <div className="space-y-2">
-                {post.poll.options.map((opt: any) => {
-                  const totalVotes = post.poll!.options.reduce((acc: number, o: any) => acc + (o.votes?.length || 0), 0);
-                  const percent = totalVotes === 0 ? 0 : Math.round(((opt.votes?.length || 0) / totalVotes) * 100);
-                  const isVoted = opt.votes?.includes(user.id);
-                  const pollActive = new Date(post.poll.deadline) >= new Date();
-
-                  return (
-                    <div key={opt.id} className={`relative group ${pollActive ? 'cursor-pointer hover:bg-zinc-100' : 'cursor-not-allowed'}`} onClick={() => pollActive && handleVote(opt.id)}>
-                      <div className="flex justify-between text-sm mb-1 z-10 relative px-2 py-1">
-                        <span className={isVoted ? 'font-bold' : ''}>{opt.text} {isVoted && '✓'}</span>
-                        <span>{(opt.votes?.length || 0)}票 ({percent}%)</span>
-                      </div>
-                      <div className="h-2 bg-zinc-200 rounded-full overflow-hidden mx-2">
-                        <div className="h-full bg-zinc-800 transition-all" style={{ width: `${percent}%` }}></div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* 底部互动操作 */}
-          <div className="flex gap-6 pt-4 border-t border-zinc-100 text-zinc-500 text-sm">
-            <button
-              onClick={async () => { 
-                try {
-                  await toggle_like_post(post.id, user.id);
-                } catch (e: any) {
-                  showToast(`点赞失败: ${e.message}`, 'error');
-                }
-              }}
-              className={`flex items-center gap-1 hover:text-red-600 transition-colors ${post.likes?.includes(user.id) ? 'text-red-600' : ''}`}
-            >
-              <Heart className={`w-4 h-4 ${post.likes?.includes(user.id) ? 'fill-current' : ''}`} /> {(post.likes?.length || 0)} 赞
-            </button>
-            <button
-              onClick={() => setShowCollectionModal(true)}
-              className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-            >
-              <Bookmark className="w-4 h-4" /> 收藏
-            </button>
-            <button onClick={() => commentInputRef.current?.focus()} className="flex items-center gap-1 hover:text-zinc-800 transition-colors">
-              <MessageCircle className="w-4 h-4" /> {(comments?.length || 0)} 评论
+              </>
+            )}
+            {(user.id === post.user_id || user.is_admin) && (
+              <button onClick={handleDeletePost} className="p-2 hover:bg-red-100 rounded text-red-600">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={() => setShowCollectionModal(true)} className="p-2 hover:bg-zinc-100 rounded">
+              <Bookmark className="w-4 h-4" />
             </button>
           </div>
         </div>
-      </div>
 
+        {/* 编辑模式 */}
+        {isEditingPost ? (
+          <div className="space-y-4">
+            <input
+              type="text"
+              value={editTitle}
+              onChange={e => setEditTitle(e.target.value)}
+              className="w-full border p-3 text-xl font-bold"
+              placeholder="标题"
+            />
+            <select
+              value={editCategory}
+              onChange={e => setEditCategory(e.target.value as Category)}
+              className="border p-2"
+            >
+              <option value="讨论👊🏻i女">讨论👊🏻i女</option>
+              <option value="提问🙋">提问🙋</option>
+              <option value="分享📢">分享📢</option>
+              <option value="公告📣">公告📣</option>
+            </select>
+            <div className="flex gap-2">
+              <button onClick={savePostEdit} className="bg-black text-white px-4 py-2">保存</button>
+              <button onClick={() => setIsEditingPost(false)} className="bg-zinc-200 px-4 py-2">取消</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
+            <div className="mb-4">
+              <span className="inline-block bg-zinc-100 text-zinc-700 px-3 py-1 text-sm">
+                {post.category}
+              </span>
+            </div>
+            <PostContent blocks={post.blocks || []} />
+          </>
+        )}
 
-{/* ✅ 收藏夹选择弹窗 - 添加到帖子内容区域之后 */}
-{showCollectionModal && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowCollectionModal(false)}>
-    <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-bold">选择收藏夹</h3>
-        <button onClick={() => setShowCollectionModal(false)} className="p-1 hover:bg-zinc-100 rounded">
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* 创建新收藏夹 */}
-      <div className="mb-4 p-3 bg-zinc-50 rounded-lg">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newCollectionName}
-            onChange={e => setNewCollectionName(e.target.value)}
-            placeholder="新建收藏夹名称..."
-            className="flex-1 px-3 py-2 border border-zinc-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-black"
-          />
+        {/* 互动按钮 */}
+        <div className="flex items-center gap-6 mt-6 pt-4 border-t">
           <button
-            onClick={async () => {
-              if (!newCollectionName.trim()) {
-                showToast('请输入收藏夹名称', 'error');
-                return;
-              }
-              try {
-                await create_collection(user.id, newCollectionName.trim());
-                showToast('收藏夹创建成功', 'success');
-                setNewCollectionName('');
-                // 重新加载收藏夹列表
-                const { data } = await supabase
-                  .from('collections')
-                  .select('*')
-                  .eq('user_id', user.id);
-                setUserCollections(data || []);
-              } catch (e: any) {
-                showToast(`创建失败: ${e.message}`, 'error');
-              }
-            }}
-            className="px-4 py-2 bg-black text-white rounded text-sm hover:bg-zinc-800 flex items-center gap-1"
+            onClick={handleLikePost}
+            className={`flex items-center gap-2 transition-colors ${hasLiked ? 'text-red-600' : 'text-zinc-500 hover:text-red-600'}`}
           >
-            <Plus className="w-4 h-4" /> 创建
+            <Heart className={`w-5 h-5 ${hasLiked ? 'fill-current' : ''}`} />
+            <span>{post.likes?.length || 0}</span>
+          </button>
+          <button className="flex items-center gap-2 text-zinc-500">
+            <MessageCircle className="w-5 h-5" />
+            <span>{comments.length}</span>
           </button>
         </div>
       </div>
 
-      {/* 收藏夹列表 */}
-      <div className="space-y-2">
-        {userCollections.length === 0 ? (
-          <div className="text-center py-8 text-zinc-400 text-sm">
-            暂无收藏夹，请先创建一个
+      {/* 收藏模态框 */}
+      {showCollectionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowCollectionModal(false)}>
+          <div className="bg-white p-6 rounded-lg max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-4">添加到收藏夹</h3>
+            <div className="space-y-2 mb-4">
+              {userCollections.map(col => (
+                <button
+                  key={col.id}
+                  onClick={() => handleAddToCollection(col.id)}
+                  className="w-full text-left p-3 border hover:bg-zinc-50 rounded"
+                >
+                  {col.name}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newCollectionName}
+                onChange={e => setNewCollectionName(e.target.value)}
+                placeholder="新建收藏夹"
+                className="flex-1 border p-2"
+              />
+              <button onClick={handleCreateCollection} className="bg-black text-white px-4">
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-        ) : (
-          userCollections.map((collection) => (
-            <button
-              key={collection.id}
-              onClick={() => handleAddToCollection(collection.id, collection.name)}
-              className="w-full text-left px-4 py-3 border border-zinc-200 rounded-lg hover:bg-zinc-50 hover:border-zinc-300 transition-all flex items-center justify-between group"
-            >
-              <span className="font-medium">{collection.name}</span>
-              <Check className="w-5 h-5 text-zinc-400 group-hover:text-black opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
-          ))
-        )}
-      </div>
-    </div>
-  </div>
-)}
+        </div>
+      )}
 
+{/* ✅ 图片预览模态框 */}
 {previewImage && (
   <div 
-    className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4" 
+    className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
     onClick={() => setPreviewImage(null)}
   >
-    <div className="relative max-w-5xl max-h-[90vh] w-full h-full flex items-center justify-center">
+    <div className="relative max-w-[90vw] max-h-[90vh]">
       <button
+        className="absolute -top-12 right-0 text-white hover:text-zinc-300"
         onClick={() => setPreviewImage(null)}
-        className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-full backdrop-blur-sm transition-colors z-10"
-        title="关闭"
       >
         <X className="w-6 h-6" />
       </button>
@@ -801,17 +711,17 @@ const savePostEdit = async () => {
                     <div className="flex-1">
                       <div className="flex justify-between items-center mb-1">
                         <div className="font-bold flex items-center gap-1">
-                          <span onClick={() => onViewProfile(c.user_id)} className="hover:underline cursor-pointer">{commentAuthor?.user_name || '未知用户'}</span>
+                          <span onClick={() => handleViewProfile(c.user_id)} className="hover:underline cursor-pointer">{commentAuthor?.user_name || '未知用户'}</span>
                           {isReply && repliedToAuthor && (
                             <span className="text-zinc-500 font-normal">回复
-                              <span onClick={() => onViewProfile(repliedToAuthor.id)} className="hover:underline cursor-pointer ml-1">@{repliedToAuthor.user_name}</span>
+                              <span onClick={() => handleViewProfile(repliedToAuthor.id)} className="hover:underline cursor-pointer ml-1">@{repliedToAuthor.user_name}</span>
                             </span>
                           )}
                         </div>
                        <div className="text-zinc-400 font-normal text-xs flex items-center gap-2">
                        <span>{timeAgo(c.created_at)}</span>
   
-                      {/* ✅ 1. 将 group 容器移出权限判断，让所有人都能看到“三个点”图标 */}
+                      {/* ✅ 1. 将 group 容器移出权限判断，让所有人都能看到"三个点"图标 */}
                       <div className="relative group">
                       <MoreVertical className="w-4 h-4 cursor-pointer text-zinc-500 hover:text-black p-0.5" />
     
@@ -971,588 +881,4 @@ const savePostEdit = async () => {
   );
 };
 
-
-//Login组件
-
-
-const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
-  const [loginIdInput, setLoginIdInput] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
-
-  const handleLogin = async () => {
-    setError('');
-    if (!loginIdInput || !password) {
-      setError('请输入 ID 和密码');
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      // --- 情况 A：管理员账号登录 ---
-      if (loginIdInput.toLowerCase() === 'admin') {
-        if (password === ADMIN_PASSWORD) {
-          const { data, error: adminErr } = await supabase
-            .from('users')
-            .select('*')
-            .eq('role', 'admin')
-            .limit(1)
-            .single();
-
-          if (adminErr || !data) {
-            setError('管理员账号尚未在数据库中初始化');
-            return;
-          }
-          onLogin(data);
-          return;
-        } else {
-          setError('管理员密码错误');
-          return;
-        }
-      }
-
-      // --- 情况 B：普通用户登录（使用 Supabase Auth）---
-      
-      // 1. 先从数据库查询用户信息（通过 login_id 获取 email）
-      const { data: userData, error: queryError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('login_id', loginIdInput)
-        .single();
-
-      if (queryError || !userData) {
-        setError('账号不存在，请检查 ID 是否输入正确');
-        return;
-      }
-
-      if (userData.is_banned) {
-        setError('该账号已被封禁，无法登录');
-        return;
-      }
-
-      // 2. 使用 Supabase Auth 登录（创建 session）
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: userData.email,
-        password: password,
-      });
-
-      if (authError) {
-        console.error('登录失败:', authError);
-        if (authError.message.includes('Invalid login credentials')) {
-          setError('密码错误');
-        } else {
-          setError('登录失败: ' + authError.message);
-        }
-        return;
-      }
-
-      console.log('✅ 登录成功, Session 已创建:', authData.session);
-      console.log('✅ 用户信息:', authData.user);
-
-      // 3. 登录成功，传递完整的用户信息
-      onLogin({
-        ...userData,
-        auth_id: authData.user.id, // Supabase Auth 的 ID
-      });
-
-    } catch (e: any) {
-      console.error('系统错误:', e);
-      setError(`系统错误: ${e.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tighter">登录小组</h2>
-          <p className="mt-2 text-zinc-500 text-sm">请输入管理员分发的 6 位短 ID 和密码</p>
-        </div>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">用户 ID</label>
-            <input
-              value={loginIdInput}
-              onChange={e => setLoginIdInput(e.target.value)}
-              disabled={loading}
-              className="w-full p-4 border border-zinc-200 outline-none focus:border-black transition-all bg-zinc-50 focus:bg-white font-mono disabled:opacity-50"
-              placeholder="例如: AX79P2"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">密码</label>
-            <div className="relative">
-              <input
-                type={showPass ? "text" : "password"}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                disabled={loading}
-                className="w-full p-4 border border-zinc-200 outline-none focus:border-black transition-all bg-zinc-50 focus:bg-white pr-12 font-mono disabled:opacity-50"
-                placeholder="请输入密码"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass(!showPass)}
-                disabled={loading}
-                className="absolute right-4 top-4 text-zinc-400 hover:text-black disabled:opacity-50"
-              >
-                {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 text-red-600 p-4 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
-            <X className="w-4 h-4 flex-shrink-0" /> {error}
-          </div>
-        )}
-
-        <button
-          onClick={handleLogin}
-          disabled={loading}
-          className="w-full bg-black text-white py-4 font-bold text-lg hover:bg-zinc-800 transition-all active:scale-[0.98] shadow-lg shadow-zinc-200 disabled:bg-zinc-400 disabled:cursor-not-allowed"
-        >
-          {loading ? '登录中...' : '确认登录'}
-        </button>
-
-        <div className="text-center space-y-1">
-          <p className="text-[10px] text-zinc-400">
-            ID 是唯一的通行证，请妥善保管
-          </p>
-          <p className="text-[10px] text-zinc-300">
-            Supabase Cloud Backend Connected
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// 主应用组件
-export default function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [view, setView] = useState<'landing' | 'login' | 'feed' | 'admin' | 'post' | 'profile'>('landing');
-  const [currentCategory, setCurrentCategory] = useState<Category | '全部'>('全部');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [onlyEssence, setOnlyEssence] = useState(false);
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
-  const [targetProfileId, setTargetProfileId] = useState<string | null>(null);
-  const [isCreatingPost, setIsCreatingPost] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [usersMap, setUsersMap] = useState<Record<string, User>>({});
-  const [displayPosts, setDisplayPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [readPosts, setReadPosts] = useState<Set<string>>(new Set());
-
-  // Toast 状态
-  const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
-
-  // ✅ 修改后的初始化用户登录状态
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        // 1. 先检查 Supabase Auth Session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          // 如果没有 session，清除本地缓存
-          sessionStorage.removeItem('currentUser');
-          return;
-        }
-
-        // 2. 如果有 session，获取用户信息
-        const freshUser = await get_user(session.user.id);
-        
-        if (freshUser) {
-          // 检查是否被封禁
-          if (freshUser.is_banned) {
-            sessionStorage.removeItem('currentUser');
-            await supabase.auth.signOut();
-            setUser(null);
-            setView('login');
-            setToast({ msg: '账号已被封禁', type: 'error' });
-            return;
-          }
-          
-          // 更新本地状态
-          setUser(freshUser);
-          sessionStorage.setItem('currentUser', JSON.stringify(freshUser));
-          setView('feed');
-        }
-      } catch (err) {
-        console.error("获取用户信息失败:", err);
-        // 如果获取失败，清除状态
-        sessionStorage.removeItem('currentUser');
-        await supabase.auth.signOut();
-      }
-    };
-
-    initAuth();
-  }, []);
-
-  // 加载帖子列表
-// 加载帖子列表
-useEffect(() => {
-  const loadPosts = async () => {
-    setIsLoading(true);
-    try {
-      const data = await get_posts(currentCategory, onlyEssence ? 'essence' : 'new');
-      
-      // ✅ 按最后评论时间排序(有评论的帖子自动顶上来)
-      const sortedData = (data || []).sort((a, b) => {
-        const timeA = new Date(a.last_comment_at || a.created_at).getTime();
-        const timeB = new Date(b.last_comment_at || b.created_at).getTime();
-        return timeB - timeA; // 降序排列
-      });
-      
-      setDisplayPosts(sortedData);
-    } catch (err) {
-      console.error("加载帖子失败:", err);
-      showToast("加载帖子失败", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  loadPosts();
-}, [currentCategory, onlyEssence, refreshKey]);
-
-  // 加载用户映射
-  useEffect(() => {
-    if (!user) return;
-
-    const refreshData = async () => {
-      try {
-        const usersList = await get_all_users();
-        const map: Record<string, User> = {};
-        usersList.forEach(u => map[u.id] = u);
-        setUsersMap(map);
-      } catch (err) {
-        console.error("加载用户列表失败:", err);
-      }
-    };
-
-    refreshData();
-  }, [user]);
-  
-  // 加载已读记录
-  useEffect(() => {
-    const loadReadPosts = async () => {
-      if (!user) return;
-      
-      try {
-        const result = await window.storage.get(`read_posts_${user.id}`);
-        if (result?.value) {
-          const readPostIds = JSON.parse(result.value);
-          setReadPosts(new Set(readPostIds));
-        }
-      } catch (err) {
-        console.log('未找到已读记录,使用空集合');
-        setReadPosts(new Set());
-      }
-    };
-
-    loadReadPosts();
-  }, [user]);
-
-  // ✅ 第2段新增代码:监听已读事件 (就是你问的这段!)
-  useEffect(() => {
-    const handlePostRead = (e: CustomEvent) => {
-      const { postId } = e.detail;
-      setReadPosts(prev => new Set([...prev, postId]));
-    };
-
-    window.addEventListener('post-read', handlePostRead as EventListener);
-    return () => {
-      window.removeEventListener('post-read', handlePostRead as EventListener);
-    };
-  }, []);
-
-
-  
-  const showToast = (msg: string, type: ToastType) => {
-    setToast({ msg, type });
-  };
-
-  const handleLogin = (u: User) => {
-    if (u.is_first_login) {
-      setUser(u);
-    } else {
-      setUser(u);
-      sessionStorage.setItem('currentUser', JSON.stringify(u));
-      setView('feed');
-    }
-  };
-
-  const handleUpdateProfile = (u: User) => {
-    setUser(u);
-    sessionStorage.setItem('currentUser', JSON.stringify(u));
-    setView('feed');
-  };
-
-  // ✅ 修改后的退出登录函数
-  const handleLogout = async () => {
-    try {
-      // 1. 调用 Supabase Auth 退出登录
-      await supabase.auth.signOut();
-      console.log('✅ Supabase Auth 已退出');
-    } catch (error) {
-      console.error('退出登录时出错:', error);
-    } finally {
-      // 2. 清除本地状态
-      setUser(null);
-      sessionStorage.removeItem('currentUser');
-      setView('landing');
-    }
-  };
-
-  const handleViewProfile = (userId: string) => {
-    setTargetProfileId(userId);
-    setView('profile');
-    setSelectedPostId(null);
-  };
-
-  const refreshData = () => {
-    setRefreshKey(prev => prev + 1);
-  };
-
-  // 首次登录修改密码
-  if (user && user.is_first_login) {
-    return <ChangePasswordModal user={user} onComplete={handleUpdateProfile} />;
-  }
-
-  if (view === 'landing') {
-    return <Landing onLoginClick={() => setView('login')} />;
-  }
-
-  if (view === 'login') {
-    return <Login onLogin={handleLogin} />;
-  }
-
-  const isAdminOrInver = user ? ['admin', 'i女er'].includes(user.role) : false;
-  
-  
-  const getPostPreview = (content: string) => {
-    try {
-      const blocks = JSON.parse(content);
-      if (Array.isArray(blocks)) {
-        return blocks
-          .filter(b => b.type === 'text')
-          .map(b => b.value)
-          .join(' ')  // 用空格连接多个文本块
-          .slice(0, 100);
-      }
-    } catch {}
-    return content.slice(0, 100);
-  };
-
-
-  
-  return (
-    <div className="min-h-screen bg-white text-zinc-900">
-      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
-
-      {/* 导航栏 */}
-      <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <h1 className="font-bold text-lg cursor-pointer truncate" onClick={() => { setView('feed'); setSelectedPostId(null); }}>
-              女主无cp/无男主小说交流中心
-            </h1>
-            <div className="hidden md:flex gap-1">
-              {CATEGORIES.map(c => (
-                <button
-                  key={c}
-                  onClick={() => { setCurrentCategory(c); setView('feed'); setSelectedPostId(null); }}
-                  className={`px-3 py-1 text-sm rounded-full transition-colors ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
-                >
-                  {c}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="relative hidden sm:block">
-              <input
-                type="text"
-                placeholder="搜索帖子..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-8 pr-4 py-1.5 bg-zinc-100 rounded-full text-sm w-48 focus:w-64 transition-all outline-none"
-                aria-label="搜索帖子"
-              />
-              <Search className="w-4 h-4 absolute left-2.5 top-2 text-zinc-400" />
-            </div>
-
-            <div className="flex items-center gap-2 border-l pl-4 border-zinc-200">
-              <div onClick={() => handleViewProfile(user!.id)} className="flex items-center gap-2 cursor-pointer hover:bg-zinc-50 p-1 rounded-full transition-colors">
-                <div className="relative">
-                  <Avatar url={user?.avatar} className="w-6 h-6" />
-                  {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></span>}
-                </div>
-                <span className="text-sm font-bold hidden sm:block">{user?.user_name}</span>
-              </div>
-
-              {isAdminOrInver && (
-                <button onClick={() => setView('admin')} className="p-2 hover:bg-zinc-100 rounded-full" title="管理后台" aria-label="管理后台">
-                  <Menu className="w-5 h-5" />
-                </button>
-              )}
-              <button onClick={handleLogout} className="p-2 hover:bg-zinc-100 rounded-full" title="退出" aria-label="退出登录">
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* 移动端分类导航 */}
-      <div className="md:hidden sticky top-14 bg-white z-30 border-b border-zinc-200 overflow-x-auto scrollbar-hide">
-        <div className="flex px-4 py-2 gap-2 min-w-max">
-          {CATEGORIES.map(c => (
-            <button
-              key={c}
-              onClick={() => { setCurrentCategory(c); setView('feed'); setSelectedPostId(null); }}
-              className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors ${currentCategory === c ? 'bg-black text-white' : 'bg-zinc-100 text-zinc-600'}`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 主内容区 */}
-      <main className="max-w-5xl mx-auto min-h-[calc(100vh-3.5rem)]">
-        {view === 'admin' && <AdminPanel />}
-        {view === 'profile' && targetProfileId && (
-          <UserProfile 
-            userId={targetProfileId} 
-            onNavigateBack={() => setView('feed')} 
-            onPostClick={(id) => { setSelectedPostId(id); setView('post'); }}
-          />
-        )}
-        
-        {(view === 'feed' || view === 'post') && (
-          <div className="flex flex-col md:flex-row gap-6 p-4">
-            <div className="flex-1">
-              {view === 'post' && selectedPostId ? (
-                <PostDetail 
-                  postId={selectedPostId} 
-                  user={user!}
-                  usersMap={usersMap}
-                  onBack={() => { setSelectedPostId(null); setView('feed'); }}
-                  onViewProfile={handleViewProfile}
-                  onDelete={() => { setSelectedPostId(null); setView('feed'); refreshData(); }}
-                  showToast={showToast}
-                />
-              ) : (
-                <div className="space-y-4">
-                  {/* 筛选栏 */}
-                  <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
-                    <div className="flex gap-4 text-sm">
-                      <label className="flex items-center gap-1 cursor-pointer select-none">
-                        <input type="checkbox" checked={onlyEssence} onChange={e => setOnlyEssence(e.target.checked)} className="accent-black" />
-                         <span className="bg-black text-white text-[10px] px-1">蒂</span>
-                      </label>
-                    </div>
-                    <button 
-                      onClick={() => setIsCreatingPost(true)}
-                      className="bg-black text-white px-4 py-2 text-sm font-medium flex items-center gap-2 hover:bg-zinc-800 transition-shadow shadow-md"
-                      aria-label="发帖"
-                    >
-                      <PenSquare className="w-4 h-4" /> 发帖
-                    </button>
-                  </div>
-
-                  
-                 {/* 帖子列表 */}
-                  <div className="space-y-0 divide-y divide-zinc-100">
-                    {isLoading ? (
-                      <div className="py-20 text-center text-zinc-400">正在加载内容...</div>
-                    ) : (
-                      <>
-                        {(displayPosts || []).length > 0 ? (
-                          displayPosts
-                            .filter(p => (p.title || '').includes(searchQuery) || (p.content || '').includes(searchQuery))
-                            .map(post => {
-                              const isRead = readPosts.has(post.id);
-                              
-                              return (
-                                      <div 
-                                        key={post.id} 
-                                        onClick={() => { setSelectedPostId(post.id); setView('post'); }}
-                                        className={`py-4 cursor-pointer group transition-colors px-2
-                                        ${isRead ? 'opacity-50' : 'hover:bg-zinc-50'}
-                                        `}
-                                       >
-
-                                  <div className="flex items-start gap-3">
-                                    <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.user_id); }}>
-                                      <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
-                                    </div>
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        {post.is_essence && <span className="bg-black text-white px-1 text-xs" title="精华帖">蒂</span>}
-                                        {isRead && <span className="text-xs text-zinc-400">[已读]</span>}
-                                    <h3
-                                       className={`font-medium text-base transition-colors line-clamp-1
-                                       ${isRead ? 'text-zinc-500' : 'group-hover:text-blue-800'}
-                                        `}
-                                    >
-                                     {post.title}
-                                    </h3>
-
-                                      </div>
-                                      <p className={`text-sm line-clamp-2 mb-2 ${
-                                        isRead ? 'text-zinc-400' : 'text-zinc-500'
-                                      }`}>
-                                        {getPostPreview(post.content)}...
-                                      </p>
-                                      <div className="text-xs text-zinc-400 flex gap-3">
-                                        <span>{post.category}</span>
-                                        <span>•</span>
-                                        <span className="hover:text-black hover:underline">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
-                                        <span>•</span>
-                                        <span>{timeAgo(post.created_at)}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                               );
-                              })
-                        ) : (
-                          <div className="py-20 text-center text-zinc-400 text-sm">暂无内容</div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>  
-              )} 
-            </div>  
-          </div>  
-        )}
-
-        {isCreatingPost && (
-          <CreatePostModal 
-            user={user!} 
-            onClose={() => setIsCreatingPost(false)} 
-            onSuccess={() => { setIsCreatingPost(false); refreshData(); }}
-            showToast={showToast}
-          />
-        )}
-      </main>
-    </div>
-  );
-}
+export default PostDetail;
