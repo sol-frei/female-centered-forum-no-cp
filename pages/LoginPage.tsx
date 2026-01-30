@@ -1,4 +1,4 @@
-import { supabase } from './services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import React, { useState } from 'react';
 import { Eye, EyeOff, X } from 'lucide-react';
 
