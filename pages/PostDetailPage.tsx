@@ -1,16 +1,55 @@
 import { supabase } from '../services/supabaseClient';
 import React, { useState, useEffect, useRef } from 'react';
 import Landing from '../components/Landing';
-import { User, Post, Category, Collection, Notification, SensitiveWords } from './types';
-import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment,check_sensitive_words } from './services/storage';
+import { User, Post, Category, Collection, Notification, SensitiveWords, ToastType } from '../types';
+import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment,check_sensitive_words } from '../services/storage';
 import AdminPanel from '../components/AdminPanel';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import UserProfile from '../components/UserProfile';
-import Toast, { ToastType } from '../components/Toast';
+import Toast from '../components/Toast';
 import CreatePostModal from '../components/CreatePostModal';
 import { uploadImage } from '../services/storageService';  // ✅ 新增这行
 import { Search, LogOut, Menu, UserCircle, PenSquare, Heart, MessageCircle, MessageSquare, Trash2, X, Plus, Check, Star, Eye, EyeOff, Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical } from 'lucide-react';
 import PostContent from '../components/PostContent';
+
+// ✅ 添加 window.storage 类型声明
+declare global {
+  interface Window {
+    storage?: {
+      get: (key: string) => Promise<{ value?: string }>;
+      set: (key: string, value: string) => Promise<void>;
+    };
+  }
+}
+
+// ✅ 定义 CATEGORIES
+const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
+
+// ✅ 定义 timeAgo 函数
+function timeAgo(dateInput: string | Date): string {
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  const now = new Date();
+  const diffInSeconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+
+  if (diffInSeconds < 60) return '刚刚';
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}分钟前`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}小时前`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 30) return `${diffInDays}天前`;
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInMonths < 12) return `${diffInMonths}个月前`;
+  return `${Math.floor(diffInMonths / 12)}年前`;
+}
+
+// ✅ 定义 Avatar 组件
+const Avatar = ({ url, className = "w-8 h-8" }: { url?: string, className?: string }) => {
+  if (url) {
+    return <img src={url} alt="用户头像" className={`${className} rounded-full object-cover bg-zinc-100 border border-zinc-100`} />;
+  }
+  return <UserCircle className={`${className} text-zinc-300`} />;
+};
 
 
 // 帖子详情组件
@@ -106,7 +145,7 @@ export default function PostDetail({
   
   useEffect(() => {
   const markAsRead = async () => {
-    if (!postId || !user) return;
+    if (!postId || !user || !window.storage) return;
     
     try {
       // 从 storage 读取已读列表
@@ -388,6 +427,23 @@ const savePostEdit = async () => {
     setReplyToCommentId(commentId);
     setNewComment(`@${AuthorName} `);
     commentInputRef.current?.focus();
+  };
+
+  // ✅ 新增：保存评论编辑
+  const saveCommentEdit = async (commentId: string) => {
+    if (!editCommentContent.trim()) {
+      showToast('评论内容不能为空', 'error');
+      return;
+    }
+
+    try {
+      await update_comment(commentId, editCommentContent);
+      setEditingCommentId(null);
+      setEditCommentContent('');
+      showToast('评论修改成功', 'success');
+    } catch (e: any) {
+      showToast(`修改失败: ${e.message}`, 'error');
+    }
   };
 
   return (
