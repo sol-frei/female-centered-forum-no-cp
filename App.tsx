@@ -173,12 +173,6 @@ function AppContent() {
     setToast({ msg, type });
   };
 
-  const handleLogin = (u: User) => {
-    setUser(u);
-    sessionStorage.setItem('currentUser', JSON.stringify(u));
-    navigate('/');
-  };
-
   const handleViewProfile = (uid: string) => {
     navigate(`/profile/${uid}`);
   };
@@ -220,7 +214,7 @@ function AppContent() {
   };
 
   if (!user) {
-    return <Login onLogin={handleLogin} />;
+    return <Login />;
   }
 
   return (
@@ -425,7 +419,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<Login onLogin={() => {}} />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/*" element={<AppContent />} />
       </Routes>
     </BrowserRouter>
