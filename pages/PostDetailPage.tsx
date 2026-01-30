@@ -803,7 +803,7 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* 底部评论输入框 */}
+      //底部评论输入框 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50">
         <div className="max-w-[95%]  mx-auto p-3">
           {/* 已选择图片显示 */}
