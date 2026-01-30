@@ -1,5 +1,6 @@
 import { supabase } from './services/supabaseClient';
 import React, { useState, useEffect, useRef } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import Landing from './components/Landing';
 import { User, Post, Category, Collection, Notification, SensitiveWords } from './types';
 import { get_all_users, get_user, create_post, get_posts, toggle_like_post, toggle_essence_post, delete_post, vote_poll, add_comment, update_post, getComments, updateUser, getUnreadNotificationCount, create_collection, addToCollection, updatePost, update_comment, toggle_lock_post, delete_comment,check_sensitive_words } from './services/storage';
@@ -66,6 +67,11 @@ const PostDetail = ({
   onDelete,
   showToast,
 }: PostDetailProps) => {
+
+  const { postId: urlPostId } = useParams<{ postId: string }>();
+  const navigate = useNavigate();
+  const actualPostId = urlPostId || postId;
+  
   // 1. 基础状态
   const [post, setPost] = useState<any | null>(null);
   const [comments, setComments] = useState<any[]>([]);
@@ -114,7 +120,7 @@ const PostDetail = ({
       const { data: commentData, error: commentError } = await supabase
         .from('comments')
         .select('*')
-        .eq('post_id', postId)
+        .eq('post_id', actualPostId)
         .order('created_at', { ascending: true });
 
       if (commentError) throw commentError;
@@ -130,10 +136,10 @@ const PostDetail = ({
   };
 
   useEffect(() => {
-    if (postId) {
+    if (actualPostId) {
       fetchPostAndComments();
     }
-  }, [postId]);
+  }, [actualPostId]);
 
   // ✅ 新增:标记帖子为已读
   
@@ -427,7 +433,7 @@ const savePostEdit = async () => {
     <div className="flex flex-col min-h-screen">
     <div className="w-full flex-1 pb-32 relative">
    <div className="sticky top-[7.5rem] md:top-14 z-40 w-full bg-white px-3">
-    <button onClick={onBack} className="inline-flex items-center gap-1 py-2 text-sm font-medium text-zinc-700 hover:text-black transition-all">
+    <button onClick={() => navigate('/')} className="inline-flex items-center gap-1 py-2 text-sm font-medium text-zinc-700 hover:text-black transition-all">
       ← 返回
     </button>
  </div>
@@ -1138,7 +1144,7 @@ const Login = ({ onLogin }: { onLogin: (u: any) => void }) => {
 };
 
 // 主应用组件
-export default function App() {
+function AppContent() {
   const [user, setUser] = useState<User | null>(null);
   const [view, setView] = useState<'landing' | 'login' | 'feed' | 'admin' | 'post' | 'profile'>('landing');
   const [currentCategory, setCurrentCategory] = useState<Category | '全部'>('全部');
@@ -1153,7 +1159,9 @@ export default function App() {
   const [displayPosts, setDisplayPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [readPosts, setReadPosts] = useState<Set<string>>(new Set());
+  const navigate = useNavigate();
 
+  
   // Toast 状态
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
 
@@ -1187,7 +1195,7 @@ export default function App() {
           // 更新本地状态
           setUser(freshUser);
           sessionStorage.setItem('currentUser', JSON.stringify(freshUser));
-          setView('feed');
+          navigate('/');
         }
       } catch (err) {
         console.error("获取用户信息失败:", err);
@@ -1278,49 +1286,51 @@ useEffect(() => {
     };
   }, []);
 
+  
+// UserProfile 路由包装器
+const UserProfileWrapper = ({ onNavigateBack, onPostClick }: any) => {
+  const { userId } = useParams<{ userId: string }>();
+  return (
+    <UserProfile 
+      userId={userId!}
+      onNavigateBack={onNavigateBack}
+      onPostClick={onPostClick}
+    />
+  );
+};
 
   
-  const showToast = (msg: string, type: ToastType) => {
+  
+const showToast = (msg: string, type: ToastType) => {
     setToast({ msg, type });
   };
 
-  const handleLogin = (u: User) => {
-    if (u.is_first_login) {
-      setUser(u);
-    } else {
-      setUser(u);
-      sessionStorage.setItem('currentUser', JSON.stringify(u));
-      setView('feed');
-    }
-  };
-
-  const handleUpdateProfile = (u: User) => {
+const handleLogin = (u: User) => {
+  if (u.is_first_login) {
+    setUser(u);
+  } else {
     setUser(u);
     sessionStorage.setItem('currentUser', JSON.stringify(u));
-    setView('feed');
-  };
+    navigate('/');
+  }
+};
+
+const handleUpdateProfile = (u: User) => {
+  setUser(u);
+  sessionStorage.setItem('currentUser', JSON.stringify(u));
+  navigate('/');
 
   // ✅ 修改后的退出登录函数
-  const handleLogout = async () => {
-    try {
-      // 1. 调用 Supabase Auth 退出登录
-      await supabase.auth.signOut();
-      console.log('✅ Supabase Auth 已退出');
-    } catch (error) {
-      console.error('退出登录时出错:', error);
-    } finally {
-      // 2. 清除本地状态
-      setUser(null);
-      sessionStorage.removeItem('currentUser');
-      setView('landing');
-    }
-  };
+const handleLogout = async () => {
+  await supabase.auth.signOut();
+  sessionStorage.removeItem('currentUser');
+  setUser(null);
+  navigate('/login');
+};
 
-  const handleViewProfile = (userId: string) => {
-    setTargetProfileId(userId);
-    setView('profile');
-    setSelectedPostId(null);
-  };
+const handleViewProfile = (uid: string) => {
+  navigate(`/profile/${uid}`);
+};
 
   const refreshData = () => {
     setRefreshKey(prev => prev + 1);
@@ -1366,14 +1376,14 @@ useEffect(() => {
       <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <h1 className="font-bold text-lg cursor-pointer truncate" onClick={() => { setView('feed'); setSelectedPostId(null); }}>
-              女主无cp/无男主小说交流中心
-            </h1>
+<h1 className="font-bold text-lg cursor-pointer truncate" onClick={() => navigate('/')}>
+  女主无cp/无男主小说交流中心
+</h1>
             <div className="hidden md:flex gap-1">
               {CATEGORIES.map(c => (
                 <button
                   key={c}
-                  onClick={() => { setCurrentCategory(c); setView('feed'); setSelectedPostId(null); }}
+                  onClick={() => { setCurrentCategory(c); navigate('/'); }}
                   className={`px-3 py-1 text-sm rounded-full transition-colors ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
                 >
                   {c}
@@ -1423,7 +1433,7 @@ useEffect(() => {
           {CATEGORIES.map(c => (
             <button
               key={c}
-              onClick={() => { setCurrentCategory(c); setView('feed'); setSelectedPostId(null); }}
+              onClick={() => { setCurrentCategory(c); navigate('/'); setSelectedPostId(null); }}
               className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors ${currentCategory === c ? 'bg-black text-white' : 'bg-zinc-100 text-zinc-600'}`}
             >
               {c}
@@ -1431,118 +1441,119 @@ useEffect(() => {
           ))}
         </div>
       </div>
+{/* 主内容区 */}
+<main className="max-w-5xl mx-auto min-h-[calc(100vh-3.5rem)]">
+  <Routes>
+    {/* 首页 - 帖子列表 */}
+    <Route path="/" element={
+      <div className="flex flex-col md:flex-row gap-6 p-4">
+        <div className="flex-1">
+          <div className="space-y-4">
+            {/* 筛选栏 */}
+            <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
+              <div className="flex gap-4 text-sm">
+                <label className="flex items-center gap-1 cursor-pointer select-none">
+                  <input type="checkbox" checked={onlyEssence} onChange={e => setOnlyEssence(e.target.checked)} className="accent-black" />
+                  <span className="bg-black text-white text-[10px] px-1">蒂</span>
+                </label>
+              </div>
+              <button 
+                onClick={() => setIsCreatingPost(true)}
+                className="bg-black text-white px-4 py-2 text-sm font-medium flex items-center gap-2 hover:bg-zinc-800 transition-shadow shadow-md"
+                aria-label="发帖"
+              >
+                <PenSquare className="w-4 h-4" /> 发帖
+              </button>
+            </div>
 
-      {/* 主内容区 */}
-      <main className="max-w-5xl mx-auto min-h-[calc(100vh-3.5rem)]">
-        {view === 'admin' && <AdminPanel />}
-        {view === 'profile' && targetProfileId && (
-          <UserProfile 
-            userId={targetProfileId} 
-            onNavigateBack={() => setView('feed')} 
-            onPostClick={(id) => { setSelectedPostId(id); setView('post'); }}
-          />
-        )}
-        
-        {(view === 'feed' || view === 'post') && (
-          <div className="flex flex-col md:flex-row gap-6 p-4">
-            <div className="flex-1">
-              {view === 'post' && selectedPostId ? (
-                <PostDetail 
-                  postId={selectedPostId} 
-                  user={user!}
-                  usersMap={usersMap}
-                  onBack={() => { setSelectedPostId(null); setView('feed'); }}
-                  onViewProfile={handleViewProfile}
-                  onDelete={() => { setSelectedPostId(null); setView('feed'); refreshData(); }}
-                  showToast={showToast}
-                />
+            {/* 帖子列表 */}
+            <div className="space-y-0 divide-y divide-zinc-100">
+              {isLoading ? (
+                <div className="py-20 text-center text-zinc-400">正在加载内容...</div>
               ) : (
-                <div className="space-y-4">
-                  {/* 筛选栏 */}
-                  <div className="flex justify-between items-center pb-2 border-b border-zinc-100">
-                    <div className="flex gap-4 text-sm">
-                      <label className="flex items-center gap-1 cursor-pointer select-none">
-                        <input type="checkbox" checked={onlyEssence} onChange={e => setOnlyEssence(e.target.checked)} className="accent-black" />
-                         <span className="bg-black text-white text-[10px] px-1">蒂</span>
-                      </label>
-                    </div>
-                    <button 
-                      onClick={() => setIsCreatingPost(true)}
-                      className="bg-black text-white px-4 py-2 text-sm font-medium flex items-center gap-2 hover:bg-zinc-800 transition-shadow shadow-md"
-                      aria-label="发帖"
-                    >
-                      <PenSquare className="w-4 h-4" /> 发帖
-                    </button>
-                  </div>
-
-                  
-                 {/* 帖子列表 */}
-                  <div className="space-y-0 divide-y divide-zinc-100">
-                    {isLoading ? (
-                      <div className="py-20 text-center text-zinc-400">正在加载内容...</div>
-                    ) : (
-                      <>
-                        {(displayPosts || []).length > 0 ? (
-                          displayPosts
-                            .filter(p => (p.title || '').includes(searchQuery) || (p.content || '').includes(searchQuery))
-                            .map(post => {
-                              const isRead = readPosts.has(post.id);
-                              
-                              return (
-                                      <div 
-                                        key={post.id} 
-                                        onClick={() => { setSelectedPostId(post.id); setView('post'); }}
-                                        className={`py-4 cursor-pointer group transition-colors px-2
-                                        ${isRead ? 'opacity-50' : 'hover:bg-zinc-50'}
-                                        `}
-                                       >
-
-                                  <div className="flex items-start gap-3">
-                                    <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.user_id); }}>
-                                      <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
-                                    </div>
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        {post.is_essence && <span className="bg-black text-white px-1 text-xs" title="精华帖">蒂</span>}
-                                        {isRead && <span className="text-xs text-zinc-400">[已读]</span>}
-                                    <h3
-                                       className={`font-medium text-base transition-colors line-clamp-1
-                                       ${isRead ? 'text-zinc-500' : 'group-hover:text-blue-800'}
-                                        `}
-                                    >
-                                     {post.title}
-                                    </h3>
-
-                                      </div>
-                                      <p className={`text-sm line-clamp-2 mb-2 ${
-                                        isRead ? 'text-zinc-400' : 'text-zinc-500'
-                                      }`}>
-                                        {getPostPreview(post.content)}...
-                                      </p>
-                                      <div className="text-xs text-zinc-400 flex gap-3">
-                                        <span>{post.category}</span>
-                                        <span>•</span>
-                                        <span className="hover:text-black hover:underline">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
-                                        <span>•</span>
-                                        <span>{timeAgo(post.created_at)}</span>
-                                      </div>
-                                    </div>
-                                  </div>
+                <>
+                  {(displayPosts || []).length > 0 ? (
+                    displayPosts
+                      .filter(p => (p.title || '').includes(searchQuery) || (p.content || '').includes(searchQuery))
+                      .map(post => {
+                        const isRead = readPosts.has(post.id);
+                        
+                        return (
+                          <div 
+                            key={post.id} 
+                            onClick={() => navigate(`/post/${post.id}`)}
+                            className={`py-4 cursor-pointer group transition-colors px-2
+                            ${isRead ? 'opacity-50' : 'hover:bg-zinc-50'}
+                            `}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 pt-1" onClick={(e) => { e.stopPropagation(); handleViewProfile(post.user_id); }}>
+                                <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  {post.is_essence && <span className="bg-black text-white px-1 text-xs" title="精华帖">荐</span>}
+                                  {isRead && <span className="text-xs text-zinc-400">[已读]</span>}
+                                  <h3
+                                    className={`font-medium text-base transition-colors line-clamp-1
+                                    ${isRead ? 'text-zinc-500' : 'group-hover:text-blue-800'}
+                                    `}
+                                  >
+                                    {post.title}
+                                  </h3>
                                 </div>
-                               );
-                              })
-                        ) : (
-                          <div className="py-20 text-center text-zinc-400 text-sm">暂无内容</div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>  
-              )} 
-            </div>  
-          </div>  
-        )}
+                                <p className={`text-sm line-clamp-2 mb-2 ${
+                                  isRead ? 'text-zinc-400' : 'text-zinc-500'
+                                }`}>
+                                  {getPostPreview(post.content)}...
+                                </p>
+                                <div className="text-xs text-zinc-400 flex gap-3">
+                                  <span>{post.category}</span>
+                                  <span>•</span>
+                                  <span className="hover:text-black hover:underline">{usersMap[post.user_id]?.user_name || '未知用户'}</span>
+                                  <span>•</span>
+                                  <span>{timeAgo(post.created_at)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                  ) : (
+                    <div className="py-20 text-center text-zinc-400 text-sm">暂无内容</div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    } />
 
+    {/* 帖子详情页 */}
+    <Route path="/post/:postId" element={
+      <PostDetail 
+        user={user!}
+        usersMap={usersMap}
+        onViewProfile={handleViewProfile}
+        showToast={showToast}
+      />
+    } />
+
+    {/* 用户资料页 */}
+    <Route path="/profile/:userId" element={
+      <UserProfileWrapper 
+        onNavigateBack={() => navigate('/')}
+        onPostClick={(id) => navigate(`/post/${id}`)}
+      />
+    } />
+
+    {/* 管理后台 */}
+    <Route path="/admin" element={<AdminPanel />} />
+  </Routes>
+</main>
+
+      
         {isCreatingPost && (
           <CreatePostModal 
             user={user!} 
@@ -1553,5 +1564,13 @@ useEffect(() => {
         )}
       </main>
     </div>
+  );
+}
+  
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
