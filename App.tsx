@@ -15,7 +15,7 @@ import { User, Post, Category } from './types';
 import { get_all_users, get_user, get_posts } from './services/storage';
 import { Search, LogOut, Menu, UserCircle, PenSquare, X, Shield } from 'lucide-react';
 
-const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论💊🏻i女', '求书📕求作', '自荐🙋🏻分享', '组务●组规'];
+const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
 // 工具函数
 function timeAgo(dateInput: string | Date): string {
@@ -141,7 +141,7 @@ function AppContent() {
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
             <div className="flex items-center gap-6">
               <h1 className="font-bold text-lg cursor-pointer truncate" onClick={() => navigate('/feed')}>
-                女主无cp交流中心
+                女主无cp/无男主交流中心
               </h1>
               {/* 桌面端导航 */}
               <div className="hidden md:flex gap-1">
@@ -198,7 +198,7 @@ function AppContent() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden" onClick={() => setShowMobileMenu(false)}>
           <div className="bg-white w-64 h-full p-4 space-y-2" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold">分类导航</h3>
+              <h3 className="font-bold">分类</h3>
               <button onClick={() => setShowMobileMenu(false)}>
                 <X className="w-5 h-5" />
               </button>
@@ -231,7 +231,7 @@ function AppContent() {
               <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input type="checkbox" checked={onlyEssence} onChange={e => setOnlyEssence(e.target.checked)} className="accent-black" />
-                  <span>精华推送</span>
+                  <span>蒂</span>
                 </label>
                 <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 hover:bg-zinc-800">
                   <PenSquare className="w-4 h-4" /> 发帖
