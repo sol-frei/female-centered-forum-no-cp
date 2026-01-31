@@ -1,6 +1,6 @@
 import { supabase } from './services/supabaseClient';
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 
 // 导入页面与类型
 import Landing from './components/Landing';
@@ -15,7 +15,7 @@ import { User, Post, Category } from './types';
 import { get_all_users, get_user, get_posts } from './services/storage';
 import { Search, LogOut, Menu, UserCircle, PenSquare, X, Shield } from 'lucide-react';
 
-const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
+const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论💊🏻i女', '求书📕求作', '自荐🙋🏻分享', '组务●组规'];
 
 // 工具函数
 function timeAgo(dateInput: string | Date): string {
@@ -49,6 +49,7 @@ export default function App() {
 
 function AppContent() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   
   // 核心状态
@@ -127,17 +128,20 @@ function AppContent() {
     return <ChangePasswordModal user={user} onComplete={(u) => { setUser(u); navigate('/feed'); }} />;
   }
 
+  // 判断是否在登录页面或落地页
+  const isLoginPage = location.pathname === '/login' || location.pathname === '/';
+
   return (
     <div className="min-h-screen bg-white text-zinc-900">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* 只有登录后才显示导航栏 */}
-      {user && (
+      {/* 只有登录后且不在登录/落地页时才显示导航栏 */}
+      {user && !isLoginPage && (
         <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
             <div className="flex items-center gap-6">
               <h1 className="font-bold text-lg cursor-pointer truncate" onClick={() => navigate('/feed')}>
-                女主无cp/无男主交流中心
+                女主无cp交流中心
               </h1>
               {/* 桌面端导航 */}
               <div className="hidden md:flex gap-1">
@@ -194,7 +198,7 @@ function AppContent() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden" onClick={() => setShowMobileMenu(false)}>
           <div className="bg-white w-64 h-full p-4 space-y-2" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold">分类</h3>
+              <h3 className="font-bold">分类导航</h3>
               <button onClick={() => setShowMobileMenu(false)}>
                 <X className="w-5 h-5" />
               </button>
