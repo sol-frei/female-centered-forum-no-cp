@@ -15,7 +15,7 @@ import { User, Post, Category } from './types';
 import { get_all_users, get_user, get_posts } from './services/storage';
 import { Search, LogOut, Menu, UserCircle, PenSquare, X, Shield } from 'lucide-react';
 
-const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论💊🏻i女', '求书📕求作', '自荐🙋🏻分享', '组务●组规'];
+const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
 // 工具函数
 function timeAgo(dateInput: string | Date): string {
