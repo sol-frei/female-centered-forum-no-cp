@@ -151,8 +151,8 @@ function AppContent() {
       {user && !isLoginPage && !hideNavPages && (
         <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <h1 className="font-bold text-lg cursor-pointer truncate" onClick={() => navigate('/feed')}>
+            <div className="flex items-center gap-2 md:gap-6 flex-1 min-w-0">
+              <h1 className="font-bold text-base md:text-lg cursor-pointer truncate" onClick={() => navigate('/feed')}>
                 女主无cp/无男主交流中心
               </h1>
               {/* 桌面端导航 */}
@@ -170,37 +170,46 @@ function AppContent() {
               {/* 移动端菜单按钮 */}
               <button 
                 onClick={() => setShowMobileMenu(true)}
-                className="md:hidden p-2 hover:bg-zinc-100 rounded-full"
+                className="md:hidden p-2 hover:bg-zinc-100 rounded-full flex-shrink-0"
               >
                 <Menu className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex items-center gap-2">
-              {/* 搜索按钮 */}
+            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+              {/* 搜索按钮 - 桌面端显示 */}
               <button 
-                className="p-2 hover:bg-zinc-100 rounded-full"
+                className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"
                 title="搜索"
               >
                 <Search className="w-5 h-5 text-zinc-600" />
               </button>
               
-              {/* 用户头像,不显示用户名,不显示边框 */}
-              <div onClick={() => navigate(`/profile/${user.id}`)} className="cursor-pointer p-2 hover:bg-zinc-100 rounded-full">
+              {/* 用户头像 */}
+              <button 
+                onClick={() => navigate(`/profile/${user.id}`)} 
+                className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full flex-shrink-0"
+              >
                 <Avatar url={user.avatar} className="w-6 h-6" />
-              </div>
+              </button>
               
-              {/* 管理员入口 */}
+              {/* 管理员入口 - 桌面端显示 */}
               {user.role === 'admin' && (
                 <button 
                   onClick={() => navigate('/admin')}
-                  className="p-2 hover:bg-zinc-100 rounded-full"
+                  className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"
                   title="管理员面板"
                 >
                   <Shield className="w-5 h-5" />
                 </button>
               )}
               
-              <button onClick={handleLogout} className="p-2 hover:bg-zinc-100 rounded-full"><LogOut className="w-5 h-5" /></button>
+              {/* 退出按钮 - 桌面端显示 */}
+              <button 
+                onClick={handleLogout} 
+                className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </nav>
@@ -211,24 +220,55 @@ function AppContent() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden" onClick={() => setShowMobileMenu(false)}>
           <div className="bg-white w-64 h-full p-4 space-y-2" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold">分类</h3>
+              <h3 className="font-bold">菜单</h3>
               <button onClick={() => setShowMobileMenu(false)}>
                 <X className="w-5 h-5" />
               </button>
             </div>
-            {CATEGORIES.map(c => (
+            
+            {/* 分类列表 */}
+            <div className="mb-4">
+              <div className="text-xs text-zinc-500 mb-2 px-4">分类</div>
+              {CATEGORIES.map(c => (
+                <button
+                  key={c}
+                  onClick={() => {
+                    setCurrentCategory(c);
+                    navigate('/feed');
+                    setShowMobileMenu(false);
+                  }}
+                  className={`w-full text-left px-4 py-3 rounded-lg ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            
+            {/* 功能选项 */}
+            <div className="border-t pt-4 space-y-2">
+              {user && user.role === 'admin' && (
+                <button
+                  onClick={() => {
+                    navigate('/admin');
+                    setShowMobileMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2"
+                >
+                  <Shield className="w-4 h-4" />
+                  管理员面板
+                </button>
+              )}
               <button
-                key={c}
                 onClick={() => {
-                  setCurrentCategory(c);
-                  navigate('/feed');
+                  handleLogout();
                   setShowMobileMenu(false);
                 }}
-                className={`w-full text-left px-4 py-3 rounded-lg ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
+                className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2"
               >
-                {c}
+                <LogOut className="w-4 h-4" />
+                退出登录
               </button>
-            ))}
+            </div>
           </div>
         </div>
       )}
