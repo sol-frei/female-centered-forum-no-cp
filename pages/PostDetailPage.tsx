@@ -498,7 +498,7 @@ const PostDetailPage = ({
                     {repliedComment && (
                       <div className="bg-zinc-50 border-l-2 border-zinc-300 pl-3 py-2 mb-2 text-sm">
                         <div className="text-xs text-zinc-500 mb-1">
-                          回复 {repliedUser.user_name}:
+                        {repliedUser.user_name}:
                         </div>
                         <div className="text-zinc-600 line-clamp-2">
                           {repliedComment.content}
