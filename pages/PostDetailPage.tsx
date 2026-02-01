@@ -401,7 +401,7 @@ const PostDetailPage = ({
               </div>
               <div>
                 <div 
-                  className="font-bold text-base cursor-pointer hover:underline" 
+                  className="text-base cursor-pointer hover:underline" 
                   onClick={() => onViewProfile(post.user_id)}
                 >
                   {usersMap[post.user_id]?.user_name || '未知用户'}
@@ -490,13 +490,13 @@ const PostDetailPage = ({
                   <Avatar url={commentAuthor?.avatar} className="w-8 h-8 flex-shrink-0" />
                   <div className="flex-1">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="font-bold text-base">{commentAuthor?.user_name || '未知用户'}</span>
+                      <span className="text-base">{commentAuthor?.user_name || '未知用户'}</span>
                       <span className="text-xs text-zinc-400">{timeAgo(c.created_at)}</span>
                     </div>
                     
                     {/* 显示被回复的内容 */}
                     {repliedComment && repliedUser && (
-                      <div className="bg-zinc-50 border-l-2 border-zinc-300 pl-3 py-2 mb-2 text-sm">                
+                      <div className="bg-zinc-50 border-l-2 border-zinc-200 pl-3 py-2 mb-2 text-sm">                
                         <div className="text-zinc-600 line-clamp-2">
                          {repliedUser.user_name}:
                           {repliedComment.content}
