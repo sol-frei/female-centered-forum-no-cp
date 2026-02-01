@@ -477,7 +477,7 @@ const PostDetailPage = ({
         {/* 评论区 */}
         <div className="space-y-6">
           {comments.length === 0 ? (
-            <div className="text-center py-8 text-zinc-400">暂无评论，来抢沙发吧~</div>
+            <div className="text-center py-8 text-zinc-400">暂无评论，快来写下你的想法吧~</div>
           ) : (
             comments.map(c => {
               const commentAuthor = usersMap[c.user_id];
