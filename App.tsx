@@ -100,6 +100,13 @@ function AppContent() {
     loadPosts();
   }, [currentCategory, onlyEssence, refreshKey]);
 
+  // 监听路由变化,返回feed页面时刷新列表
+  useEffect(() => {
+    if (location.pathname === '/feed') {
+      setRefreshKey(k => k + 1);
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     if (!user) return;
     get_all_users().then(list => {
