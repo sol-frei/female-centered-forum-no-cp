@@ -401,7 +401,7 @@ const PostDetailPage = ({
               </div>
               <div>
                 <div 
-                  className="text-base cursor-pointer hover:underline" 
+                  className="font-medium text-base text-zinc-600 cursor-pointer hover:underline" 
                   onClick={() => onViewProfile(post.user_id)}
                 >
                   {usersMap[post.user_id]?.user_name || '未知用户'}
@@ -490,7 +490,7 @@ const PostDetailPage = ({
                   <Avatar url={commentAuthor?.avatar} className="w-8 h-8 flex-shrink-0" />
                   <div className="flex-1">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-base">{commentAuthor?.user_name || '未知用户'}</span>
+                      <span className="font-medium text-base text-zinc-600">{commentAuthor?.user_name || '未知用户'}</span>
                       <span className="text-xs text-zinc-400">{timeAgo(c.created_at)}</span>
                     </div>
                     
