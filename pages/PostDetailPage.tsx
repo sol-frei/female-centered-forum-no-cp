@@ -495,10 +495,11 @@ const PostDetailPage = ({
                     </div>
                     
                     {/* 显示被回复的内容 */}
-                    {repliedComment && (
-                      <div className="bg-zinc-50 border-l-2 border-zinc-300 pl-3 py-2 mb-2 text-base">
-                        <div className="text-xs text-zinc-500 mb-1">
-                        {repliedComment.content}
+                    {repliedComment && repliedUser && (
+                      <div className="bg-zinc-50 border-l-2 border-zinc-300 pl-3 py-2 mb-2 text-sm">                
+                        <div className="text-zinc-600 line-clamp-2">
+                         {repliedUser.user_name}:
+                          {repliedComment.content}
                         </div>
                       </div>
                     )}
