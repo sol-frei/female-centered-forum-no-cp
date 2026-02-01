@@ -496,7 +496,7 @@ const PostDetailPage = ({
                     
                     {/* 显示被回复的内容 */}
                     {repliedComment && repliedUser && (
-                      <div className="bg-zinc-50 border-l-2 border-zinc-300 pl-3 py-2 mb-2 text-sm">
+                      <div className="bg-zinc-50 border-l-2 border-zinc-300 pl-3 py-2 mb-2 text-base">
                         <div className="text-xs text-zinc-500 mb-1">
                           回复 @{repliedUser.user_name}:
                         </div>
@@ -506,7 +506,7 @@ const PostDetailPage = ({
                       </div>
                     )}
                     
-                    <p className="text-zinc-800 text-sm mb-2">{c.content}</p>
+                    <p className="text-zinc-800 text-base mb-2">{c.content}</p>
                     
                     {/* 评论图片 */}
                     {c.images && c.images.length > 0 && (
