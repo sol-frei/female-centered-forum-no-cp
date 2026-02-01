@@ -261,17 +261,6 @@ const PostDetailPage = ({
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    if (!window.confirm('确定删除这条评论吗？')) return;
-    try {
-      await delete_comment(commentId);
-      showToast('删除成功', 'success');
-      fetchPostAndComments();
-    } catch (e: any) {
-      showToast('删除失败', 'error');
-    }
-  };
-
   const handleLikeComment = async (commentId: string) => {
     if (!user) return;
     try {
@@ -550,15 +539,7 @@ const PostDetailPage = ({
                         <MessageCircle className="w-3 h-3" />
                         回复
                       </button>
-                      {(user?.id === c.user_id || isAdminOrInver) && (
-                        <button
-                          onClick={() => handleDeleteComment(c.id)}
-                          className="text-xs text-zinc-500 hover:text-red-500 flex items-center gap-1"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          删除
-                        </button>
-                      )}
+
                     </div>
                   </div>
                 </div>
