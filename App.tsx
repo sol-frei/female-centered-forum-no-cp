@@ -65,6 +65,7 @@ function AppContent() {
   const [readPosts, setReadPosts] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showCategoriesInMenu, setShowCategoriesInMenu] = useState(true);
 
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
@@ -176,9 +177,9 @@ function AppContent() {
               </button>
             </div>
             <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-              {/* 搜索按钮 - 桌面端显示 */}
+              {/* 搜索按钮 - 所有设备显示 */}
               <button 
-                className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"
+                className="p-2 hover:bg-zinc-100 rounded-full"
                 title="搜索"
               >
                 <Search className="w-5 h-5 text-zinc-600" />
@@ -218,34 +219,45 @@ function AppContent() {
       {/* 移动端分类菜单 */}
       {showMobileMenu && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden" onClick={() => setShowMobileMenu(false)}>
-          <div className="bg-white w-64 h-full p-4 space-y-2" onClick={e => e.stopPropagation()}>
+          <div className="bg-white w-64 h-full p-4 overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold">菜单</h3>
+              <h3 className="font-bold text-lg">菜单</h3>
               <button onClick={() => setShowMobileMenu(false)}>
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            {/* 分类列表 */}
+            {/* 分类列表 - 可折叠 */}
             <div className="mb-4">
-              <div className="text-xs text-zinc-500 mb-2 px-4">分类</div>
-              {CATEGORIES.map(c => (
-                <button
-                  key={c}
-                  onClick={() => {
-                    setCurrentCategory(c);
-                    navigate('/feed');
-                    setShowMobileMenu(false);
-                  }}
-                  className={`w-full text-left px-4 py-3 rounded-lg ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
-                >
-                  {c}
-                </button>
-              ))}
+              <button 
+                onClick={() => setShowCategoriesInMenu(!showCategoriesInMenu)}
+                className="w-full flex items-center justify-between px-2 py-2 text-base font-medium text-zinc-700 hover:bg-zinc-50 rounded"
+              >
+                <span>分类</span>
+                <span className="text-xs">{showCategoriesInMenu ? '▼' : '▶'}</span>
+              </button>
+              
+              {showCategoriesInMenu && (
+                <div className="mt-2 space-y-1">
+                  {CATEGORIES.map(c => (
+                    <button
+                      key={c}
+                      onClick={() => {
+                        setCurrentCategory(c);
+                        navigate('/feed');
+                        setShowMobileMenu(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 rounded-lg text-sm ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             
             {/* 功能选项 */}
-            <div className="border-t pt-4 space-y-2">
+            <div className="border-t pt-4 space-y-1">
               {user && user.role === 'admin' && (
                 <button
                   onClick={() => {
@@ -255,7 +267,7 @@ function AppContent() {
                   className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2"
                 >
                   <Shield className="w-4 h-4" />
-                  管理员面板
+                  <span className="text-base">管理员面板</span>
                 </button>
               )}
               <button
@@ -266,7 +278,7 @@ function AppContent() {
                 className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2"
               >
                 <LogOut className="w-4 h-4" />
-                退出登录
+                <span className="text-base">退出登录</span>
               </button>
             </div>
           </div>
