@@ -393,21 +393,11 @@ const PostDetailPage = ({
         <button onClick={handleBack} className="text-zinc-600 hover:text-black font-medium flex items-center gap-2">
           <ArrowLeft className="w-5 h-5" /> 返回
         </button>
-        <div className="flex items-center gap-2">
-          {isAdminOrInver && (
-            <button 
-              onClick={handleEssence}
-              className={`px-3 py-1 rounded-full text-sm font-medium ${post.is_essence ? 'bg-black text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'}`}
-            >
-              {post.is_essence ? '取消精华' : '设为精华'}
-            </button>
-          )}
-          {canEditPost && (
-            <button onClick={openEditPost} className="text-zinc-600 hover:text-black">
-              <Edit2 className="w-5 h-5" />
-            </button>
-          )}
-        </div>
+        {canEditPost && (
+          <button onClick={openEditPost} className="text-zinc-600 hover:text-black">
+            <Edit2 className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       <main className="max-w-2xl mx-auto w-full px-4 py-6 pb-32">
@@ -428,6 +418,14 @@ const PostDetailPage = ({
                 <div className="text-xs text-zinc-400">{timeAgo(post.created_at)}</div>
               </div>
             </div>
+            {isAdminOrInver && (
+              <button 
+                onClick={handleEssence}
+                className={`p-2 rounded-full ${post.is_essence ? 'text-yellow-500' : 'text-zinc-400 hover:text-yellow-500'}`}
+              >
+                <Star className="w-5 h-5" fill={post.is_essence ? 'currentColor' : 'none'} />
+              </button>
+            )}
           </div>
 
           {isEditingPost ? (
@@ -458,14 +456,7 @@ const PostDetailPage = ({
             </div>
           ) : (
             <>
-              <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                {post.is_essence && (
-                  <span className="inline-block px-2 py-0.5 bg-black text-white text-sm font-bold rounded">
-                    精
-                  </span>
-                )}
-                {post.title}
-              </h1>
+              <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
               <PostContent content={post.content} className="prose prose-zinc max-w-none" />
               {renderPollOptions()}
             </>
