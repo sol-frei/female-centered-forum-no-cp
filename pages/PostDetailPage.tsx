@@ -494,18 +494,15 @@ const PostDetailPage = ({
                       <span className="text-xs text-zinc-400">{timeAgo(c.created_at)}</span>
                     </div>
                     
- {/* 显示被回复的内容 */}
-{repliedComment && repliedUser && (
-  <div className="bg-zinc-50 border-l-2 border-zinc-300 pl-3 py-2 mb-2 text-sm text-zinc-600">
-    <span className="font-medium text-zinc-700">
-      {repliedUser.user_name}
-    </span>
-    ：
-    <span className="ml-1 line-clamp-2">
+{/* 显示被回复的内容 */}
+{repliedComment && (
+  <div className="bg-zinc-50 border-l-2 border-zinc-300 pl-3 py-2 mb-2 text-sm">
+    <div className="text-zinc-600 line-clamp-2">
       {repliedComment.content}
-    </span>
+    </div>
   </div>
 )}
+
 
                     
                     <p className="text-zinc-800 text-base mb-2">{c.content}</p>
