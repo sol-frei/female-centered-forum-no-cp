@@ -130,13 +130,18 @@ function AppContent() {
 
   // 判断是否在登录页面或落地页
   const isLoginPage = location.pathname === '/login' || location.pathname === '/';
+  
+  // 判断是否在需要隐藏导航栏的页面
+  const hideNavPages = location.pathname.startsWith('/post/') || 
+                       location.pathname.startsWith('/profile/') || 
+                       location.pathname === '/admin';
 
   return (
     <div className="min-h-screen bg-white text-zinc-900">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* 只有登录后且不在登录/落地页时才显示导航栏 */}
-      {user && !isLoginPage && (
+      {/* 只有登录后且不在登录/落地页且不在需要隐藏导航的页面时才显示导航栏 */}
+      {user && !isLoginPage && !hideNavPages && (
         <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
             <div className="flex items-center gap-6">
