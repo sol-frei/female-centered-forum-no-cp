@@ -243,7 +243,7 @@ function AppContent() {
                     id="essence-filter"
                   />
                   <div className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'bg-white text-black border border-zinc-300'}`}>
-                    精
+                    蒂
                   </div>
                 </label>
                 <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 hover:bg-zinc-800">
@@ -262,7 +262,7 @@ function AppContent() {
                         <h3 className="font-medium flex items-center gap-2 flex-wrap">
                           {post.is_essence && (
                             <span className="inline-block px-2 py-0.5 bg-black text-white text-xs font-bold rounded flex-shrink-0">
-                              精
+                              蒂
                             </span>
                           )}
                           <span className="flex-1">{post.title}</span>
