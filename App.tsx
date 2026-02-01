@@ -234,9 +234,17 @@ function AppContent() {
           <Route path="/feed" element={
             <div className="p-4">
               <div className="flex justify-between items-center mb-4 border-b pb-2">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={onlyEssence} onChange={e => setOnlyEssence(e.target.checked)} className="accent-black" />
-                  <span>蒂</span>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={onlyEssence} 
+                    onChange={e => setOnlyEssence(e.target.checked)} 
+                    className="w-0 h-0 opacity-0 absolute"
+                    id="essence-filter"
+                  />
+                  <div className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'bg-white text-black border border-zinc-300'}`}>
+                    精
+                  </div>
                 </label>
                 <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 hover:bg-zinc-800">
                   <PenSquare className="w-4 h-4" /> 发帖
@@ -249,9 +257,16 @@ function AppContent() {
                 ) : (
                   displayPosts.filter(p => p.title.includes(searchQuery)).map(post => (
                     <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
-                      <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
-                      <div>
-                        <h3 className="font-medium">{post.title}</h3>
+                      <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium flex items-center gap-2 flex-wrap">
+                          {post.is_essence && (
+                            <span className="inline-block px-2 py-0.5 bg-black text-white text-xs font-bold rounded flex-shrink-0">
+                              精
+                            </span>
+                          )}
+                          <span className="flex-1">{post.title}</span>
+                        </h3>
                         <p className="text-sm text-zinc-500 line-clamp-2">{getPostPreview(post.content)}</p>
                         <div className="text-xs text-zinc-400 mt-1">
                           {post.category} • {usersMap[post.user_id]?.user_name} • {timeAgo(post.created_at)}
