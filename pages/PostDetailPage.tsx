@@ -476,7 +476,6 @@ const PostDetailPage = ({
 
         {/* 评论区 */}
         <div className="space-y-6">
-          <h3 className="font-bold text-lg">全部评论 ({comments.length})</h3>
           {comments.length === 0 ? (
             <div className="text-center py-8 text-zinc-400">暂无评论，来抢沙发吧~</div>
           ) : (
