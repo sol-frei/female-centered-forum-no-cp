@@ -166,9 +166,11 @@ const PostDetailPage = ({
   const handleEssence = async () => {
     if (!isAdminOrInver) return;
     try {
-      await toggle_essence_post(post.id);
-      showToast(post.is_essence ? '已取消精华' : '已设为精华', 'success');
-      fetchPostAndComments();
+      const newEssenceState = !post.is_essence;
+      await toggle_essence_post(post.id, newEssenceState);
+      showToast(newEssenceState ? '已设为蒂贴' : '已取消蒂贴', 'success');
+      // 立即更新本地状态
+      setPost({ ...post, is_essence: newEssenceState });
     } catch (e: any) {
       showToast('操作失败', 'error');
     }
