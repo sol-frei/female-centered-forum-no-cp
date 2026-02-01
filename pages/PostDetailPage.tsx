@@ -504,7 +504,10 @@ const PostDetailPage = ({
                       </div>
                     )}
                     
-                    <p className="text-zinc-800 text-base mb-2">{c.content}</p>
+                    <p className="text-zinc-800 text-base mb-2">
+                    {(c.content || '').replace(/^@\S+\s*/, '')}
+                    </p>
+
                     
                     {/* 评论图片 */}
                     {c.images && c.images.length > 0 && (
