@@ -496,7 +496,7 @@ const PostDetailPage = ({
                     
                     {/* 显示被回复的内容 */}
                     {repliedComment && repliedUser && (
-                      <div className="bg-zinc-50 border-l-2 border-zinc-200 pl-3 py-2 mb-2 text-sm">                
+                      <div className="bg-zinc-50 pl-3 py-2 mb-2 text-sm rounded">                
                         <div className="text-zinc-600 line-clamp-2">
                          {repliedUser.user_name}:
                           {repliedComment.content}
