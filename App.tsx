@@ -175,31 +175,32 @@ function AppContent() {
                 <Menu className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="relative hidden sm:block">
-                <input
-                  type="text" placeholder="搜索..." value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-4 py-1.5 bg-zinc-100 rounded-full text-sm outline-none"
-                />
+            <div className="flex items-center gap-2">
+              {/* 搜索按钮 */}
+              <button 
+                className="p-2 hover:bg-zinc-100 rounded-full"
+                title="搜索"
+              >
+                <Search className="w-5 h-5 text-zinc-600" />
+              </button>
+              
+              {/* 用户头像,不显示用户名,不显示边框 */}
+              <div onClick={() => navigate(`/profile/${user.id}`)} className="cursor-pointer p-2 hover:bg-zinc-100 rounded-full">
+                <Avatar url={user.avatar} className="w-6 h-6" />
               </div>
-              <div className="flex items-center gap-2 border-l pl-4 border-zinc-200">
-                <div onClick={() => navigate(`/profile/${user.id}`)} className="flex items-center gap-2 cursor-pointer p-1">
-                  <Avatar url={user.avatar} className="w-6 h-6" />
-                  <span className="text-sm font-bold hidden sm:block">{user.user_name}</span>
-                </div>
-                {/* 管理员入口 */}
-                {user.role === 'admin' && (
-                  <button 
-                    onClick={() => navigate('/admin')}
-                    className="p-2 hover:bg-zinc-100 rounded-full"
-                    title="管理员面板"
-                  >
-                    <Shield className="w-5 h-5" />
-                  </button>
-                )}
-                <button onClick={handleLogout} className="p-2 hover:bg-zinc-100 rounded-full"><LogOut className="w-5 h-5" /></button>
-              </div>
+              
+              {/* 管理员入口 */}
+              {user.role === 'admin' && (
+                <button 
+                  onClick={() => navigate('/admin')}
+                  className="p-2 hover:bg-zinc-100 rounded-full"
+                  title="管理员面板"
+                >
+                  <Shield className="w-5 h-5" />
+                </button>
+              )}
+              
+              <button onClick={handleLogout} className="p-2 hover:bg-zinc-100 rounded-full"><LogOut className="w-5 h-5" /></button>
             </div>
           </div>
         </nav>
@@ -250,7 +251,7 @@ function AppContent() {
                     id="essence-filter"
                   />
                   <div className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'bg-white text-black border border-zinc-300'}`}>
-                    蒂
+                    精
                   </div>
                 </label>
                 <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 hover:bg-zinc-800">
@@ -269,7 +270,7 @@ function AppContent() {
                         <h3 className="font-medium flex items-center gap-2 flex-wrap">
                           {post.is_essence && (
                             <span className="inline-block px-2 py-0.5 bg-black text-white text-xs font-bold rounded flex-shrink-0">
-                              蒂
+                              精
                             </span>
                           )}
                           <span className="flex-1">{post.title}</span>
