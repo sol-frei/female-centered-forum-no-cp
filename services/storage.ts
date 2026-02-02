@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { ToastType,User, Post, Category, Collection, Notification, SensitiveWords} from '../types';
+import { ToastType,User, Post, Category, Collection, Notification, SensitiveWords,BookRating } from '../types';
 
 
 // 敏感词处理逻辑
@@ -680,5 +680,268 @@ export async function markNotificationAsRead(notificationId: string) {
     if (error) throw error;
   } catch (error: any) {
     console.error('标记通知已读失败:', error.message);
+  }
+}
+
+
+
+
+/**
+ * 添加以下函数到 storage.ts 文件中
+ */
+
+/**
+ * 创建图书评分
+ * @param ratingData 评分数据
+ * @returns 创建的评分记录
+ */
+export async function create_book_rating(ratingData: {
+  post_id: string;
+  user_id: string;
+  user_name: string;
+  book_name: string;
+  book_author: string;
+  book_platform: string;
+  impressed_score: number;
+  principle_scores: { [key: string]: 'yes' | 'no' | null };
+  principle_remarks: { [key: string]: string };
+  extra_deduction: number;
+  extra_remark: string;
+  final_score: number;
+  reviewer_comment: string;
+}): Promise<BookRating> {
+  try {
+    const { data, error } = await supabase
+      .from('book_ratings')
+      .insert([{
+        post_id: ratingData.post_id,
+        user_id: ratingData.user_id,
+        user_name: ratingData.user_name,
+        book_name: ratingData.book_name,
+        book_author: ratingData.book_author,
+        book_platform: ratingData.book_platform,
+        impressed_score: ratingData.impressed_score,
+        principle_scores: ratingData.principle_scores,
+        principle_remarks: ratingData.principle_remarks,
+        extra_deduction: ratingData.extra_deduction,
+        extra_remark: ratingData.extra_remark,
+        final_score: ratingData.final_score,
+        reviewer_comment: ratingData.reviewer_comment,
+        created_at: new Date().toISOString(),
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('创建图书评分失败:', error);
+    throw new Error(`创建图书评分失败: ${error.message}`);
+  }
+}
+
+/**
+ * 更新图书评分
+ * @param ratingId 评分ID
+ * @param updates 要更新的字段
+ * @returns 更新后的评分记录
+ */
+export async function update_book_rating(
+  ratingId: string,
+  updates: Partial<BookRating>
+): Promise<BookRating> {
+  try {
+    const { data, error } = await supabase
+      .from('book_ratings')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', ratingId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('更新图书评分失败:', error);
+    throw new Error(`更新图书评分失败: ${error.message}`);
+  }
+}
+
+/**
+ * 删除图书评分
+ * @param ratingId 评分ID
+ */
+export async function delete_book_rating(ratingId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('book_ratings')
+      .delete()
+      .eq('id', ratingId);
+
+    if (error) throw error;
+  } catch (error: any) {
+    console.error('删除图书评分失败:', error);
+    throw new Error(`删除图书评分失败: ${error.message}`);
+  }
+}
+
+/**
+ * 根据帖子ID获取图书评分
+ * @param postId 帖子ID
+ * @returns 评分记录或null
+ */
+export async function get_book_rating_by_post(postId: string): Promise<BookRating | null> {
+  try {
+    const { data, error } = await supabase
+      .from('book_ratings')
+      .select('*')
+      .eq('post_id', postId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('获取图书评分失败:', error);
+    return null;
+  }
+}
+
+/**
+ * 获取所有图书评分列表
+ * @param options 查询选项
+ * @returns 评分列表
+ */
+export async function get_all_book_ratings(options?: {
+  sortBy?: 'latest' | 'highest' | 'lowest';
+  limit?: number;
+}): Promise<BookRating[]> {
+  try {
+    let query = supabase
+      .from('book_ratings')
+      .select('*');
+
+    // 排序
+    if (options?.sortBy === 'latest') {
+      query = query.order('created_at', { ascending: false });
+    } else if (options?.sortBy === 'highest') {
+      query = query.order('final_score', { ascending: false });
+    } else if (options?.sortBy === 'lowest') {
+      query = query.order('final_score', { ascending: true });
+    } else {
+      query = query.order('created_at', { ascending: false });
+    }
+
+    // 限制数量
+    if (options?.limit) {
+      query = query.limit(options.limit);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    return data || [];
+  } catch (error: any) {
+    console.error('获取图书评分列表失败:', error);
+    return [];
+  }
+}
+
+/**
+ * 根据用户ID获取其评分列表
+ * @param userId 用户ID
+ * @returns 评分列表
+ */
+export async function get_book_ratings_by_user(userId: string): Promise<BookRating[]> {
+  try {
+    const { data, error } = await supabase
+      .from('book_ratings')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error: any) {
+    console.error('获取用户图书评分失败:', error);
+    return [];
+  }
+}
+
+/**
+ * 搜索图书评分
+ * @param query 搜索关键词
+ * @returns 匹配的评分列表
+ */
+export async function search_book_ratings(query: string): Promise<BookRating[]> {
+  try {
+    const { data, error } = await supabase
+      .from('book_ratings')
+      .select('*')
+      .or(`book_name.ilike.%${query}%,book_author.ilike.%${query}%`)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error: any) {
+    console.error('搜索图书评分失败:', error);
+    return [];
+  }
+}
+
+/**
+ * 获取图书评分统计信息
+ * @returns 统计数据
+ */
+export async function get_book_rating_stats(): Promise<{
+  total: number;
+  averageScore: number;
+  highScoreCount: number; // >= 8分
+  mediumScoreCount: number; // 5-8分
+  lowScoreCount: number; // < 5分
+}> {
+  try {
+    const { data, error } = await supabase
+      .from('book_ratings')
+      .select('final_score');
+
+    if (error) throw error;
+
+    const ratings = data || [];
+    const total = ratings.length;
+    
+    if (total === 0) {
+      return {
+        total: 0,
+        averageScore: 0,
+        highScoreCount: 0,
+        mediumScoreCount: 0,
+        lowScoreCount: 0,
+      };
+    }
+
+    const sum = ratings.reduce((acc, r) => acc + r.final_score, 0);
+    const averageScore = sum / total;
+    const highScoreCount = ratings.filter(r => r.final_score >= 8).length;
+    const mediumScoreCount = ratings.filter(r => r.final_score >= 5 && r.final_score < 8).length;
+    const lowScoreCount = ratings.filter(r => r.final_score < 5).length;
+
+    return {
+      total,
+      averageScore: Number(averageScore.toFixed(2)),
+      highScoreCount,
+      mediumScoreCount,
+      lowScoreCount,
+    };
+  } catch (error: any) {
+    console.error('获取图书评分统计失败:', error);
+    return {
+      total: 0,
+      averageScore: 0,
+      highScoreCount: 0,
+      mediumScoreCount: 0,
+      lowScoreCount: 0,
+    };
   }
 }
