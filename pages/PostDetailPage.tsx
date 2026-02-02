@@ -119,38 +119,6 @@ const PostDetailPage = ({
     }
   };
 
-  // 🔄 静默刷新（不显示加载状态）
-  const silentRefresh = async () => {
-    if (!postId) return;
-    try {
-      const { data: postData, error: postErr } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('id', postId)
-        .single();
-      
-      const { data: commentData, error: commentErr } = await supabase
-        .from('comments')
-        .select('*')
-        .eq('post_id', postId)
-        .order('created_at', { ascending: true });
-
-      if (!postErr && postData) {
-        setPost(postData);
-      }
-      if (!commentErr && commentData) {
-        // 保留临时评论，只更新真实评论
-        setComments(prev => {
-          const tempComments = prev.filter(c => c.id.startsWith('temp-'));
-          return [...commentData, ...tempComments];
-        });
-      }
-    } catch (err) {
-      console.log('静默刷新失败:', err);
-      // 静默失败，不显示错误提示
-    }
-  };
-
   // 🔥 初始加载和用户合集
   useEffect(() => {
     fetchPostAndComments();
@@ -159,32 +127,108 @@ const PostDetailPage = ({
     }
   }, [postId, user]);
 
-  // 🔥 定期轮询刷新（完全免费方案）
+  // 🔥 Supabase 实时订阅 - 自动显示其他人的评论和点赞
   useEffect(() => {
     if (!postId) return;
 
-    // 每 30 秒自动刷新一次（可以根据需要调整）
-    const pollInterval = setInterval(() => {
-      // 只在页面可见时刷新（省流量）
-      if (document.visibilityState === 'visible') {
-        console.log('🔄 定期刷新数据...');
-        silentRefresh();
-      }
-    }, 30000); // 30秒，可以改成 20000（20秒）或 60000（1分钟）
+    console.log('🔌 启动实时订阅...');
 
-    // 🔥 页面重新显示时也刷新一次
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('📱 页面重新显示，刷新数据...');
-        silentRefresh();
-      }
-    };
+    // 订阅帖子更新（点赞数等）
+    const postChannel = supabase
+      .channel(`post-${postId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'posts',
+          filter: `id=eq.${postId}`
+        },
+        (payload) => {
+          console.log('🔔 帖子更新:', payload.new);
+          setPost((prevPost: any) => {
+            if (!prevPost) return payload.new;
+            return { ...prevPost, ...payload.new };
+          });
+        }
+      )
+      .subscribe();
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // 订阅评论更新
+    const commentChannel = supabase
+      .channel(`comments-${postId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'comments',
+          filter: `post_id=eq.${postId}`
+        },
+        (payload) => {
+          console.log('🔔 新评论:', payload.new);
+          setComments((prevComments) => {
+            // 检查是否已存在（避免重复）
+            const exists = prevComments.some(c => c.id === payload.new.id);
+            if (exists) return prevComments;
+            
+            // 如果是临时评论，替换它
+            const tempIndex = prevComments.findIndex(c => 
+              c.id.startsWith('temp-') && 
+              c.user_id === payload.new.user_id &&
+              Math.abs(new Date(c.created_at).getTime() - new Date(payload.new.created_at).getTime()) < 5000
+            );
+            
+            if (tempIndex !== -1) {
+              const newComments = [...prevComments];
+              newComments[tempIndex] = payload.new;
+              return newComments;
+            }
+            
+            // 添加新评论（其他用户的）
+            return [...prevComments, payload.new];
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'comments',
+          filter: `post_id=eq.${postId}`
+        },
+        (payload) => {
+          console.log('🔔 评论更新:', payload.new);
+          setComments((prevComments) =>
+            prevComments.map(c =>
+              c.id === payload.new.id ? payload.new : c
+            )
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'comments',
+          filter: `post_id=eq.${postId}`
+        },
+        (payload) => {
+          console.log('🔔 评论删除:', payload.old);
+          setComments((prevComments) =>
+            prevComments.filter(c => c.id !== payload.old.id)
+          );
+        }
+      )
+      .subscribe();
 
+    // 清理订阅
     return () => {
-      clearInterval(pollInterval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      console.log('🔌 取消订阅');
+      supabase.removeChannel(postChannel);
+      supabase.removeChannel(commentChannel);
     };
   }, [postId]);
 
@@ -237,6 +281,7 @@ const PostDetailPage = ({
     }
   };
 
+  // 🎯 保留原来的蒂贴功能
   const handleEssence = async () => {
     if (!isAdminOrInver) return;
     try {
@@ -296,7 +341,7 @@ const PostDetailPage = ({
     setCommentImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  // 🎯 优化：发表评论 - 乐观更新
+  // 🎯 优化：发表评论 - 乐观更新 + 不刷新页面
   const handleComment = async () => {
     if (!newComment.trim() && commentImages.length === 0) {
       showToast("评论内容或图片不能为空", 'error');
@@ -350,8 +395,7 @@ const PostDetailPage = ({
         likes: [],
       }, post.user_id, post.title);
 
-      // 5. 成功后刷新获取真实数据（包含真实ID）
-      await fetchPostAndComments();
+      // 🔥 5. 不刷新页面！实时订阅会自动更新真实评论
       showToast("评论成功", "success");
       
     } catch (e: any) {
@@ -628,7 +672,7 @@ const PostDetailPage = ({
         </div>
 
         {/* 评论区 */}
-        <div className="space-y-6">
+        <div className="space-y-6 p-4">
           {comments.length === 0 ? (
             <div className="text-center py-8 text-zinc-400">暂无评论，快来写下你的想法吧~</div>
           ) : (
