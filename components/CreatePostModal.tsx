@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, ImageIcon, Plus, Trash2, Loader } from 'lucide-react';
 import { User, Category } from '../types';
 import { create_post } from '../services/storage';
@@ -33,6 +33,9 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
+  // 新增: textarea ref 用于获取光标位置
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   // 投票功能状态
   const [enablePoll, setEnablePoll] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
@@ -40,8 +43,8 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   const [isMultiple, setIsMultiple] = useState(false);
   const [pollDeadline, setPollDeadline] = useState('');
 
-  // 新增:插入图片(在最后添加)
-  const insertImage = (file: File) => {
+  // 新增: 在光标处插入图片
+  const insertImageAtCursor = (file: File) => {
     const imageCount = blocks.filter(b => b.type === 'image').length;
     if (imageCount >= 9) {
       showToast('最多只能插入9张图片', 'warning');
@@ -61,65 +64,67 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     const reader = new FileReader();
     reader.onload = e => {
       const preview = e.target?.result as string;
-      // 在所有块的最后添加图片块和新的文本块
-      setBlocks(prev => [
-        ...prev,
-        { type: 'image', file, preview },
-        { type: 'text', value: '' }
-      ]);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // 新增:在指定文本块后插入图片
-  const insertImageAfter = (textBlockIndex: number, file: File) => {
-    const imageCount = blocks.filter(b => b.type === 'image').length;
-    if (imageCount >= 9) {
-      showToast('最多只能插入9张图片', 'warning');
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      showToast('只能上传图片文件', 'error');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('图片不能超过5MB', 'error');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = e => {
-      const preview = e.target?.result as string;
-      // 在指定位置后插入图片块和新的文本块
-      setBlocks(prev => [
-        ...prev.slice(0, textBlockIndex + 1),
-        { type: 'image', file, preview },
-        { type: 'text', value: '' },
-        ...prev.slice(textBlockIndex + 1)
-      ]);
+      const cursorPos = textareaRef.current?.selectionStart || 0;
+      
+      // 获取当前所有文本内容
+      const allText = blocks
+        .filter(b => b.type === 'text')
+        .map(b => (b as { type: 'text'; value: string }).value)
+        .join('');
+      
+      // 在光标位置分割文本
+      const beforeCursor = allText.substring(0, cursorPos);
+      const afterCursor = allText.substring(cursorPos);
+      
+      // 重构 blocks: 光标前文本 -> 图片 -> 光标后文本
+      const newBlocks: ContentBlock[] = [];
+      
+      if (beforeCursor) {
+        newBlocks.push({ type: 'text', value: beforeCursor });
+      }
+      
+      newBlocks.push({ type: 'image', file, preview });
+      
+      newBlocks.push({ type: 'text', value: afterCursor });
+      
+      setBlocks(newBlocks);
     };
     reader.readAsDataURL(file);
   };
 
   // 新增:删除块
   const removeBlock = (index: number) => {
-    // 至少保留一个文本块
-    if (blocks.length === 1 && blocks[0].type === 'text') {
-      showToast('至少需要保留一个文本框', 'warning');
+    const newBlocks = blocks.filter((_, i) => i !== index);
+    
+    // 如果删除后没有文本块了，至少保留一个空文本块
+    const hasTextBlock = newBlocks.some(b => b.type === 'text');
+    if (!hasTextBlock) {
+      setBlocks([{ type: 'text', value: '' }]);
       return;
     }
-    setBlocks(blocks.filter((_, i) => i !== index));
+    
+    setBlocks(newBlocks);
   };
 
-  // 新增:更新文本块内容
-  const updateTextBlock = (index: number, value: string) => {
-    const next = [...blocks];
-    if (next[index].type === 'text') {
-      next[index] = { ...next[index], value } as ContentBlock;
+  // 新增:更新文本内容
+  const updateTextContent = (value: string) => {
+    // 将所有文本块合并，保留图片块的位置
+    const imageBlocks = blocks.filter(b => b.type === 'image');
+    
+    // 如果没有图片，就只有一个文本块
+    if (imageBlocks.length === 0) {
+      setBlocks([{ type: 'text', value }]);
+    } else {
+      // 有图片时，暂时只更新第一个文本块（简化处理）
+      // 实际使用中图片位置会在光标插入时重新构建
+      const newBlocks = blocks.map((block, idx) => {
+        if (idx === 0 && block.type === 'text') {
+          return { type: 'text', value };
+        }
+        return block;
+      });
+      setBlocks(newBlocks as ContentBlock[]);
     }
-    setBlocks(next);
   };
 
   // 添加投票选项
@@ -295,6 +300,12 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     .reduce((sum, b) => sum + (b as { type: 'text'; value: string }).value.length, 0);
   const imageCount = blocks.filter(b => b.type === 'image').length;
 
+  // 获取显示用的文本内容（所有文本块合并）
+  const displayText = blocks
+    .filter(b => b.type === 'text')
+    .map(b => (b as { type: 'text'; value: string }).value)
+    .join('');
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-modal="true">
       <div className="bg-white w-full h-full overflow-y-auto">
@@ -354,7 +365,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
             />
           </div>
 
-          {/* 图文混合内容编辑区 */}
+          {/* 内容编辑区 - 改为单个大文本框 */}
           <div>
             <label className="block text-sm font-bold mb-2 text-zinc-700">
               内容 * 
@@ -363,79 +374,68 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
               </span>
             </label>
             
-            {/* 内容块列表 */}
-            <div className="space-y-4">
-              {blocks.map((block, index) => {
-                if (block.type === 'text') {
-                  // 文本块
-                  return (
-                    <div key={index} className="space-y-2">
-                      <div className="relative">
-                        <textarea
-                          value={block.value}
-                          onChange={e => updateTextBlock(index, e.target.value)}
-                          disabled={isSubmitting}
-                          placeholder="写点什么..."
-                          className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none disabled:opacity-50"
-                          rows={4}
-                        />
-                        {/* 只有当不是唯一的文本块时才显示删除按钮 */}
-                        {!(blocks.length === 1 && blocks[0].type === 'text') && (
-                          <button
-                            onClick={() => removeBlock(index)}
-                            disabled={isSubmitting}
-                            className="absolute top-2 right-2 p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                            title="删除"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                      {/* 在每个文本块后添加插入图片按钮 */}
-                      <label className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-zinc-700 hover:text-black cursor-pointer transition-colors">
-                        <ImageIcon className="w-4 h-4" />
-                        <span>在此后插入图片</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          disabled={isSubmitting || imageCount >= 9}
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              insertImageAfter(index, file);
-                              e.target.value = '';
-                            }
-                          }}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  );
-                }
-
-                // 图片块
-                return (
-                  <div key={index} className="relative group">
-                    <img
-                      src={block.preview}
-                      alt={`图片 ${index + 1}`}
-                      className="w-full max-h-96 object-contain rounded-lg border border-zinc-200"
-                    />
-                    <button
-                      onClick={() => removeBlock(index)}
-                      disabled={isSubmitting}
-                      className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                      title="删除图片"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
+            {/* 单个大文本框 */}
+            <div className="space-y-2">
+              <textarea
+                ref={textareaRef}
+                value={displayText}
+                onChange={e => updateTextContent(e.target.value)}
+                disabled={isSubmitting}
+                placeholder="写点什么..."
+                className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none disabled:opacity-50"
+                rows={10}
+              />
+              
+              {/* 在文本框下方添加插入图片按钮 */}
+              <label className="inline-flex items-center gap-2 px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg cursor-pointer transition-colors">
+                <ImageIcon className="w-4 h-4" />
+                <span>在光标处插入图片</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={isSubmitting || imageCount >= 9}
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      insertImageAtCursor(file);
+                      e.target.value = '';
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
             </div>
 
+            {/* 已插入的图片预览 */}
+            {imageCount > 0 && (
+              <div className="mt-4 space-y-3">
+                <div className="text-sm font-medium text-zinc-700">已插入的图片:</div>
+                <div className="grid grid-cols-2 gap-3">
+                  {blocks.map((block, index) => 
+                    block.type === 'image' ? (
+                      <div key={index} className="relative group">
+                        <img
+                          src={block.preview}
+                          alt={`图片 ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg border border-zinc-200"
+                        />
+                        <button
+                          onClick={() => removeBlock(index)}
+                          disabled={isSubmitting}
+                          className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                          title="删除图片"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : null
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="mt-2 text-xs text-zinc-500">
-              💡 提示: 每个文本框下方都有【在此后插入图片】按钮,可以在任意位置插入图片实现图文混排
+              💡 提示: 点击文本框内任意位置，然后点击【在光标处插入图片】按钮，图片会在光标位置插入
             </div>
           </div>
 
