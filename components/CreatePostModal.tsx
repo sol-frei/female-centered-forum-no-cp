@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, ImageIcon, Plus, Trash2, Loader } from 'lucide-react';
 import { User, Category } from '../types';
 import { create_post } from '../services/storage';
@@ -15,20 +15,15 @@ interface CreatePostModalProps {
 
 const CATEGORIES: Category[] = ['推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
-// 新增:内容块类型定义
+// 内容块类型定义
 type ContentBlock =
   | { type: 'text'; value: string }
-  | { type: 'image'; file: File; preview: string };
+  | { type: 'image'; file: File; preview: string; id: string };
 
 export default function CreatePostModal({ user, onClose, onSuccess, showToast }: CreatePostModalProps) {
   // 基础表单状态
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<Category>('讨论👊🏻i女');
-  
-  // 新增:图文混排内容块
-  const [blocks, setBlocks] = useState<ContentBlock[]>([
-    { type: 'text', value: '' }
-  ]);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -40,10 +35,32 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   const [isMultiple, setIsMultiple] = useState(false);
   const [pollDeadline, setPollDeadline] = useState('');
 
-  // 新增:插入图片(在最后添加)
-  const insertImage = (file: File) => {
-    const imageCount = blocks.filter(b => b.type === 'image').length;
-    if (imageCount >= 9) {
+  // 富文本编辑器相关
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [imageMap, setImageMap] = useState<Map<string, { file: File; preview: string }>>(new Map());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const lastSelectionRef = useRef<Range | null>(null);
+
+  // 保存光标位置
+  const saveSelection = () => {
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      lastSelectionRef.current = selection.getRangeAt(0);
+    }
+  };
+
+  // 恢复光标位置
+  const restoreSelection = () => {
+    if (lastSelectionRef.current) {
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(lastSelectionRef.current);
+    }
+  };
+
+  // 在光标位置插入图片
+  const insertImageAtCursor = (file: File) => {
+    if (imageMap.size >= 9) {
       showToast('最多只能插入9张图片', 'warning');
       return;
     }
@@ -61,66 +78,192 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     const reader = new FileReader();
     reader.onload = e => {
       const preview = e.target?.result as string;
-      // 在所有块的最后添加图片块和新的文本块
-      setBlocks(prev => [
-        ...prev,
-        { type: 'image', file, preview },
-        { type: 'text', value: '' }
-      ]);
+      const imageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // 保存图片信息到 Map
+      setImageMap(prev => new Map(prev).set(imageId, { file, preview }));
+
+      // 创建图片元素
+      const imgWrapper = document.createElement('div');
+      imgWrapper.className = 'image-block';
+      imgWrapper.contentEditable = 'false';
+      imgWrapper.setAttribute('data-image-id', imageId);
+      imgWrapper.style.cssText = 'position: relative; display: inline-block; margin: 8px 0; width: 100%; max-width: 100%;';
+
+      const img = document.createElement('img');
+      img.src = preview;
+      img.className = 'cursor-pointer hover:opacity-90 transition-opacity';
+      img.style.cssText = 'max-width: 100%; max-height: 400px; border-radius: 8px; border: 1px solid #e4e4e7; display: block;';
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.innerHTML = '✕';
+      deleteBtn.className = 'delete-image-btn';
+      deleteBtn.style.cssText = 'position: absolute; top: 8px; right: 8px; background: #dc2626; color: white; border: none; border-radius: 9999px; width: 28px; height: 28px; cursor: pointer; opacity: 0; transition: opacity 0.2s; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center;';
+      deleteBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        imgWrapper.remove();
+        setImageMap(prev => {
+          const next = new Map(prev);
+          next.delete(imageId);
+          return next;
+        });
+      };
+
+      imgWrapper.onmouseenter = () => {
+        deleteBtn.style.opacity = '1';
+      };
+      imgWrapper.onmouseleave = () => {
+        deleteBtn.style.opacity = '0';
+      };
+
+      imgWrapper.appendChild(img);
+      imgWrapper.appendChild(deleteBtn);
+
+      // 插入到光标位置
+      restoreSelection();
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        
+        // 插入图片和换行
+        range.insertNode(imgWrapper);
+        range.collapse(false);
+        
+        // 在图片后添加一个换行，确保可以继续输入
+        const br = document.createElement('br');
+        range.insertNode(br);
+        range.setStartAfter(br);
+        range.collapse(true);
+        
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else {
+        // 如果没有选区，添加到末尾
+        editorRef.current?.appendChild(imgWrapper);
+        editorRef.current?.appendChild(document.createElement('br'));
+      }
+
+      // 聚焦编辑器
+      editorRef.current?.focus();
     };
     reader.readAsDataURL(file);
   };
 
-  // 新增:在指定文本块后插入图片
-  const insertImageAfter = (textBlockIndex: number, file: File) => {
+  // 处理粘贴事件（支持粘贴图片）
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          insertImageAtCursor(file);
+        }
+        break;
+      }
+    }
+  };
+
+  // 处理拖拽上传
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/')) {
+        insertImageAtCursor(file);
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  // 点击上传按钮
+  const handleImageButtonClick = () => {
+    saveSelection();
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      insertImageAtCursor(file);
+      e.target.value = '';
+    }
+  };
+
+  // 从编辑器提取内容块
+  const extractContentBlocks = (): ContentBlock[] => {
+    const blocks: ContentBlock[] = [];
+    const editor = editorRef.current;
+    if (!editor) return blocks;
+
+    const traverse = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent || '';
+        if (text.trim()) {
+          blocks.push({ type: 'text', value: text });
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as HTMLElement;
+        
+        if (element.classList.contains('image-block')) {
+          const imageId = element.getAttribute('data-image-id');
+          if (imageId && imageMap.has(imageId)) {
+            const { file, preview } = imageMap.get(imageId)!;
+            blocks.push({ type: 'image', file, preview, id: imageId });
+          }
+        } else if (element.tagName === 'BR') {
+          // 换行符作为文本块的一部分
+          if (blocks.length > 0 && blocks[blocks.length - 1].type === 'text') {
+            blocks[blocks.length - 1].value += '\n';
+          }
+        } else if (element.tagName === 'DIV' || element.tagName === 'P') {
+          // 块级元素，递归处理子节点
+          for (let i = 0; i < element.childNodes.length; i++) {
+            traverse(element.childNodes[i]);
+          }
+          // 块级元素后添加换行
+          if (blocks.length > 0 && blocks[blocks.length - 1].type === 'text') {
+            blocks[blocks.length - 1].value += '\n';
+          }
+        } else {
+          // 其他元素，递归处理
+          for (let i = 0; i < element.childNodes.length; i++) {
+            traverse(element.childNodes[i]);
+          }
+        }
+      }
+    };
+
+    for (let i = 0; i < editor.childNodes.length; i++) {
+      traverse(editor.childNodes[i]);
+    }
+
+    return blocks;
+  };
+
+  // 计算统计信息
+  const getStats = () => {
+    const blocks = extractContentBlocks();
+    const textLength = blocks
+      .filter(b => b.type === 'text')
+      .reduce((sum, b) => sum + (b as { type: 'text'; value: string }).value.length, 0);
     const imageCount = blocks.filter(b => b.type === 'image').length;
-    if (imageCount >= 9) {
-      showToast('最多只能插入9张图片', 'warning');
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      showToast('只能上传图片文件', 'error');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('图片不能超过5MB', 'error');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = e => {
-      const preview = e.target?.result as string;
-      // 在指定位置后插入图片块和新的文本块
-      setBlocks(prev => [
-        ...prev.slice(0, textBlockIndex + 1),
-        { type: 'image', file, preview },
-        { type: 'text', value: '' },
-        ...prev.slice(textBlockIndex + 1)
-      ]);
-    };
-    reader.readAsDataURL(file);
+    return { textLength, imageCount };
   };
 
-  // 新增:删除块
-  const removeBlock = (index: number) => {
-    // 至少保留一个文本块
-    if (blocks.length === 1 && blocks[0].type === 'text') {
-      showToast('至少需要保留一个文本框', 'warning');
-      return;
-    }
-    setBlocks(blocks.filter((_, i) => i !== index));
-  };
-
-  // 新增:更新文本块内容
-  const updateTextBlock = (index: number, value: string) => {
-    const next = [...blocks];
-    if (next[index].type === 'text') {
-      next[index] = { ...next[index], value } as ContentBlock;
-    }
-    setBlocks(next);
-  };
+  const { textLength: totalTextLength, imageCount } = getStats();
 
   // 添加投票选项
   const addPollOption = () => {
@@ -158,18 +301,13 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
       return false;
     }
 
-    // 检查是否有文本内容
+    const blocks = extractContentBlocks();
     const hasText = blocks.some(b => b.type === 'text' && b.value.trim());
     if (!hasText) {
       showToast('请输入内容', 'error');
       return false;
     }
 
-    // 计算总文本长度
-    const totalTextLength = blocks
-      .filter(b => b.type === 'text')
-      .reduce((sum, b) => sum + (b as { type: 'text'; value: string }).value.length, 0);
-    
     if (totalTextLength > 10000) {
       showToast('内容不能超过10000字', 'error');
       return false;
@@ -204,8 +342,10 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     let uploadedImageUrls: string[] = [];
 
     try {
+      const blocks = extractContentBlocks();
+      
       // 1. 收集并上传图片
-      const imageBlocks = blocks.filter(b => b.type === 'image') as { type: 'image'; file: File; preview: string }[];
+      const imageBlocks = blocks.filter(b => b.type === 'image') as { type: 'image'; file: File; preview: string; id: string }[];
       
       if (imageBlocks.length > 0) {
         showToast('正在上传图片...', 'info');
@@ -224,106 +364,118 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
       const finalContent = blocks
         .map(block => {
           if (block.type === 'text') {
-            // 只保留非空文本块
             return block.value.trim() 
               ? { type: 'text', value: block.value.trim() }
               : null;
-          } else {
-            // 图片块:使用上传后的URL
-            return {
-              type: 'image',
-              url: uploadedImageUrls[imageUrlIndex++]
-            };
           }
+          if (block.type === 'image') {
+            return { type: 'image', url: uploadedImageUrls[imageUrlIndex++] };
+          }
+          return null;
         })
-        .filter(Boolean); // 过滤掉null值
+        .filter(b => b !== null);
 
-      // 3. 创建帖子数据
-      const postData: any = {
-        user_id: user.id,
-        user_name: user.user_name,
-        title: title.trim(),
-        content: JSON.stringify(finalContent), // 将混合内容序列化为JSON
-        category,
-        images: uploadedImageUrls.length > 0 ? uploadedImageUrls : undefined,
-      };
-
-      // 4. 添加投票数据
+      // 3. 准备投票数据
+      let pollData = null;
       if (enablePoll) {
         const validOptions = pollOptions.filter(opt => opt.trim());
-        
-        // 计算截止时间: 当前时间 + 选择的天数
         const deadlineDate = new Date();
         deadlineDate.setDate(deadlineDate.getDate() + parseInt(pollDeadline));
-        
-        postData.poll = {
+
+        pollData = {
           question: pollQuestion.trim(),
-          options: validOptions.map((text, index) => ({
-            id: `opt_${Date.now()}_${index}`,
-            text: text.trim(),
-            votes: []
+          options: validOptions.map(opt => ({
+            text: opt.trim(),
+            votes: 0,
+            voters: []
           })),
           isMultiple,
-          deadline: deadlineDate.toISOString()
+          deadline: deadlineDate.toISOString(),
+          totalVotes: 0
         };
       }
 
-      // 5. 创建帖子
-      await create_post(postData);
-      showToast('发帖成功！', 'success');
+      // 4. 创建帖子
+      await create_post({
+        title: title.trim(),
+        content: JSON.stringify(finalContent),
+        category,
+        poll: pollData,
+        userId: user.id,
+        userName: user.name,
+        userAvatar: user.avatar || ''
+      });
+
+      showToast('发布成功！', 'success');
       onSuccess();
+      onClose();
     } catch (error: any) {
-      // 如果创建帖子失败,删除已上传的图片
+      console.error('发布失败:', error);
+      showToast(error.message || '发布失败，请重试', 'error');
+
+      // 上传失败时删除已上传的图片
       if (uploadedImageUrls.length > 0) {
         try {
-          const { deleteImages } = await import('../services/storageService');
-          await deleteImages(uploadedImageUrls, 'forum_images');
-        } catch (deleteError) {
-          console.error('清理图片失败:', deleteError);
+          await Promise.all(uploadedImageUrls.map(url => deleteImage(url)));
+        } catch (cleanupError) {
+          console.error('清理图片失败:', cleanupError);
         }
       }
-      showToast(`发帖失败: ${error.message}`, 'error');
     } finally {
       setIsSubmitting(false);
       setUploadProgress(0);
     }
   };
 
-  // 计算统计信息
-  const totalTextLength = blocks
-    .filter(b => b.type === 'text')
-    .reduce((sum, b) => sum + (b as { type: 'text'; value: string }).value.length, 0);
-  const imageCount = blocks.filter(b => b.type === 'image').length;
+  // 监听编辑器变化，保存光标位置
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0 && editor.contains(selection.anchorNode)) {
+        saveSelection();
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, []);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" role="dialog" aria-modal="true">
-      <div className="bg-white w-full h-full overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
         {/* 头部 */}
-        <div className="sticky top-0 bg-white border-b border-zinc-200 p-4 flex justify-between items-center z-10">
-          <h2 className="text-xl font-bold">发布新帖</h2>
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-700" disabled={isSubmitting}>
-            <X className="w-6 h-6" />
+        <div className="flex items-center justify-between p-4 border-b border-zinc-200">
+          <h2 className="text-xl font-bold">发布新帖子</h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-zinc-100 rounded-full transition-colors"
+            disabled={isSubmitting}
+          >
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* 上传进度提示 */}
-        {isSubmitting && uploadProgress > 0 && uploadProgress < 100 && (
-          <div className="bg-blue-50 border-b border-blue-200 p-3">
-            <div className="flex items-center gap-3">
-              <Loader className="w-4 h-4 animate-spin text-blue-600" />
-              <div className="flex-1">
-                <div className="text-sm text-blue-900 mb-1">正在上传图片... {uploadProgress}%</div>
-                <div className="w-full bg-blue-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: `${uploadProgress}%` }}></div>
-                </div>
-              </div>
+        {/* 进度条 */}
+        {isSubmitting && uploadProgress > 0 && (
+          <div className="px-4 pt-2">
+            <div className="h-1 bg-zinc-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-black transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
             </div>
+            <p className="text-xs text-zinc-500 mt-1 text-center">上传进度: {uploadProgress}%</p>
           </div>
         )}
 
         {/* 表单内容 */}
-        <div className="p-6 space-y-4">
-          {/* 分类选择 */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* 分类 */}
           <div>
             <label className="block text-sm font-bold mb-2 text-zinc-700">分类 *</label>
             <select
@@ -332,8 +484,8 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
               disabled={isSubmitting}
               className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
             >
-              {CATEGORIES.map(c => (
-                <option key={c} value={c}>{c}</option>
+              {CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
           </div>
@@ -354,89 +506,63 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
             />
           </div>
 
-          {/* 图文混合内容编辑区 */}
+          {/* 富文本编辑器 */}
           <div>
-            <label className="block text-sm font-bold mb-2 text-zinc-700">
-              内容 * 
-              <span className="text-xs text-zinc-400 font-normal ml-2">
-                ({totalTextLength}/10000 字 · {imageCount}/9 图)
-              </span>
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-bold text-zinc-700">
+                内容 * 
+                <span className="text-xs text-zinc-400 font-normal ml-2">
+                  ({totalTextLength}/10000 字 · {imageCount}/9 图)
+                </span>
+              </label>
+              <button
+                onClick={handleImageButtonClick}
+                disabled={isSubmitting || imageCount >= 9}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-zinc-100 hover:bg-zinc-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ImageIcon className="w-4 h-4" />
+                插入图片
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+            </div>
             
-            {/* 内容块列表 */}
-            <div className="space-y-4">
-              {blocks.map((block, index) => {
-                if (block.type === 'text') {
-                  // 文本块
-                  return (
-                    <div key={index} className="space-y-2">
-                      <div className="relative">
-                        <textarea
-                          value={block.value}
-                          onChange={e => updateTextBlock(index, e.target.value)}
-                          disabled={isSubmitting}
-                          placeholder="写点什么..."
-                          className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none disabled:opacity-50"
-                          rows={4}
-                        />
-                        {/* 只有当不是唯一的文本块时才显示删除按钮 */}
-                        {!(blocks.length === 1 && blocks[0].type === 'text') && (
-                          <button
-                            onClick={() => removeBlock(index)}
-                            disabled={isSubmitting}
-                            className="absolute top-2 right-2 p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                            title="删除"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                      {/* 在每个文本块后添加插入图片按钮 */}
-                      <label className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-zinc-700 hover:text-black cursor-pointer transition-colors">
-                        <ImageIcon className="w-4 h-4" />
-                        <span>在此后插入图片</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          disabled={isSubmitting || imageCount >= 9}
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              insertImageAfter(index, file);
-                              e.target.value = '';
-                            }
-                          }}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  );
-                }
+            <div
+              ref={editorRef}
+              contentEditable={!isSubmitting}
+              onPaste={handlePaste}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              className="w-full min-h-[200px] p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50 overflow-y-auto max-h-[400px]"
+              style={{
+                wordWrap: 'break-word',
+                whiteSpace: 'pre-wrap'
+              }}
+              data-placeholder="写点什么... (支持粘贴图片、拖拽图片)"
+            />
 
-                // 图片块
-                return (
-                  <div key={index} className="relative group">
-                    <img
-                      src={block.preview}
-                      alt={`图片 ${index + 1}`}
-                      className="w-full max-h-96 object-contain rounded-lg border border-zinc-200"
-                    />
-                    <button
-                      onClick={() => removeBlock(index)}
-                      disabled={isSubmitting}
-                      className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                      title="删除图片"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })}
+            <div className="mt-2 text-xs text-zinc-500 space-y-1">
+              <p>💡 提示:</p>
+              <p>• 点击上方【插入图片】按钮在光标处插入图片</p>
+              <p>• 支持 Ctrl+V 粘贴图片、拖拽图片到编辑器</p>
+              <p>• 鼠标悬停图片显示删除按钮</p>
             </div>
 
-            <div className="mt-2 text-xs text-zinc-500">
-              💡 提示: 每个文本框下方都有【在此后插入图片】按钮,可以在任意位置插入图片实现图文混排
-            </div>
+            <style>{`
+              [contenteditable][data-placeholder]:empty:before {
+                content: attr(data-placeholder);
+                color: #a1a1aa;
+                pointer-events: none;
+              }
+              [contenteditable] {
+                outline: none;
+              }
+            `}</style>
           </div>
 
           {/* 投票功能 */}
