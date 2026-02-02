@@ -126,6 +126,58 @@ const PostDetailPage = ({
     }
   }, [postId, user]);
 
+  // 在第 127 行后添加
+useEffect(() => {
+  if (!postId) return;
+
+  // 订阅评论变化
+  const commentsSubscription = supabase
+    .channel(`comments:post_id=eq.${postId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'comments',
+        filter: `post_id=eq.${postId}`
+      },
+      (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setComments(prev => [...prev, payload.new]);
+        } else if (payload.eventType === 'UPDATE') {
+          setComments(prev => 
+            prev.map(c => c.id === payload.new.id ? payload.new : c)
+          );
+        } else if (payload.eventType === 'DELETE') {
+          setComments(prev => prev.filter(c => c.id !== payload.old.id));
+        }
+      }
+    )
+    .subscribe();
+
+  // 订阅帖子更新
+  const postSubscription = supabase
+    .channel(`post:id=eq.${postId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'posts',
+        filter: `id=eq.${postId}`
+      },
+      (payload) => {
+        setPost(payload.new);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(commentsSubscription);
+    supabase.removeChannel(postSubscription);
+  };
+}, [postId]);
+
   const loadUserCollections = async () => {
     if (!user) return;
     try {
@@ -153,15 +205,23 @@ const PostDetailPage = ({
   const handleBack = () => navigate(-1);
   const onViewProfile = (uid: string) => navigate(`/profile/${uid}`);
 
-  const handleLike = async () => {
-    if (!user) return;
-    try {
-      await toggle_like_post(post.id, user.id);
-      fetchPostAndComments();
-    } catch (e: any) {
-      showToast('操作失败', 'error');
-    }
-  };
+const handleLike = async () => {
+  if (!user) return;
+  
+  // 立即更新 UI
+  const newLikes = isLiked 
+    ? post.likes.filter((id: string) => id !== user.id)
+    : [...(post.likes || []), user.id];
+  setPost({ ...post, likes: newLikes });
+  
+  try {
+    await toggle_like_post(post.id, user.id);
+  } catch (e: any) {
+    // 失败时回滚
+    setPost({ ...post, likes: post.likes });
+    showToast('操作失败', 'error');
+  }
+};
 
   const handleEssence = async () => {
     if (!isAdminOrInver) return;
@@ -176,17 +236,30 @@ const PostDetailPage = ({
     }
   };
 
-  const handleVote = async (optionIndex: number) => {
-    if (!user || selectedPollOption !== null) return;
-    try {
-      await vote_poll(post.id, user.id, optionIndex);
-      setSelectedPollOption(optionIndex);
-      showToast('投票成功', 'success');
-      fetchPostAndComments();
-    } catch (e: any) {
-      showToast('投票失败', 'error');
-    }
-  };
+const handleVote = async (optionIndex: number) => {
+  if (!user || selectedPollOption !== null) return;
+  
+  // 立即更新 UI
+  setSelectedPollOption(optionIndex);
+  const newVote = { user_id: user.id, option_index: optionIndex };
+  setPost({
+    ...post,
+    poll_votes: [...(post.poll_votes || []), newVote]
+  });
+  
+  try {
+    await vote_poll(post.id, user.id, optionIndex);
+    showToast('投票成功', 'success');
+  } catch (e: any) {
+    // 失败时回滚
+    setSelectedPollOption(null);
+    setPost({
+      ...post,
+      poll_votes: post.poll_votes?.filter((v: any) => v.user_id !== user.id)
+    });
+    showToast('投票失败', 'error');
+  }
+};
 
   const handleReply = (comment: any) => {
     setReplyToCommentId(comment.id);
@@ -253,7 +326,6 @@ const PostDetailPage = ({
       setCommentImages([]);
       setCommentImagePreviews([]);
       showToast("评论成功", "success");
-      fetchPostAndComments();
     } catch (e: any) {
       showToast(`评论失败: ${e.message}`, 'error');
     } finally {
@@ -261,15 +333,30 @@ const PostDetailPage = ({
     }
   };
 
-  const handleLikeComment = async (commentId: string) => {
-    if (!user) return;
-    try {
-      await toggle_like_comment(commentId, user.id);
-      fetchPostAndComments();
-    } catch (e: any) {
-      showToast('操作失败', 'error');
+// 改成
+const handleLikeComment = async (commentId: string) => {
+  if (!user) return;
+  
+  // 立即更新 UI
+  setComments(prev => prev.map(c => {
+    if (c.id === commentId) {
+      const isLiked = c.likes?.includes(user.id);
+      const newLikes = isLiked
+        ? c.likes.filter((id: string) => id !== user.id)
+        : [...(c.likes || []), user.id];
+      return { ...c, likes: newLikes };
     }
-  };
+    return c;
+  }));
+  
+  try {
+    await toggle_like_comment(commentId, user.id);
+  } catch (err: any) {
+    showToast('操作失败', 'error');
+    // 失败时重新获取
+    fetchPostAndComments();
+  }
+};
 
   const openEditPost = () => {
     setEditTitle(post.title);
