@@ -558,6 +558,14 @@ const PostDetailPage = ({
                   className="font-medium text-base cursor-pointer hover:underline"
                   onClick={() => onViewProfile(post.user_id)}
                 >
+                  {postAuthor?.user_name || '未知用户'}
+                </span>
+                {post.is_essence && (
+                  <span className="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Star className="w-3 h-3" />
+                    蒂贴
+                  </span>
+                )}
               </div>
               <div className="text-xs text-zinc-400 flex items-center gap-2">
                 <span>{timeAgo(post.created_at)}</span>
