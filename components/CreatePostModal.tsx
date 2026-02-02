@@ -406,8 +406,8 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         content: JSON.stringify(finalContent),
         category,
         poll: pollData,
-        user_id: user.id,
-        user_name: user.name,
+        user_id: user_id,
+        user_name: user_name,
         images: imageUrls // 同时填充images字段供旧代码使用
       });
 
