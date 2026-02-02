@@ -122,3 +122,24 @@ export interface AppState {
   collections: Collection[];
   sensitive_words: SensitiveWords[];
 }
+
+
+// 在 types.ts 中添加
+export interface BookRating {
+  id: string;
+  post_id: string;
+  user_id: string;
+  user_name: string;
+  book_name: string;
+  book_author: string;
+  book_platform: string;
+  impressed_score: number;
+  principle_scores: { [key: string]: 'yes' | 'no' | null };
+  principle_remarks: { [key: string]: string };
+  extra_deduction: number;
+  extra_remark: string;
+  final_score: number;
+  reviewer_comment: string;
+  created_at: string;
+  updated_at?: string;
+}
