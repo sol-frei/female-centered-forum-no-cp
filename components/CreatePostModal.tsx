@@ -395,15 +395,20 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         };
       }
 
-      // 4. 创建帖子
+      // 4. 提取所有图片URL（兼容旧的images字段）
+      const imageUrls = finalContent
+        .filter(block => block && block.type === 'image')
+        .map(block => block.url);
+
+      // 5. 创建帖子
       await create_post({
         title: title.trim(),
         content: JSON.stringify(finalContent),
         category,
         poll: pollData,
-        userId: user.id,
-        userName: user.name,
-        userAvatar: user.avatar || ''
+        user_id: user.id,
+        user_name: user.name,
+        images: imageUrls // 同时填充images字段供旧代码使用
       });
 
       showToast('发布成功！', 'success');
