@@ -507,7 +507,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
           {/* 标题 */}
           <div>
             <label className="block text-sm font-bold mb-2 text-zinc-700">
-              标题 <span className="text-xs text-zinc-400 font-normal">({title.length}/100)</span>
+              标题 * <span className="text-xs text-zinc-400 font-normal">({title.length}/100)</span>
             </label>
             <input
               type="text"
@@ -524,7 +524,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-bold text-zinc-700">
-                内容
+                内容 * 
                 <span className="text-xs text-zinc-400 font-normal ml-2">
                   ({totalTextLength}/10000 字 · {imageCount}/9 图)
                 </span>
@@ -558,7 +558,14 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                 whiteSpace: 'pre-wrap'
               }}
               data-placeholder="写点什么... (支持粘贴图片、拖拽图片)"
-            /
+            />
+
+            <div className="mt-2 text-xs text-zinc-500 space-y-1">
+              <p>💡 提示:</p>
+              <p>• 点击上方【插入图片】按钮在光标处插入图片</p>
+              <p>• 支持 Ctrl+V 粘贴图片、拖拽图片到编辑器</p>
+              <p>• 鼠标悬停图片显示删除按钮</p>
+            </div>
 
             <style>{`
               [contenteditable][data-placeholder]:empty:before {
@@ -602,7 +609,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
 
                 {/* 投票选项 */}
                 <div>
-                  <label className="block text-sm font-bold mb-2">选项</label>
+                  <label className="block text-sm font-bold mb-2">选项 *</label>
                   <div className="space-y-2">
                     {pollOptions.map((option, index) => (
                       <div key={index} className="flex gap-2">
