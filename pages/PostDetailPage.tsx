@@ -119,118 +119,12 @@ const PostDetailPage = ({
     }
   };
 
-  // 🔥 初始加载和用户合集
   useEffect(() => {
     fetchPostAndComments();
     if (user) {
       loadUserCollections();
     }
   }, [postId, user]);
-
-  // 🔥 Supabase 实时订阅 - 自动显示其他人的评论和点赞
-  useEffect(() => {
-    if (!postId) return;
-
-    console.log('🔌 启动实时订阅...');
-
-    // 订阅帖子更新（点赞数等）
-    const postChannel = supabase
-      .channel(`post-${postId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'posts',
-          filter: `id=eq.${postId}`
-        },
-        (payload) => {
-          console.log('🔔 帖子更新:', payload.new);
-          setPost((prevPost: any) => {
-            if (!prevPost) return payload.new;
-            return { ...prevPost, ...payload.new };
-          });
-        }
-      )
-      .subscribe();
-
-    // 订阅评论更新
-    const commentChannel = supabase
-      .channel(`comments-${postId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'comments',
-          filter: `post_id=eq.${postId}`
-        },
-        (payload) => {
-          console.log('🔔 新评论:', payload.new);
-          setComments((prevComments) => {
-            // 检查是否已存在（避免重复）
-            const exists = prevComments.some(c => c.id === payload.new.id);
-            if (exists) return prevComments;
-            
-            // 如果是临时评论，替换它
-            const tempIndex = prevComments.findIndex(c => 
-              c.id.startsWith('temp-') && 
-              c.user_id === payload.new.user_id &&
-              Math.abs(new Date(c.created_at).getTime() - new Date(payload.new.created_at).getTime()) < 5000
-            );
-            
-            if (tempIndex !== -1) {
-              const newComments = [...prevComments];
-              newComments[tempIndex] = payload.new;
-              return newComments;
-            }
-            
-            // 添加新评论（其他用户的）
-            return [...prevComments, payload.new];
-          });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'comments',
-          filter: `post_id=eq.${postId}`
-        },
-        (payload) => {
-          console.log('🔔 评论更新:', payload.new);
-          setComments((prevComments) =>
-            prevComments.map(c =>
-              c.id === payload.new.id ? payload.new : c
-            )
-          );
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'comments',
-          filter: `post_id=eq.${postId}`
-        },
-        (payload) => {
-          console.log('🔔 评论删除:', payload.old);
-          setComments((prevComments) =>
-            prevComments.filter(c => c.id !== payload.old.id)
-          );
-        }
-      )
-      .subscribe();
-
-    // 清理订阅
-    return () => {
-      console.log('🔌 取消订阅');
-      supabase.removeChannel(postChannel);
-      supabase.removeChannel(commentChannel);
-    };
-  }, [postId]);
 
   const loadUserCollections = async () => {
     if (!user) return;
@@ -255,33 +149,20 @@ const PostDetailPage = ({
   const canEditPost = user && user.id === post.user_id;
   const isLiked = post.likes?.includes(user?.id);
 
-  // --- 处理逻辑（乐观更新版本）---
+  // --- 处理逻辑 ---
   const handleBack = () => navigate(-1);
   const onViewProfile = (uid: string) => navigate(`/profile/${uid}`);
 
-  // 🎯 优化：点赞帖子 - 乐观更新
   const handleLike = async () => {
     if (!user) return;
-    
-    // 1. 立即更新本地UI（乐观更新）
-    const currentLikes = post.likes || [];
-    const newLikes = isLiked 
-      ? currentLikes.filter((id: string) => id !== user.id)
-      : [...currentLikes, user.id];
-    
-    setPost({ ...post, likes: newLikes });
-    
-    // 2. 后台同步到服务器
     try {
       await toggle_like_post(post.id, user.id);
+      fetchPostAndComments();
     } catch (e: any) {
-      // 3. 如果失败，回滚UI
-      setPost({ ...post, likes: currentLikes });
       showToast('操作失败', 'error');
     }
   };
 
-  // 🎯 保留原来的蒂贴功能
   const handleEssence = async () => {
     if (!isAdminOrInver) return;
     try {
@@ -341,45 +222,16 @@ const PostDetailPage = ({
     setCommentImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
-  // 🎯 优化：发表评论 - 乐观更新 + 不刷新页面
   const handleComment = async () => {
     if (!newComment.trim() && commentImages.length === 0) {
       showToast("评论内容或图片不能为空", 'error');
       return;
     }
-    
     try {
       setUploadingComment(true);
-      
-      // 1. 创建临时评论对象（立即显示）
-      const tempComment = {
-        id: `temp-${Date.now()}`, // 临时ID
-        post_id: postId!,
-        user_id: user.id,
-        user_name: user.user_name,
-        content: newComment,
-        reply_to_id: replyToCommentId || null,
-        images: commentImagePreviews, // 先用预览图
-        likes: [],
-        created_at: new Date().toISOString(),
-      };
-      
-      // 2. 立即添加到评论列表（乐观更新）
-      setComments(prev => [...prev, tempComment]);
-      
-      // 3. 清空输入框
-      const savedComment = newComment;
-      const savedImages = commentImages;
-      setNewComment('');
-      setReplyToCommentId(null);
-      setReplyToComment(null);
-      setCommentImages([]);
-      setCommentImagePreviews([]);
-      
-      // 4. 后台上传图片并保存到服务器
       let imageUrls: string[] = [];
-      if (savedImages.length > 0) {
-        for (const file of savedImages) {
+      if (commentImages.length > 0) {
+        for (const file of commentImages) {
           const url = await uploadImage(file, 'comment_images', `comments/${user.id}`);
           imageUrls.push(url);
         }
@@ -389,57 +241,32 @@ const PostDetailPage = ({
         post_id: postId!,
         user_id: user.id,
         user_name: user.user_name,
-        content: savedComment,
-        reply_to_id: tempComment.reply_to_id,
+        content: newComment,
+        reply_to_id: replyToCommentId || null,
         images: imageUrls.length > 0 ? imageUrls : null,
         likes: [],
       }, post.user_id, post.title);
 
-      // 🔥 5. 不刷新页面！实时订阅会自动更新真实评论
+      setNewComment('');
+      setReplyToCommentId(null);
+      setReplyToComment(null);
+      setCommentImages([]);
+      setCommentImagePreviews([]);
       showToast("评论成功", "success");
-      
+      fetchPostAndComments();
     } catch (e: any) {
-      // 6. 如果失败，移除临时评论
-      setComments(prev => prev.filter(c => !c.id.startsWith('temp-')));
       showToast(`评论失败: ${e.message}`, 'error');
-      
-      // 恢复输入内容
-      setNewComment(newComment);
-      setCommentImages(commentImages);
-      setCommentImagePreviews(commentImagePreviews);
     } finally {
       setUploadingComment(false);
     }
   };
 
-  // 🎯 优化：点赞评论 - 乐观更新
   const handleLikeComment = async (commentId: string) => {
     if (!user) return;
-    
-    // 1. 找到目标评论
-    const targetComment = comments.find(c => c.id === commentId);
-    if (!targetComment) return;
-    
-    // 2. 计算新的点赞状态
-    const currentLikes = targetComment.likes || [];
-    const isCommentLiked = currentLikes.includes(user.id);
-    const newLikes = isCommentLiked
-      ? currentLikes.filter((id: string) => id !== user.id)
-      : [...currentLikes, user.id];
-    
-    // 3. 立即更新本地UI（乐观更新）
-    setComments(prev => prev.map(c => 
-      c.id === commentId ? { ...c, likes: newLikes } : c
-    ));
-    
-    // 4. 后台同步到服务器
     try {
       await toggle_like_comment(commentId, user.id);
+      fetchPostAndComments();
     } catch (e: any) {
-      // 5. 如果失败，回滚UI
-      setComments(prev => prev.map(c => 
-        c.id === commentId ? { ...c, likes: currentLikes } : c
-      ));
       showToast('操作失败', 'error');
     }
   };
@@ -455,86 +282,103 @@ const PostDetailPage = ({
     setIsEditingPost(true);
   };
 
-  const closeEditPost = () => {
-    setIsEditingPost(false);
-    setEditTitle('');
-    setEditBlocks([]);
-  };
-
-  const handleSavePost = async () => {
+  const savePostEdit = async () => {
     try {
-      if (!editTitle.trim()) {
-        showToast('标题不能为空', 'error');
-        return;
-      }
-      const { error } = await update_post(post.id, {
+      const finalBlocks = editBlocks.filter(b => b.type === 'image' || b.value?.trim() !== '');
+      await check_sensitive_words(editTitle + ' ' + JSON.stringify(finalBlocks));
+      await update_post(post.id, {
         title: editTitle,
-        content: JSON.stringify(editBlocks),
+        content: JSON.stringify(finalBlocks),
         category: editCategory,
+        updated_at: new Date().toISOString(),
       });
-      if (error) throw error;
-      showToast('修改成功', 'success');
       setIsEditingPost(false);
+      showToast('帖子修改成功', 'success');
       fetchPostAndComments();
     } catch (e: any) {
-      showToast(`修改失败: ${e.message}`, 'error');
+      showToast(e.message || '修改失败', 'error');
     }
   };
 
   const handleCreateCollection = async () => {
     if (!newCollectionName.trim()) {
-      showToast('合集名称不能为空', 'error');
+      showToast('请输入合集名称', 'error');
       return;
     }
     try {
-      const newCollection = await create_collection(user.id, newCollectionName);
-      setUserCollections([newCollection, ...userCollections]);
-      setNewCollectionName('');
-      showToast('创建成功', 'success');
+      const newCol = await create_collection(user.id, newCollectionName, '');
+      if (newCol) {
+        await addToCollection(newCol.id, post.id);
+        showToast('已创建合集并收藏', 'success');
+        setShowCollectionModal(false);
+        setNewCollectionName('');
+        loadUserCollections();
+      }
     } catch (e: any) {
-      showToast(`创建失败: ${e.message}`, 'error');
+      showToast('创建失败', 'error');
     }
   };
 
   const handleAddToCollection = async (collectionId: string) => {
     try {
       await addToCollection(collectionId, post.id);
-      showToast('收藏成功', 'success');
+      showToast('已添加到合集', 'success');
       setShowCollectionModal(false);
     } catch (e: any) {
-      showToast(`收藏失败: ${e.message}`, 'error');
+      showToast('添加失败', 'error');
     }
   };
 
-  const postAuthor = usersMap[post.user_id];
-
-  // 🔥 编辑模式界面
-  if (isEditingPost) {
+  // 渲染投票选项
+  const renderPollOptions = () => {
+    if (!post.poll_options) return null;
+    const totalVotes = post.poll_votes?.length || 0;
+    
     return (
-      <div className="min-h-screen bg-white">
-        <header className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between z-10">
-          <button onClick={closeEditPost} className="text-zinc-600 hover:text-black">
-            <X className="w-6 h-6" />
-          </button>
-          <span className="font-bold text-lg">编辑帖子</span>
-          <button 
-            onClick={handleSavePost}
-            className="bg-black text-white px-4 py-1.5 rounded-full text-sm font-bold"
-          >
-            保存
-          </button>
-        </header>
-        <main className="max-w-2xl mx-auto p-4">
-          {/* 编辑表单内容（省略，与原代码相同）*/}
-          <div className="text-center text-zinc-400 py-8">编辑界面（保留原有逻辑）</div>
-        </main>
+      <div className="my-4 space-y-2 bg-zinc-50 p-4 rounded-lg">
+        <h4 className="font-bold text-sm mb-3">📊 投票</h4>
+        {post.poll_options.map((option: string, index: number) => {
+          const votes = post.poll_votes?.filter((v: any) => v.option_index === index).length || 0;
+          const percentage = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+          const isSelected = selectedPollOption === index;
+          
+          return (
+            <button
+              key={index}
+              onClick={() => handleVote(index)}
+              disabled={selectedPollOption !== null}
+              className={`w-full text-left p-3 rounded-lg border-2 transition-all relative overflow-hidden ${
+                isSelected 
+                  ? 'border-black bg-black text-white' 
+                  : selectedPollOption !== null 
+                    ? 'border-zinc-200 bg-white cursor-not-allowed' 
+                    : 'border-zinc-200 bg-white hover:border-black'
+              }`}
+            >
+              {selectedPollOption !== null && (
+                <div 
+                  className="absolute left-0 top-0 bottom-0 bg-zinc-100 transition-all"
+                  style={{ width: `${percentage}%` }}
+                />
+              )}
+              <div className="relative flex justify-between items-center">
+                <span className="font-medium">{option}</span>
+                {selectedPollOption !== null && (
+                  <span className="text-sm">{percentage}% ({votes}票)</span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+        {selectedPollOption !== null && (
+          <p className="text-xs text-zinc-500 mt-2">总共 {totalVotes} 人投票</p>
+        )}
       </div>
     );
-  }
+  };
 
-  // 🔥 正常浏览模式
   return (
-    <div className="min-h-screen bg-white pb-32">
+    <div className="flex flex-col min-h-screen bg-white">
       {/* 顶部导航 */}
       <div className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-zinc-100 px-4 py-3 flex items-center justify-between">
         <button onClick={handleBack} className="text-zinc-600 hover:text-black font-medium flex items-center gap-2">
@@ -547,135 +391,91 @@ const PostDetailPage = ({
         )}
       </div>
 
-      <main className="max-w-2xl mx-auto">
-        {/* 帖子内容 */}
-        <div className="p-4 border-b">
-          <div className="flex items-start gap-3 mb-4">
-            <Avatar url={postAuthor?.avatar} className="w-10 h-10" />
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span 
-                  className="font-medium text-base cursor-pointer hover:underline"
+      <main className="max-w-2xl mx-auto w-full px-4 py-6 pb-32">
+        {/* 帖子头部 */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="cursor-pointer" onClick={() => onViewProfile(post.user_id)}>
+                <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10" />
+              </div>
+              <div>
+                <div 
+                  className="font-medium text-base text-zinc-600 cursor-pointer hover:underline" 
                   onClick={() => onViewProfile(post.user_id)}
                 >
-                  {postAuthor?.user_name || '未知用户'}
-                </span>
-                {post.is_essence && (
-                  <span className="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Star className="w-3 h-3" />
-                    蒂贴
-                  </span>
-                )}
-              </div>
-              <div className="text-xs text-zinc-400 flex items-center gap-2">
-                <span>{timeAgo(post.created_at)}</span>
-                <span>·</span>
-                <span>{post.category}</span>
+                  {usersMap[post.user_id]?.user_name || '未知用户'}
+                </div>
+                <div className="text-xs text-zinc-400">{timeAgo(post.created_at)}</div>
               </div>
             </div>
-            
-            {/* 操作菜单 */}
-            <div className="relative">
-              {canEditPost && (
-                <button 
-                  onClick={openEditPost}
-                  className="p-2 hover:bg-zinc-100 rounded-full"
-                >
-                  <Edit2 className="w-4 h-4 text-zinc-500" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* 标题 */}
-          <h1 className="text-xl font-bold mb-3">{post.title}</h1>
-
-          {/* 内容 */}
-          <PostContent content={post.content} />
-
-          {/* 投票 */}
-          {post.poll_options && post.poll_options.length > 0 && (
-            <div className="mt-4 space-y-2">
-              {post.poll_options.map((opt: string, idx: number) => {
-                const votes = post.poll_votes || [];
-                const optionVotes = votes.filter((v: any) => v.option_index === idx).length;
-                const totalVotes = votes.length;
-                const percentage = totalVotes > 0 ? Math.round((optionVotes / totalVotes) * 100) : 0;
-                const isSelected = selectedPollOption === idx;
-                const userHasVoted = selectedPollOption !== null;
-
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => handleVote(idx)}
-                    disabled={userHasVoted}
-                    className={`w-full text-left p-3 border rounded-lg transition-all ${
-                      isSelected 
-                        ? 'border-black bg-zinc-50' 
-                        : userHasVoted 
-                          ? 'border-zinc-200 cursor-not-allowed' 
-                          : 'border-zinc-200 hover:border-zinc-400'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className={isSelected ? 'font-medium' : ''}>{opt}</span>
-                      {userHasVoted && <span className="text-sm text-zinc-500">{percentage}%</span>}
-                    </div>
-                    {userHasVoted && (
-                      <div className="w-full h-1.5 bg-zinc-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-black transition-all"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-              {selectedPollOption !== null && (
-                <p className="text-xs text-zinc-500 text-center">
-                  共 {post.poll_votes?.length || 0} 人参与投票
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* 互动栏 */}
-          <div className="flex items-center gap-6 mt-4 pt-3 border-t">
-            <button 
-              onClick={handleLike}
-              className={`flex items-center gap-1.5 ${isLiked ? 'text-red-500' : 'text-zinc-500 hover:text-red-500'} transition-colors`}
-            >
-              <Heart className="w-5 h-5" fill={isLiked ? 'currentColor' : 'none'} />
-              <span className="text-sm font-medium">{post.likes?.length || 0}</span>
-            </button>
-            
-            <button className="flex items-center gap-1.5 text-zinc-500 hover:text-black transition-colors">
-              <MessageCircle className="w-5 h-5" />
-              <span className="text-sm font-medium">{comments.length}</span>
-            </button>
-
-            <button 
-              onClick={() => setShowCollectionModal(true)}
-              className="flex items-center gap-1.5 text-zinc-500 hover:text-black transition-colors"
-            >
-              <Bookmark className="w-5 h-5" />
-            </button>
-
             {isAdminOrInver && (
               <button 
                 onClick={handleEssence}
-                className={`ml-auto flex items-center gap-1.5 ${post.is_essence ? 'text-amber-600' : 'text-zinc-500 hover:text-amber-600'} transition-colors`}
+                className={`p-2 rounded-full ${post.is_essence ? 'text-yellow-500' : 'text-zinc-400 hover:text-yellow-500'}`}
               >
                 <Star className="w-5 h-5" fill={post.is_essence ? 'currentColor' : 'none'} />
-                <span className="text-sm">{post.is_essence ? '取消蒂贴' : '设为蒂贴'}</span>
               </button>
             )}
           </div>
+
+          {isEditingPost ? (
+            <div className="space-y-3">
+              <input 
+                className="w-full text-xl font-bold border-b p-2 outline-none focus:border-black" 
+                value={editTitle} 
+                onChange={e => setEditTitle(e.target.value)} 
+                placeholder="标题"
+              />
+              <select 
+                value={editCategory} 
+                onChange={e => setEditCategory(e.target.value as Category)}
+                className="border p-2 rounded outline-none"
+              >
+                {CATEGORIES.filter(c => c !== '全部').map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <button onClick={savePostEdit} className="bg-black text-white px-4 py-2 text-sm rounded hover:bg-zinc-800">
+                  保存
+                </button>
+                <button onClick={() => setIsEditingPost(false)} className="bg-zinc-100 px-4 py-2 text-sm rounded hover:bg-zinc-200">
+                  取消
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
+              <PostContent content={post.content} className="prose prose-zinc max-w-none" />
+              {renderPollOptions()}
+            </>
+          )}
+        </div>
+
+        {/* 交互区 */}
+        <div className="flex gap-6 py-4 border-y border-zinc-100 text-zinc-500 mb-8">
+          <button 
+            onClick={handleLike}
+            className={`flex items-center gap-1 transition-colors ${isLiked ? 'text-red-500' : 'hover:text-red-500'}`}
+          >
+            <Heart className="w-5 h-5" fill={isLiked ? 'currentColor' : 'none'} /> 
+            {post.likes?.length || 0}
+          </button>
+          <button 
+            onClick={() => setShowCollectionModal(true)} 
+            className="flex items-center gap-1 hover:text-blue-500"
+          >
+            <Bookmark className="w-5 h-5" /> 收藏
+          </button>
+          <button className="flex items-center gap-1">
+            <MessageCircle className="w-5 h-5" /> {comments.length}
+          </button>
         </div>
 
         {/* 评论区 */}
-        <div className="space-y-6 p-4">
+        <div className="space-y-6">
           {comments.length === 0 ? (
             <div className="text-center py-8 text-zinc-400">暂无评论，快来写下你的想法吧~</div>
           ) : (
