@@ -536,13 +536,16 @@ const PostDetailPage = ({
   return (
     <div className="min-h-screen bg-white pb-32">
       {/* 顶部导航 */}
-      <header className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between z-10">
-        <button onClick={handleBack} className="text-zinc-600 hover:text-black">
-          <ArrowLeft className="w-6 h-6" />
+      <div className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-zinc-100 px-4 py-3 flex items-center justify-between">
+        <button onClick={handleBack} className="text-zinc-600 hover:text-black font-medium flex items-center gap-2">
+          <ArrowLeft className="w-5 h-5" /> 返回
         </button>
-        <span className="font-bold text-lg">帖子详情</span>
-        <div className="w-6" />
-      </header>
+        {canEditPost && (
+          <button onClick={openEditPost} className="text-zinc-600 hover:text-black">
+            <Edit2 className="w-5 h-5" />
+          </button>
+        )}
+      </div>
 
       <main className="max-w-2xl mx-auto">
         {/* 帖子内容 */}
@@ -555,14 +558,6 @@ const PostDetailPage = ({
                   className="font-medium text-base cursor-pointer hover:underline"
                   onClick={() => onViewProfile(post.user_id)}
                 >
-                  {postAuthor?.user_name || '未知用户'}
-                </span>
-                {post.is_essence && (
-                  <span className="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Star className="w-3 h-3" />
-                    蒂贴
-                  </span>
-                )}
               </div>
               <div className="text-xs text-zinc-400 flex items-center gap-2">
                 <span>{timeAgo(post.created_at)}</span>
