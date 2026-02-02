@@ -2,7 +2,8 @@ import { supabase } from './services/supabaseClient';
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 
-// 导入页面与类型
+// 导入组件
+import Bookshelf from './components/Bookshelf';
 import Landing from './components/Landing';
 import PostDetailPage from './pages/PostDetailPage';
 import LoginPage from './pages/LoginPage';
@@ -11,13 +12,18 @@ import UserProfile from './components/UserProfile';
 import Toast, { ToastType } from './components/Toast';
 import CreatePostModal from './components/CreatePostModal';
 import ChangePasswordModal from './components/ChangePasswordModal';
+
+// 导入类型与工具
 import { User, Post, Category } from './types';
 import { get_all_users, get_user, get_posts } from './services/storage';
-import { Search, LogOut, Menu, UserCircle, PenSquare, X, Shield } from 'lucide-react';
+import { 
+  Search, LogOut, Menu, UserCircle, 
+  PenSquare, X, Shield, Library // 修正图标名为 Library
+} from 'lucide-react';
 
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
-// 工具函数
+// 工具函数：时间转换
 function timeAgo(dateInput: string | Date): string {
   const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   const now = new Date();
@@ -32,12 +38,11 @@ function timeAgo(dateInput: string | Date): string {
   return `${Math.floor(diffInDays / 30)}个月前`;
 }
 
+// 头像组件
 const Avatar = ({ url, className = "w-8 h-8" }: { url?: string, className?: string }) => {
   if (url) return <img src={url} alt="头像" className={`${className} rounded-full object-cover border border-zinc-100`} />;
   return <UserCircle className={`${className} text-zinc-300`} />;
 };
-
-// --- 路由包装层：让主逻辑更清爽 ---
 
 export default function App() {
   return (
@@ -50,26 +55,25 @@ export default function App() {
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   
   // 核心状态
   const [user, setUser] = useState<User | null>(null);
   const [currentCategory, setCurrentCategory] = useState<Category | '全部'>((searchParams.get('cat') as Category) || '全部');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState(''); // 搜索逻辑可后续扩展
   const [onlyEssence, setOnlyEssence] = useState(false);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [usersMap, setUsersMap] = useState<Record<string, User>>({});
   const [displayPosts, setDisplayPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [readPosts, setReadPosts] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showCategoriesInMenu, setShowCategoriesInMenu] = useState(true);
 
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
-  // 初始化登录
+  // 1. 初始化登录状态
   useEffect(() => {
     const initAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -87,7 +91,7 @@ function AppContent() {
     initAuth();
   }, []);
 
-  // 加载数据逻辑 (保持原有逻辑)
+  // 2. 加载帖子数据
   useEffect(() => {
     const loadPosts = async () => {
       setIsLoading(true);
@@ -101,13 +105,7 @@ function AppContent() {
     loadPosts();
   }, [currentCategory, onlyEssence, refreshKey]);
 
-  // 监听路由变化,返回feed页面时刷新列表
-  useEffect(() => {
-    if (location.pathname === '/feed') {
-      setRefreshKey(k => k + 1);
-    }
-  }, [location.pathname]);
-
+  // 3. 全局用户映射
   useEffect(() => {
     if (!user) return;
     get_all_users().then(list => {
@@ -131,15 +129,13 @@ function AppContent() {
     return content.slice(0, 100);
   };
 
-  // 如果首登需要改密码
+  // 强制改密逻辑
   if (user && user.is_first_login) {
     return <ChangePasswordModal user={user} onComplete={(u) => { setUser(u); navigate('/feed'); }} />;
   }
 
-  // 判断是否在登录页面或落地页
+  // 页面判定逻辑
   const isLoginPage = location.pathname === '/login' || location.pathname === '/';
-  
-  // 判断是否在需要隐藏导航栏的页面
   const hideNavPages = location.pathname.startsWith('/post/') || 
                        location.pathname.startsWith('/profile/') || 
                        location.pathname === '/admin';
@@ -148,7 +144,7 @@ function AppContent() {
     <div className="min-h-screen bg-white text-zinc-900">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* 只有登录后且不在登录/落地页且不在需要隐藏导航的页面时才显示导航栏 */}
+      {/* 顶部导航栏 */}
       {user && !isLoginPage && !hideNavPages && (
         <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -156,7 +152,8 @@ function AppContent() {
               <h1 className="font-bold text-base md:text-lg cursor-pointer truncate" onClick={() => navigate('/feed')}>
                 女主无cp/无男主交流中心
               </h1>
-              {/* 桌面端导航 */}
+              
+              {/* 桌面端分类 */}
               <div className="hidden md:flex gap-1">
                 {CATEGORIES.map(c => (
                   <button
@@ -168,7 +165,8 @@ function AppContent() {
                   </button>
                 ))}
               </div>
-              {/* 移动端菜单按钮 */}
+
+              {/* 移动端菜单开关 */}
               <button 
                 onClick={() => setShowMobileMenu(true)}
                 className="md:hidden p-2 hover:bg-zinc-100 rounded-full flex-shrink-0"
@@ -176,16 +174,23 @@ function AppContent() {
                 <Menu className="w-5 h-5" />
               </button>
             </div>
+
             <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-              {/* 搜索按钮 - 所有设备显示 */}
-              <button 
-                className="p-2 hover:bg-zinc-100 rounded-full"
-                title="搜索"
-              >
+              {/* 搜索 */}
+              <button className="p-2 hover:bg-zinc-100 rounded-full" title="搜索">
                 <Search className="w-5 h-5 text-zinc-600" />
               </button>
               
-              {/* 用户头像 */}
+              {/* 书架 (新增) */}
+              <button 
+                onClick={() => navigate('/bookshelf')}
+                className="p-2 hover:bg-zinc-100 rounded-full"
+                title="书架"
+              >
+                <Library className="w-5 h-5 text-zinc-600" />
+              </button>
+
+              {/* 头像/个人主页 */}
               <button 
                 onClick={() => navigate(`/profile/${user.id}`)} 
                 className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full flex-shrink-0"
@@ -193,7 +198,6 @@ function AppContent() {
                 <Avatar url={user.avatar} className="w-6 h-6" />
               </button>
               
-              {/* 管理员入口 - 桌面端显示 */}
               {user.role === 'admin' && (
                 <button 
                   onClick={() => navigate('/admin')}
@@ -204,7 +208,6 @@ function AppContent() {
                 </button>
               )}
               
-              {/* 退出按钮 - 桌面端显示 */}
               <button 
                 onClick={handleLogout} 
                 className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"
@@ -216,7 +219,7 @@ function AppContent() {
         </nav>
       )}
 
-      {/* 移动端分类菜单 */}
+      {/* 移动端抽屉菜单 */}
       {showMobileMenu && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden" onClick={() => setShowMobileMenu(false)}>
           <div className="bg-white w-64 h-full p-4 overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -227,7 +230,6 @@ function AppContent() {
               </button>
             </div>
             
-            {/* 分类列表 - 可折叠 */}
             <div className="mb-4">
               <button 
                 onClick={() => setShowCategoriesInMenu(!showCategoriesInMenu)}
@@ -256,14 +258,19 @@ function AppContent() {
               )}
             </div>
             
-            {/* 功能选项 */}
             <div className="border-t pt-4 space-y-1">
-              {user && user.role === 'admin' && (
+              {/* 移动端书架 (新增) */}
+              <button
+                onClick={() => { navigate('/bookshelf'); setShowMobileMenu(false); }}
+                className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2"
+              >
+                <Library className="w-4 h-4" />
+                <span className="text-base">我的书架</span>
+              </button>
+
+              {user?.role === 'admin' && (
                 <button
-                  onClick={() => {
-                    navigate('/admin');
-                    setShowMobileMenu(false);
-                  }}
+                  onClick={() => { navigate('/admin'); setShowMobileMenu(false); }}
                   className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2"
                 >
                   <Shield className="w-4 h-4" />
@@ -271,10 +278,7 @@ function AppContent() {
                 </button>
               )}
               <button
-                onClick={() => {
-                  handleLogout();
-                  setShowMobileMenu(false);
-                }}
+                onClick={() => { handleLogout(); setShowMobileMenu(false); }}
                 className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2"
               >
                 <LogOut className="w-4 h-4" />
@@ -285,12 +289,13 @@ function AppContent() {
         </div>
       )}
 
+      {/* 路由主体 */}
       <main className="max-w-5xl mx-auto">
         <Routes>
-          {/* 路由表 */}
           <Route path="/" element={user ? <Navigate to="/feed" /> : <Landing onLoginClick={() => navigate('/login')} />} />
           <Route path="/login" element={<LoginPage onLogin={(u) => { setUser(u); navigate('/feed'); }} />} />
           
+          {/* 动态 Feed */}
           <Route path="/feed" element={
             <div className="p-4">
               <div className="flex justify-between items-center mb-4 border-b pb-2">
@@ -299,8 +304,7 @@ function AppContent() {
                     type="checkbox" 
                     checked={onlyEssence} 
                     onChange={e => setOnlyEssence(e.target.checked)} 
-                    className="w-0 h-0 opacity-0 absolute"
-                    id="essence-filter"
+                    className="hidden"
                   />
                   <div className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'bg-white text-black border border-zinc-300'}`}>
                     蒂
@@ -321,9 +325,7 @@ function AppContent() {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium flex items-center gap-2 flex-wrap">
                           {post.is_essence && (
-                            <span className="inline-block px-2 py-0.5 bg-black text-white text-xs font-bold rounded flex-shrink-0">
-                              蒂
-                            </span>
+                            <span className="inline-block px-2 py-0.5 bg-black text-white text-xs font-bold rounded flex-shrink-0">蒂</span>
                           )}
                           <span className="flex-1">{post.title}</span>
                         </h3>
@@ -339,23 +341,41 @@ function AppContent() {
             </div>
           } />
 
+          {/* 详情页 */}
           <Route path="/post/:postId" element={
-            <PostDetailPage user={user!} usersMap={usersMap} showToast={showToast} />
+            user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" />
           } />
 
+          {/* 个人主页 */}
           <Route path="/profile/:userId" element={
-            <UserProfile userId={user?.id || ''} onNavigateBack={() => navigate(-1)} onPostClick={(id) => navigate(`/post/${id}`)} />
+            user ? <UserProfile userId={user.id} onNavigateBack={() => navigate(-1)} onPostClick={(id) => navigate(`/post/${id}`)} /> : <Navigate to="/login" />
           } />
 
+          {/* 书架 (新增) */}
+          <Route path="/bookshelf" element={
+            user ? (
+              <Bookshelf 
+                onNavigateBack={() => navigate(-1)} 
+                onBookClick={(postId) => navigate(`/post/${postId}`)}
+                showToast={showToast}
+              />
+            ) : (
+              <Navigate to="/login" />
+            )
+          } />
+
+          {/* 管理员面板 */}
           <Route path="/admin" element={
             user?.role === 'admin' ? <AdminPanel /> : <Navigate to="/feed" />
           } />
         </Routes>
       </main>
 
-      {isCreatingPost && (
+      {/* 发帖弹窗 */}
+      {isCreatingPost && user && (
         <CreatePostModal 
-          user={user!} onClose={() => setIsCreatingPost(false)} 
+          user={user} 
+          onClose={() => setIsCreatingPost(false)} 
           onSuccess={() => { setIsCreatingPost(false); setRefreshKey(k => k + 1); }} 
           showToast={showToast} 
         />
