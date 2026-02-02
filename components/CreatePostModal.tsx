@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, ImageIcon, Plus, Trash2, Loader } from 'lucide-react';
 import { User, Category } from '../types';
-import { create_post } from '../services/storage';
+import { create_post, create_book_rating } from '../services/storage';
 import { uploadImages, deleteImage } from '../services/storageService';
+import BookRatingModal, { BookRatingData } from './BookRatingModal';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -34,6 +35,10 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   const [pollOptions, setPollOptions] = useState(['', '']);
   const [isMultiple, setIsMultiple] = useState(false);
   const [pollDeadline, setPollDeadline] = useState('');
+
+  // 图书评分功能状态
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [bookRating, setBookRating] = useState<BookRatingData | null>(null);
 
   // 富文本编辑器相关
   const editorRef = useRef<HTMLDivElement>(null);
@@ -220,50 +225,28 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         if (element.classList.contains('image-block')) {
           const imageId = element.getAttribute('data-image-id');
           if (imageId && imageMap.has(imageId)) {
-            const { file, preview } = imageMap.get(imageId)!;
-            blocks.push({ type: 'image', file, preview, id: imageId });
-          }
-        } else if (element.tagName === 'BR') {
-          // 换行符作为文本块的一部分
-          if (blocks.length > 0 && blocks[blocks.length - 1].type === 'text') {
-            blocks[blocks.length - 1].value += '\n';
-          }
-        } else if (element.tagName === 'DIV' || element.tagName === 'P') {
-          // 块级元素，递归处理子节点
-          for (let i = 0; i < element.childNodes.length; i++) {
-            traverse(element.childNodes[i]);
-          }
-          // 块级元素后添加换行
-          if (blocks.length > 0 && blocks[blocks.length - 1].type === 'text') {
-            blocks[blocks.length - 1].value += '\n';
+            const imageInfo = imageMap.get(imageId)!;
+            blocks.push({
+              type: 'image',
+              file: imageInfo.file,
+              preview: imageInfo.preview,
+              id: imageId
+            });
           }
         } else {
-          // 其他元素，递归处理
-          for (let i = 0; i < element.childNodes.length; i++) {
-            traverse(element.childNodes[i]);
-          }
+          // 递归处理子节点
+          node.childNodes.forEach(child => traverse(child));
         }
       }
     };
 
-    for (let i = 0; i < editor.childNodes.length; i++) {
-      traverse(editor.childNodes[i]);
-    }
-
+    editor.childNodes.forEach(node => traverse(node));
     return blocks;
   };
 
-  // 计算统计信息
-  const getStats = () => {
-    const blocks = extractContentBlocks();
-    const textLength = blocks
-      .filter(b => b.type === 'text')
-      .reduce((sum, b) => sum + (b as { type: 'text'; value: string }).value.length, 0);
-    const imageCount = blocks.filter(b => b.type === 'image').length;
-    return { textLength, imageCount };
-  };
-
-  const { textLength: totalTextLength, imageCount } = getStats();
+  // 计算文本长度和图片数量
+  const totalTextLength = editorRef.current?.textContent?.length || 0;
+  const imageCount = imageMap.size;
 
   // 添加投票选项
   const addPollOption = () => {
@@ -301,9 +284,8 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
       return false;
     }
 
-    const blocks = extractContentBlocks();
-    const hasText = blocks.some(b => b.type === 'text' && b.value.trim());
-    if (!hasText) {
+    const contentText = editorRef.current?.textContent?.trim() || '';
+    if (!contentText && imageMap.size === 0) {
       showToast('请输入内容', 'error');
       return false;
     }
@@ -337,24 +319,16 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    // 验证用户信息
-    if (!user.id) {
-      showToast('用户信息缺失，请重新登录', 'error');
-      return;
-    }
-    
-    // 获取用户名（兼容多种可能的属性名）
-    const userName = (user as any).user_name || user.name || user.username || '匿名用户';
-
     setIsSubmitting(true);
     setUploadProgress(0);
     let uploadedImageUrls: string[] = [];
 
     try {
-      const blocks = extractContentBlocks();
+      // 1. 提取内容块
+      const contentBlocks = extractContentBlocks();
       
-      // 1. 收集并上传图片
-      const imageBlocks = blocks.filter(b => b.type === 'image') as { type: 'image'; file: File; preview: string; id: string }[];
+      // 2. 上传所有图片
+      const imageBlocks = contentBlocks.filter(b => b.type === 'image') as Array<ContentBlock & { type: 'image' }>;
       
       if (imageBlocks.length > 0) {
         showToast('正在上传图片...', 'info');
@@ -368,66 +342,73 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         );
       }
 
-      // 2. 构建混合内容(将图片预览URL替换为实际上传URL)
+      // 3. 构建最终内容（替换预览URL为上传URL）
       let imageUrlIndex = 0;
-      const finalContent = blocks
+      const finalContent = contentBlocks
         .map(block => {
           if (block.type === 'text') {
             return block.value.trim() 
               ? { type: 'text', value: block.value.trim() }
               : null;
-          }
-          if (block.type === 'image') {
+          } else if (block.type === 'image') {
             return { type: 'image', url: uploadedImageUrls[imageUrlIndex++] };
           }
           return null;
         })
-        .filter(b => b !== null);
+        .filter(Boolean);
 
-      // 3. 准备投票数据
+      // 4. 构建投票数据
       let pollData = null;
       if (enablePoll) {
         const validOptions = pollOptions.filter(opt => opt.trim());
         const deadlineDate = new Date();
         deadlineDate.setDate(deadlineDate.getDate() + parseInt(pollDeadline));
-
+        
         pollData = {
           question: pollQuestion.trim(),
           options: validOptions.map(opt => ({
+            id: `opt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             text: opt.trim(),
-            votes: 0,
-            voters: []
+            votes: []
           })),
-          isMultiple,
+          is_multiple: isMultiple,
           deadline: deadlineDate.toISOString(),
-          totalVotes: 0
+          total_votes: 0
         };
       }
 
-      // 4. 提取所有图片URL（兼容旧的images字段）
-      const imageUrls = finalContent
-        .filter(block => block && block.type === 'image')
-        .map(block => block.url);
-
       // 5. 创建帖子
-      await create_post({
-        title: title.trim(),
+      const newPost = await create_post({
+        title,
         content: JSON.stringify(finalContent),
         category,
-        poll: pollData,
         user_id: user.id,
-        user_name: userName, // 使用验证后的用户名
-        images: imageUrls // 同时填充images字段供旧代码使用
+        user_name: user.user_name,
+        images: uploadedImageUrls,
+        poll: pollData,
       });
 
-      showToast('发布成功！', 'success');
+      // 6. 如果有图书评分，保存评分数据
+      if (bookRating) {
+        try {
+          await create_book_rating({
+            post_id: newPost.id,
+            user_id: user.id,
+            user_name: user.user_name,
+            ...bookRating,
+          });
+        } catch (error) {
+          console.error('保存图书评分失败:', error);
+          showToast('帖子发布成功，但评分保存失败', 'warning');
+        }
+      }
+
+      showToast('发布成功', 'success');
       onSuccess();
-      onClose();
     } catch (error: any) {
       console.error('发布失败:', error);
-      showToast(error.message || '发布失败，请重试', 'error');
-
-      // 上传失败时删除已上传的图片
+      
+      // 如果上传了图片但发布失败，清理图片
       if (uploadedImageUrls.length > 0) {
         try {
           await Promise.all(uploadedImageUrls.map(url => deleteImage(url)));
@@ -435,51 +416,31 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
           console.error('清理图片失败:', cleanupError);
         }
       }
+      
+      showToast(error.message || '发布失败，请重试', 'error');
     } finally {
       setIsSubmitting(false);
       setUploadProgress(0);
     }
   };
 
-  // 监听编辑器变化，保存光标位置
-  useEffect(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-
-    const handleSelectionChange = () => {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0 && editor.contains(selection.anchorNode)) {
-        saveSelection();
-      }
-    };
-
-    document.addEventListener('selectionchange', handleSelectionChange);
-    return () => {
-      document.removeEventListener('selectionchange', handleSelectionChange);
-    };
-  }, []);
-
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* 头部 */}
-        <div className="flex items-center justify-between p-4 border-b border-zinc-200">
-          <h2 className="text-xl font-bold">发布新帖子</h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-zinc-100 rounded-full transition-colors"
-            disabled={isSubmitting}
-          >
+        <div className="sticky top-0 bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold">发布新帖</h2>
+          <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full transition-colors" disabled={isSubmitting}>
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* 进度条 */}
-        {isSubmitting && uploadProgress > 0 && (
-          <div className="px-4 pt-2">
-            <div className="h-1 bg-zinc-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-black transition-all duration-300"
+        {/* 上传进度 */}
+        {isSubmitting && uploadProgress > 0 && uploadProgress < 100 && (
+          <div className="px-6 py-3 bg-blue-50 border-b border-blue-200">
+            <div className="w-full bg-blue-200 rounded-full h-2 overflow-hidden">
+              <div 
+                className="bg-blue-600 h-full transition-all duration-300" 
                 style={{ width: `${uploadProgress}%` }}
               />
             </div>
@@ -577,6 +538,72 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
                 outline: none;
               }
             `}</style>
+          </div>
+
+          {/* 图书评分功能 */}
+          <div className="border-t border-zinc-200 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-bold">图书评分（推书专用）</label>
+              {bookRating && (
+                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded font-medium">
+                  已添加评分: {bookRating.final_score.toFixed(1)}分
+                </span>
+              )}
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => setShowRatingModal(true)}
+              disabled={isSubmitting}
+              className="w-full py-3 border-2 border-dashed border-zinc-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-2xl">📚</span>
+                <span className="text-sm font-medium text-zinc-700">
+                  {bookRating ? '修改图书评分' : '添加图书评分'}
+                </span>
+                {bookRating && (
+                  <span className="text-xs text-zinc-500">
+                    《{bookRating.book_name}》 · {bookRating.book_author}
+                  </span>
+                )}
+              </div>
+            </button>
+            
+            {bookRating && (
+              <div className="mt-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="text-xs text-purple-700 space-y-1">
+                  <p className="font-bold">评分预览</p>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    <div className="bg-white rounded p-2 text-center">
+                      <div className="text-lg font-bold text-blue-600">{bookRating.impressed_score}</div>
+                      <div className="text-[10px] text-zinc-500">印象分</div>
+                    </div>
+                    <div className="bg-white rounded p-2 text-center">
+                      <div className="text-lg font-bold text-red-600">
+                        -{(bookRating.impressed_score - bookRating.final_score - bookRating.extra_deduction).toFixed(1)}
+                      </div>
+                      <div className="text-[10px] text-zinc-500">准则扣分</div>
+                    </div>
+                    <div className="bg-white rounded p-2 text-center">
+                      <div className="text-lg font-bold text-purple-600">{bookRating.final_score.toFixed(1)}</div>
+                      <div className="text-[10px] text-zinc-500">最终得分</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBookRating(null)}
+                    className="mt-2 text-xs text-red-600 hover:underline"
+                  >
+                    移除评分
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            <div className="mt-2 text-xs text-zinc-500">
+              💡 提示: 发布后，此书将出现在书架中，其他成员可以查看详细评分
+            </div>
           </div>
 
           {/* 投票功能 */}
@@ -700,6 +727,20 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
           </button>
         </div>
       </div>
+
+      {/* 图书评分弹窗 */}
+      {showRatingModal && (
+        <BookRatingModal
+          onClose={() => setShowRatingModal(false)}
+          onSave={(ratingData) => {
+            setBookRating(ratingData);
+            setShowRatingModal(false);
+            showToast('评分已添加', 'success');
+          }}
+          showToast={showToast}
+          initialData={bookRating || undefined}
+        />
+      )}
     </div>
   );
 }
