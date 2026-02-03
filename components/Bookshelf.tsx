@@ -1,12 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Star, Filter, Search, MessageSquare, ThumbsUp, Eye, ChevronDown } from 'lucide-react';
-import { BookRatingData } from './BookRatingModal';
+import { ArrowLeft, Search, MessageSquare, ThumbsUp, Eye, ChevronDown } from 'lucide-react';
+import { get_all_book_ratings } from '../services/storage';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
+interface BookRatingData {
+  book_name: string;
+  book_author: string;
+  book_platform: string;
+  impressed_score: number;
+  principle_scores: { [key: string]: 'yes' | 'no' | null };
+  principle_remarks: { [key: string]: string };
+  extra_deduction: number;
+  extra_remark: string;
+  final_score: number;
+  reviewer_comment: string;
+}
+
 interface BookshelfProps {
   onNavigateBack: () => void;
-  onBookClick: (bookId: string) => void;
+  onBookClick: (postId: string) => void;
   showToast: (msg: string, type: ToastType) => void;
 }
 
@@ -22,10 +35,10 @@ interface BookWithRating {
   reviewer_name: string;
   reviewer_comment: string;
   created_at: string;
-  rating_details: BookRatingData;
-  comments_count?: number;
-  likes_count?: number;
-  views_count?: number;
+  principle_scores: { [key: string]: 'yes' | 'no' | null };
+  principle_remarks: { [key: string]: string };
+  extra_deduction: number;
+  extra_remark: string;
 }
 
 type SortOption = 'latest' | 'highest' | 'lowest';
@@ -74,15 +87,10 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
   const loadBooks = async () => {
     setIsLoading(true);
     try {
-      // TODO: 从数据库加载书籍评分数据
-      // 这里需要调用 storage.ts 中的函数获取所有带评分的帖子
-      // const data = await get_book_ratings();
-      // setBooks(data);
-      
-      // 临时模拟数据
-      const mockBooks: BookWithRating[] = [];
-      setBooks(mockBooks);
+      const data = await get_all_book_ratings({ sortBy: 'latest' });
+      setBooks(data as BookWithRating[]);
     } catch (error) {
+      console.error('加载书架失败:', error);
       showToast('加载书架失败', 'error');
     } finally {
       setIsLoading(false);
@@ -103,7 +111,7 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
       return true;
     })
     .filter(book => {
-      // 分数过滤
+      // 分数过滤 - 使用 >= 而不是 ≥
       if (filterBy === 'high') return book.final_score >= 8;
       if (filterBy === 'medium') return book.final_score >= 5 && book.final_score < 8;
       if (filterBy === 'low') return book.final_score < 5;
@@ -184,9 +192,9 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
               className="px-3 py-1.5 border border-zinc-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
             >
               <option value="all">全部评分</option>
-              <option value="high">高分 (≥8分)</option>
+              <option value="high">高分 (8分以上)</option>
               <option value="medium">中等 (5-8分)</option>
-              <option value="low">低分 (<5分)</option>
+              <option value="low">低分 (5分以下)</option>
             </select>
           </div>
         </div>
@@ -227,28 +235,6 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
                           评分人: {book.reviewer_name} · {new Date(book.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      
-                      {/* 互动数据 */}
-                      <div className="flex gap-4 mt-3 text-sm text-zinc-500">
-                        {book.views_count !== undefined && (
-                          <span className="flex items-center gap-1">
-                            <Eye className="w-4 h-4" />
-                            {book.views_count}
-                          </span>
-                        )}
-                        {book.likes_count !== undefined && (
-                          <span className="flex items-center gap-1">
-                            <ThumbsUp className="w-4 h-4" />
-                            {book.likes_count}
-                          </span>
-                        )}
-                        {book.comments_count !== undefined && (
-                          <span className="flex items-center gap-1">
-                            <MessageSquare className="w-4 h-4" />
-                            {book.comments_count}
-                          </span>
-                        )}
-                      </div>
                     </div>
 
                     {/* 展开按钮 */}
@@ -279,17 +265,17 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                       <div className="bg-white p-3 rounded border border-zinc-200">
                         <p className="text-xs text-zinc-500 mb-1">印象分</p>
-                        <p className="text-2xl font-bold">{book.rating_details.impressed_score}</p>
+                        <p className="text-2xl font-bold">{book.impressed_score}</p>
                       </div>
                       <div className="bg-white p-3 rounded border border-zinc-200">
                         <p className="text-xs text-zinc-500 mb-1">准则扣分</p>
                         <p className="text-2xl font-bold text-red-600">
-                          -{(book.rating_details.impressed_score - book.final_score - book.rating_details.extra_deduction).toFixed(1)}
+                          -{(book.impressed_score - book.final_score - book.extra_deduction).toFixed(1)}
                         </p>
                       </div>
                       <div className="bg-white p-3 rounded border border-zinc-200">
                         <p className="text-xs text-zinc-500 mb-1">额外扣分</p>
-                        <p className="text-2xl font-bold text-red-600">-{book.rating_details.extra_deduction}</p>
+                        <p className="text-2xl font-bold text-red-600">-{book.extra_deduction}</p>
                       </div>
                     </div>
 
@@ -297,11 +283,11 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
                     <div className="bg-white rounded-lg border border-zinc-200 p-4">
                       <h5 className="font-bold mb-3 text-sm">评分准则明细</h5>
                       <div className="space-y-2 max-h-96 overflow-y-auto">
-                        {Object.entries(book.rating_details.principle_scores).map(([key, value], index) => {
+                        {Object.entries(book.principle_scores).map(([key, value]) => {
                           if (!value) return null;
                           const principleIndex = parseInt(key.replace('p', '')) - 1;
                           const principleText = PRINCIPLES_TEXT[principleIndex];
-                          const remark = book.rating_details.principle_remarks[key];
+                          const remark = book.principle_remarks[key];
                           
                           return (
                             <div key={key} className="text-sm border-b border-zinc-100 pb-2 last:border-0">
@@ -323,10 +309,10 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
                     </div>
 
                     {/* 额外扣分说明 */}
-                    {book.rating_details.extra_deduction > 0 && book.rating_details.extra_remark && (
+                    {book.extra_deduction > 0 && book.extra_remark && (
                       <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
                         <p className="text-sm font-bold text-red-800 mb-1">额外扣分原因</p>
-                        <p className="text-sm text-red-700">{book.rating_details.extra_remark}</p>
+                        <p className="text-sm text-red-700">{book.extra_remark}</p>
                       </div>
                     )}
 
