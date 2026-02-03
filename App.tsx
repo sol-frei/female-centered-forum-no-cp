@@ -18,7 +18,7 @@ import { User, Post, Category } from './types';
 import { get_all_users, get_user, get_posts } from './services/storage';
 import { 
   Search, LogOut, Menu, UserCircle, 
-  PenSquare, X, Shield, Library // 修正图标名为 Library
+  PenSquare, X, Shield, BookOpen // 修正图标名为 BookOpen
 } from 'lucide-react';
 
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
@@ -187,7 +187,7 @@ function AppContent() {
                 className="p-2 hover:bg-zinc-100 rounded-full"
                 title="书架"
               >
-                <Library className="w-5 h-5 text-zinc-600" />
+                <BookOpen className="w-5 h-5 text-zinc-600" />
               </button>
 
               {/* 头像/个人主页 */}
@@ -264,7 +264,7 @@ function AppContent() {
                 onClick={() => { navigate('/bookshelf'); setShowMobileMenu(false); }}
                 className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2"
               >
-                <Library className="w-4 h-4" />
+                <BookOpen className="w-4 h-4" />
                 <span className="text-base">我的书架</span>
               </button>
 
