@@ -23,6 +23,13 @@ import {
 
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
+// 统一的黑色旋转圆圈加载组件
+const LoadingSpinner = ({ fullScreen = false }: { fullScreen?: boolean }) => (
+  <div className={`${fullScreen ? 'min-h-screen' : 'py-20'} flex items-center justify-center bg-white`}>
+    <div className="w-6 h-6 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin"></div>
+  </div>
+);
+
 function timeAgo(dateInput: string | Date): string {
   const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   const now = new Date();
@@ -57,7 +64,7 @@ function AppContent() {
   
   // --- 状态管理 ---
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthChecking, setIsAuthChecking] = useState(true); // 全局启动拦截状态
+  const [isAuthChecking, setIsAuthChecking] = useState(true); // 全局启动拦截
   const [currentCategory, setCurrentCategory] = useState<Category | '全部'>((searchParams.get('cat') as Category) || '全部');
   const [searchQuery] = useState('');
   const [onlyEssence, setOnlyEssence] = useState(false);
@@ -65,14 +72,13 @@ function AppContent() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [usersMap, setUsersMap] = useState<Record<string, User>>({});
   const [displayPosts, setDisplayPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(false); // 页面内容加载状态
+  const [isLoading, setIsLoading] = useState(false); // 局部业务更新
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showCategoriesInMenu, setShowCategoriesInMenu] = useState(true);
 
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
-  // 1. 系统启动：仅在刷新或首次进入时检查登录
+  // 1. 初始化鉴权：防止刷新时路由“抢跑”
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -89,15 +95,15 @@ function AppContent() {
           }
         }
       } catch (err) {
-        console.error("Auth init error:", err);
+        console.error("Auth initialization failed:", err);
       } finally {
-        setIsAuthChecking(false); // 启动完成，关闭全屏拦截
+        setIsAuthChecking(false);
       }
     };
     initAuth();
   }, []);
 
-  // 2. 业务数据加载：仅在内容更新时触发
+  // 2. 加载帖子数据
   useEffect(() => {
     if (isAuthChecking) return; 
     const loadPosts = async () => {
@@ -112,7 +118,7 @@ function AppContent() {
     loadPosts();
   }, [currentCategory, onlyEssence, refreshKey, isAuthChecking]);
 
-  // 3. 用户映射表
+  // 3. 维护用户映射表
   useEffect(() => {
     if (!user) return;
     get_all_users().then(list => {
@@ -136,17 +142,9 @@ function AppContent() {
     return content.slice(0, 100);
   };
 
-  // --- 拦截阶段：系统启动动画 (刷新时显示) ---
+  // --- 拦截：启动时显示全屏小圆圈 ---
   if (isAuthChecking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="flex gap-2">
-          <div className="w-2.5 h-2.5 bg-zinc-800 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-          <div className="w-2.5 h-2.5 bg-zinc-800 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-          <div className="w-2.5 h-2.5 bg-zinc-800 rounded-full animate-bounce"></div>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen />;
   }
 
   // 强制改密逻辑
@@ -171,7 +169,6 @@ function AppContent() {
               <h1 className="font-bold text-base md:text-lg cursor-pointer truncate" onClick={() => navigate('/feed')}>
                 女主无cp/无男主交流中心
               </h1>
-              
               <div className="hidden md:flex gap-1">
                 {CATEGORIES.map(c => (
                   <button
@@ -183,7 +180,6 @@ function AppContent() {
                   </button>
                 ))}
               </div>
-
               <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-2 hover:bg-zinc-100 rounded-full">
                 <Menu className="w-5 h-5" />
               </button>
@@ -227,7 +223,6 @@ function AppContent() {
         </div>
       )}
 
-      {/* 路由主体 */}
       <main className="max-w-5xl mx-auto">
         <Routes>
           <Route path="/" element={user ? <Navigate to="/feed" /> : <Landing onLoginClick={() => navigate('/login')} />} />
@@ -248,10 +243,7 @@ function AppContent() {
 
                 <div className="divide-y divide-zinc-100">
                   {isLoading ? (
-                    // 业务级文字变换提示
-                    <div className="py-20 text-center text-zinc-400 text-sm italic animate-pulse">
-                      正在获取最新动态...
-                    </div>
+                    <LoadingSpinner />
                   ) : (
                     displayPosts.filter(p => p.title.includes(searchQuery)).map(post => (
                       <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
