@@ -384,7 +384,7 @@ const PostDetailPage = ({
                   </div>
 
                   <div className="bg-white rounded-lg p-4 mb-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-base">
                       <div><span className="text-zinc-500">书名：</span><span className="font-medium text-zinc-800">{bookRating.book_name}</span></div>
                       <div><span className="text-zinc-500">作者：</span><span className="font-medium text-zinc-800">{bookRating.book_author}</span></div>
                       {bookRating.book_platform && (<div><span className="text-zinc-500">平台：</span><span className="font-medium text-zinc-800">{bookRating.book_platform}</span></div>)}
@@ -409,13 +409,13 @@ const PostDetailPage = ({
 
                   {bookRating.reviewer_comment && (
                     <div className="bg-white rounded-lg p-4">
-                      <div className="text-sm font-bold text-zinc-700 mb-2">爱女姐有话说</div>
-                      <div className="text-sm text-zinc-600 whitespace-pre-wrap">{bookRating.reviewer_comment}</div>
+                      <div className="text-base font-bold text-zinc-700 mb-2">爱女姐有话说</div>
+                      <div className="text-base text-zinc-600 whitespace-pre-wrap">{bookRating.reviewer_comment}</div>
                     </div>
                   )}
 
                   <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-zinc-700 hover:text-zinc-900 select-none">▼ 查看详细评分准则</summary>
+                    <summary className="cursor-pointer text-base font-medium text-zinc-700 hover:text-zinc-900 select-none">▼ 查看详细评分准则</summary>
                     <div className="mt-3 bg-white rounded-lg p-4 space-y-2 max-h-96 overflow-y-auto">
                       {Object.entries(bookRating.principle_scores).map(([key, value]) => {
                         if (!value) return null;
@@ -424,19 +424,18 @@ const PostDetailPage = ({
                           '作者预收/写过/阅读男主文、bl、言情等非4B小说。', '连载中/断更/卡v/坑文等操作。', '文笔差 / 一般，剧情设定欠缺。', '评论区磕cp、吵架，作者关闭评论区等。', '作者现实其他骚操作（已婚、提男友、拒绝激女读者等）。', '描写氛围、语言、过于暧昧，女角色之间（非女主）关系有百合倾向。', '女男比例低于2：1。', '随父姓，默认任何角色随父姓，不单指主角，不指出也不批判也没改变。', '女性角色塑造不用心、刻板印象（取名随意、脸谱化、平面化）。', '服美役（白幼瘦、面部、高跟鞋、胸臀腿特写、衣服配饰等外貌方面的描写）。', '驴竞、拉踩其他女角色。', '忽略女性困难处境、物化女性。', '性别认知障碍，自称哥、爸、爷、弟等，女扮男装，女角色被称为先生等。', '扶持男性、接男儿，有男人分享女角色胜利果实/成果/遗产等。', '男性角色与女性角色存在单向/双向性缘。', '美化男性（母父对比、男性深情、男性友情、男性导师等）、偏爱男性。', '男性角色有高光、有成长线。', '掺腐（非批判）。', '存在厌女词、辱女词。', '存在男本位词。', '用性侵、造黄谣等方式惩罚女性。', '过度渲染女性苦楚，但反抗/觉醒占比少。', '是否有提到推广女权思想【没有扣分】。', '是否有明确反男权思想【没有扣分】。', '是否默认女性为第一性【没有扣分】。'
                         ];
                         const remark = bookRating.principle_remarks[key];
-                        // 修复问题1：后三项（p23-p25）如果选'no'应该是绿色对号
+                        // 修复问题4和5：后三项（p23-p25）选'yes'是好的，显示绿色；去掉✓✗只保留圆圈
                         const isLastThreePrinciples = principleIndex >= 22 && principleIndex <= 24;
-                        const shouldShowCheck = isLastThreePrinciples ? (value === 'no') : (value !== 'yes');
+                        const shouldShowGreen = isLastThreePrinciples ? (value === 'yes') : (value !== 'yes');
                         
                         return (
-                          <div key={key} className="text-sm py-2">
+                          <div key={key} className="text-base py-2">
                             <div className="flex items-start gap-2">
-                              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${shouldShowCheck ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                                {shouldShowCheck ? '✓' : '✗'}
+                              <span className={`flex-shrink-0 w-6 h-6 rounded-full border-2 ${shouldShowGreen ? 'border-green-600 bg-green-100' : 'border-red-600 bg-red-100'}`}>
                               </span>
                               <div className="flex-1">
                                 <p className="text-zinc-700">{principleIndex + 1}. {principleTexts[principleIndex]}</p>
-                                {remark && <p className="text-xs text-zinc-500 mt-1">备注: {remark}</p>}
+                                {remark && <p className="text-sm text-zinc-500 mt-1">备注: {remark}</p>}
                               </div>
                             </div>
                           </div>
@@ -447,8 +446,8 @@ const PostDetailPage = ({
 
                   {bookRating.extra_deduction > 0 && bookRating.extra_remark && (
                     <div className="mt-3 bg-zinc-100 rounded-lg p-3">
-                      <p className="text-sm font-bold text-zinc-800 mb-1">额外扣分原因</p>
-                      <p className="text-sm text-zinc-700">{bookRating.extra_remark}</p>
+                      <p className="text-base font-bold text-zinc-800 mb-1">额外扣分原因</p>
+                      <p className="text-base text-zinc-700">{bookRating.extra_remark}</p>
                     </div>
                   )}
                 </div>
@@ -537,7 +536,7 @@ const PostDetailPage = ({
             <label className="cursor-pointer p-2 hover:bg-zinc-100 rounded-lg">
               <ImageIcon className="w-5 h-5 text-zinc-500" /><input type="file" accept="image/*" multiple onChange={handleCommentImageSelect} className="hidden" />
             </label>
-            <textarea ref={commentInputRef} value={newComment} onChange={e => setNewComment(e.target.value)} className="flex-1 bg-zinc-100 rounded-lg p-2 text-sm outline-none resize-none h-10" placeholder="写下你的评论..." />
+            <textarea ref={commentInputRef} value={newComment} onChange={e => setNewComment(e.target.value)} className="flex-1 bg-zinc-100 rounded-lg p-2 text-sm outline-none resize-y min-h-10 max-h-40" placeholder="写下你的评论..." />
             <button onClick={handleComment} disabled={uploadingComment || (!newComment.trim() && commentImages.length === 0)} className="bg-black text-white px-4 rounded-lg text-sm font-bold disabled:bg-zinc-300">发送</button>
           </div>
         </div>
@@ -575,9 +574,15 @@ const PostDetailPage = ({
     showToast={showToast}
   />
 )} 
-      {/* 修复问题6：图片预览弹窗 */}
+      {/* 修复问题2和6：图片预览弹窗添加关闭按钮 */}
       {previewImage && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
+          <button 
+            onClick={() => setPreviewImage(null)}
+            className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white text-2xl transition-colors"
+          >
+            ×
+          </button>
           <img src={previewImage} className="max-w-full max-h-full" alt="" />
         </div>
       )}
