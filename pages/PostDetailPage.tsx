@@ -357,151 +357,89 @@ const PostDetailPage = ({
               <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
               <PostContent content={post.content} className="prose prose-zinc max-w-none" />
               
-{/* 图书评分展示 (极简黑白审计风格) */}
-{bookRating && (
-  <div className="mt-8 border-t-2 border-black pt-8 pb-4">
-    {/* 顶部标题与核心分数 */}
-    <div className="flex items-end justify-between mb-8">
-      <div>
-        <h3 className="text-2xl font-black tracking-tighter text-black italic">
-          BOOK AUDIT REPORT
-        </h3>
-        <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-[0.2em] mt-1">
-          Internal Rating System / 内部图书评分审计
-        </p>
-      </div>
-      <div className="text-right">
-        <div className="text-5xl font-black text-black leading-none tabular-nums">
-          {bookRating.final_score.toFixed(1)}
-        </div>
-        <div className="text-[10px] font-black uppercase tracking-widest text-zinc-300 mt-2">
-          Final Score
-        </div>
-      </div>
-    </div>
-
-    {/* 基本信息栏 - 黑白灰配色，去掉侧边框 */}
-    <div className="border-y border-zinc-100 py-4 mb-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12">
-        <div className="flex justify-between items-center border-b border-zinc-50 pb-1">
-          <span className="text-[11px] font-bold text-zinc-400 uppercase">Book</span>
-          <span className="text-sm font-bold text-black">{bookRating.book_name}</span>
-        </div>
-        <div className="flex justify-between items-center border-b border-zinc-50 pb-1">
-          <span className="text-[11px] font-bold text-zinc-400 uppercase">Author</span>
-          <span className="text-sm font-bold text-black">{bookRating.book_author}</span>
-        </div>
-        <div className="flex justify-between items-center border-b border-zinc-50 pb-1">
-          <span className="text-[11px] font-bold text-zinc-400 uppercase">Auditor</span>
-          <span className="text-sm font-bold text-black">{bookRating.user_name}</span>
-        </div>
-        {bookRating.book_platform && (
-          <div className="flex justify-between items-center border-b border-zinc-50 pb-1">
-            <span className="text-[11px] font-bold text-zinc-400 uppercase">Platform</span>
-            <span className="text-sm font-bold text-black">{bookRating.book_platform}</span>
-          </div>
-        )}
-      </div>
-    </div>
-
-    {/* 分值详情 - 去掉容器边框，居中对齐 */}
-    <div className="grid grid-cols-3 mb-10">
-      <div className="text-center">
-        <div className="text-lg font-bold text-black">{bookRating.impressed_score}</div>
-        <div className="text-[10px] text-zinc-400 font-bold uppercase mt-1">初始分</div>
-      </div>
-      <div className="text-center border-x border-zinc-100">
-        <div className="text-lg font-bold text-red-500">
-          -{(bookRating.impressed_score - bookRating.final_score - bookRating.extra_deduction).toFixed(1)}
-        </div>
-        <div className="text-[10px] text-zinc-400 font-bold uppercase mt-1">准则扣分</div>
-      </div>
-      <div className="text-center">
-        <div className="text-lg font-bold text-red-500">-{bookRating.extra_deduction}</div>
-        <div className="text-[10px] text-zinc-400 font-bold uppercase mt-1">额外扣分</div>
-      </div>
-    </div>
-
-    {/* 评价部分 */}
-    {bookRating.reviewer_comment && (
-      <div className="mb-10 group">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-1 h-3 bg-black"></div>
-          <span className="text-[11px] font-black uppercase tracking-widest">Comment / 评价</span>
-        </div>
-        <div className="text-sm text-zinc-600 leading-relaxed pl-3 border-l border-zinc-200">
-          {bookRating.reviewer_comment}
-        </div>
-      </div>
-    )}
-
-    {/* 准则明细 - 修复了图标逻辑与边框 */}
-    <details className="group border-t border-zinc-100 pt-6">
-      <summary className="list-none cursor-pointer flex justify-between items-center">
-        <div className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Detailed Principles / 审计明细</div>
-        <div className="text-zinc-300 group-open:rotate-180 transition-transform">↓</div>
-      </summary>
-      
-      <div className="mt-6">
-        {Object.entries(bookRating.principle_scores).map(([key, value]) => {
-          const principleIndex = parseInt(key.replace('p', '')) - 1;
-          const principleTexts = [
-            '作者预收/写过/阅读男主文、bl、言情等非4B小说。', '连载中/断更/卡v/坑文等操作。', '文笔差 / 一般，剧情设定欠缺。', '评论区磕cp、吵架，作者关闭评论区等。', '作者现实其他骚操作（已婚、提男友、拒绝激女读者等）。', '描写氛围、语言、过于暧昧，女角色之间（非女主）关系有百合倾向。', '女男比例低于2：1。', '随父姓，默认任何角色随父姓，不单指主角，不指出也不批判也没改变。', '女性角色塑造不用心、刻板印象（取名随意、脸谱化、平面化）。', '服美役（白幼瘦、面部、高跟鞋、胸臀腿特写、衣服配饰等外貌方面的描写）。', '驴竞、拉踩其他女角色。', '忽略女性困难处境、物化女性。', '性别认知障碍，自称哥、爸、爷、弟等，女扮男装，女角色被称为先生等。', '扶持男性、接男儿，有男人分享女角色胜利果实/成果/遗产等。', '男性角色与女性角色存在单向/双向性缘。', '美化男性（母父对比、男性深情、男性友情、男性导师等）、偏爱男性。', '男性角色有高光、有成长线。', '掺腐（非批判）。', '存在厌女词、辱女词。', '存在男本位词。', '用性侵、造黄谣等方式惩罚女性。', '过度渲染女性苦楚，但反抗/觉醒占比少。', '是否有提到推广女权思想【不扣分】。', '是否有明确反男权思想【不扣分】。', '是否默认女性为第一性【不扣分】。'
-          ];
-          
-          // 逻辑处理：最后三项 (Index 22, 23, 24) 是正面加分项
-          const isBonusItem = principleIndex >= 22;
-          let StatusDot;
-          
-          if (isBonusItem) {
-            // 后三项：选择了“有”显示绿色圆圈，否则显示灰色小点
-            StatusDot = value === 'yes' ? 
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" /> : 
-              <div className="w-1.5 h-1.5 rounded-full bg-zinc-100" />;
-          } else {
-            // 前22项：选择了“有”显示红色圆圈，否则显示灰色小点
-            StatusDot = value === 'yes' ? 
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" /> : 
-              <div className="w-1.5 h-1.5 rounded-full bg-zinc-100" />;
-          }
-
-          const remark = bookRating.principle_remarks[key];
-          return (
-            <div key={key} className="py-4 border-b border-zinc-50 flex items-start gap-4">
-              <div className="w-6 h-5 flex items-center justify-center flex-shrink-0">
-                {StatusDot}
-              </div>
-              <div className="flex-1">
-                <p className={`text-sm leading-snug ${value === 'yes' ? 'text-black font-semibold' : 'text-zinc-400'}`}>
-                  <span className="inline-block w-6 text-[10px] font-mono text-zinc-300">{(principleIndex + 1).toString().padStart(2, '0')}</span>
-                  {principleTexts[principleIndex]}
-                </p>
-                {remark && (
-                  <div className="mt-2 ml-6 text-xs text-zinc-500 bg-zinc-50 p-2 border-l-2 border-zinc-200">
-                    <span className="font-bold mr-1">NOTE:</span> {remark}
+              {/* 图书评分展示 (新整合) */}
+              {bookRating && (
+                <div className="mt-6 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold flex items-center gap-2">
+                      <span className="text-2xl">📚</span> 图书评分
+                    </h3>
+                    <div className="text-right">
+                      <div className="text-3xl font-bold text-purple-600">{bookRating.final_score.toFixed(1)}</div>
+                      <div className="text-xs text-zinc-500">最终得分</div>
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </details>
 
-    {/* 底部额外扣分备注 */}
-    {bookRating.extra_deduction > 0 && (
-      <div className="mt-8 pt-6 border-t border-black">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="bg-black text-white text-[9px] px-1.5 py-0.5 font-black uppercase">Penalty</span>
-          <span className="text-[11px] font-black uppercase tracking-widest">Extra Deduction / 额外扣分</span>
+                  <div className="bg-white rounded-lg p-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div><span className="text-zinc-500">书名：</span><span className="font-medium">{bookRating.book_name}</span></div>
+                      <div><span className="text-zinc-500">作者：</span><span className="font-medium">{bookRating.book_author}</span></div>
+                      {bookRating.book_platform && (<div><span className="text-zinc-500">平台：</span><span className="font-medium">{bookRating.book_platform}</span></div>)}
+                      <div><span className="text-zinc-500">评分人：</span><span className="font-medium">{bookRating.user_name}</span></div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="bg-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-blue-600">{bookRating.impressed_score}</div>
+                      <div className="text-xs text-zinc-500 mt-1">印象分</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-red-600">-{(bookRating.impressed_score - bookRating.final_score - bookRating.extra_deduction).toFixed(1)}</div>
+                      <div className="text-xs text-zinc-500 mt-1">准则扣分</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 text-center">
+                      <div className="text-2xl font-bold text-orange-600">-{bookRating.extra_deduction}</div>
+                      <div className="text-xs text-zinc-500 mt-1">额外扣分</div>
+                    </div>
+                  </div>
+
+                  {bookRating.reviewer_comment && (
+                    <div className="bg-white rounded-lg p-4">
+                      <div className="text-sm font-bold text-zinc-700 mb-2">爱女姐有话说</div>
+                      <div className="text-sm text-zinc-600 whitespace-pre-wrap">{bookRating.reviewer_comment}</div>
+                    </div>
+                  )}
+
+                  <details className="mt-4">
+                    <summary className="cursor-pointer text-sm font-medium text-purple-700 hover:text-purple-800 select-none">查看详细评分准则</summary>
+                    <div className="mt-3 bg-white rounded-lg p-4 space-y-2 max-h-96 overflow-y-auto">
+                      {Object.entries(bookRating.principle_scores).map(([key, value]) => {
+                        if (!value) return null;
+                        const principleIndex = parseInt(key.replace('p', '')) - 1;
+                        const principleTexts = [
+                          '作者预收/写过/阅读男主文、bl、言情等非4B小说。', '连载中/断更/卡v/坑文等操作。', '文笔差 / 一般，剧情设定欠缺。', '评论区磕cp、吵架，作者关闭评论区等。', '作者现实其他骚操作（已婚、提男友、拒绝激女读者等）。', '描写氛围、语言、过于暧昧，女角色之间（非女主）关系有百合倾向。', '女男比例低于2：1。', '随父姓，默认任何角色随父姓，不单指主角，不指出也不批判也没改变。', '女性角色塑造不用心、刻板印象（取名随意、脸谱化、平面化）。', '服美役（白幼瘦、面部、高跟鞋、胸臀腿特写、衣服配饰等外貌方面的描写）。', '驴竞、拉踩其他女角色。', '忽略女性困难处境、物化女性。', '性别认知障碍，自称哥、爸、爷、弟等，女扮男装，女角色被称为先生等。', '扶持男性、接男儿，有男人分享女角色胜利果实/成果/遗产等。', '男性角色与女性角色存在单向/双向性缘。', '美化男性（母父对比、男性深情、男性友情、男性导师等）、偏爱男性。', '男性角色有高光、有成长线。', '掺腐（非批判）。', '存在厌女词、辱女词。', '存在男本位词。', '用性侵、造黄谣等方式惩罚女性。', '过度渲染女性苦楚，但反抗/觉醒占比少。', '是否有提到推广女权思想【没有扣分】。', '是否有明确反男权思想【没有扣分】。', '是否默认女性为第一性【没有扣分】。'
+                        ];
+                        const remark = bookRating.principle_remarks[key];
+                        return (
+                          <div key={key} className="text-sm border-b border-zinc-100 pb-2 last:border-0">
+                            <div className="flex items-start gap-2">
+                              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${value === 'yes' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                                {value === 'yes' ? '✗' : '✓'}
+                              </span>
+                              <div className="flex-1">
+                                <p className="text-zinc-700">{principleIndex + 1}. {principleTexts[principleIndex]}</p>
+                                {remark && <p className="text-xs text-zinc-500 mt-1">备注: {remark}</p>}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </details>
+
+                  {bookRating.extra_deduction > 0 && bookRating.extra_remark && (
+                    <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                      <p className="text-sm font-bold text-red-800 mb-1">额外扣分原因</p>
+                      <p className="text-sm text-red-700">{bookRating.extra_remark}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              {renderPollOptions()}
+            </>
         </div>
-        <p className="text-sm text-zinc-600 pl-2">
-          {bookRating.extra_remark || "未填写具体理由"} (扣除 {bookRating.extra_deduction} 分)
-        </p>
-      </div>
-    )}
-  </div>
-)}
+
         {/* 交互与评论区 (原有代码保持一致) */}
         <div className="flex gap-6 py-4 border-y border-zinc-100 text-zinc-500 mb-8">
           <button onClick={handleLike} className={`flex items-center gap-1 transition-colors ${isLiked ? 'text-red-500' : 'hover:text-red-500'}`}>
