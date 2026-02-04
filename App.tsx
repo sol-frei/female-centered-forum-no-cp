@@ -73,12 +73,34 @@ function AppContent() {
   const [isLoading, setIsLoading] = useState(false); 
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
   
-  // 🟢 控制移动端菜单显示的状态
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  // 🟢 搜索关键词状态
   const [searchQuery, setSearchQuery] = useState('');
 
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
+
+  // 🟢 核心修改：处理左滑返回（拦截浏览器回退手势）
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      // 如果当前正在搜索，点击返回或左滑手势会清空搜索，而不是退出网站
+      if (searchQuery) {
+        setSearchQuery('');
+        // 阻止默认行为（虽然 popstate 无法直接 cancel，但我们通过管理 history 栈实现）
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [searchQuery]);
+
+  // 当搜索内容从无到有时，向历史栈推入一个新记录
+  const handleSearchChange = (val: string) => {
+    if (!searchQuery && val) {
+      window.history.pushState({ searching: true }, '');
+    } else if (searchQuery && !val) {
+      // 如果手动删减到空，则不需要干扰历史栈，或者可以用 window.history.back()
+    }
+    setSearchQuery(val);
+  };
 
   useEffect(() => {
     const initAuth = async () => {
@@ -122,7 +144,6 @@ function AppContent() {
     });
   }, [user]);
 
-  // 🟢 计算过滤后的帖子列表
   const filteredPosts = displayPosts.filter(post => {
     const searchLower = searchQuery.toLowerCase();
     return post.title.toLowerCase().includes(searchLower) || 
@@ -159,7 +180,6 @@ function AppContent() {
     <div className="min-h-screen bg-white text-zinc-900">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* 🟢 移动端侧边栏抽屉组件 */}
       {showMobileMenu && (
         <div className="fixed inset-0 z-[100] md:hidden">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowMobileMenu(false)} />
@@ -193,7 +213,6 @@ function AppContent() {
         <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2 md:gap-6">
-              {/* 🟢 移动端汉堡菜单按钮 */}
               <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-1.5 hover:bg-zinc-100 rounded-full">
                 <Menu className="w-5 h-5" />
               </button>
@@ -210,16 +229,23 @@ function AppContent() {
               </div>
             </div>
 
-            {/* 🟢 搜索功能框 */}
             <div className="flex-1 max-w-xs relative group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-black" />
               <input 
                 type="text" 
                 placeholder="搜索帖子..." 
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full bg-zinc-100 border-none rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-1 focus:ring-black transition-all"
               />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-zinc-200 rounded-full"
+                >
+                  <X className="w-3 h-3 text-zinc-500" />
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-1 md:gap-2">
