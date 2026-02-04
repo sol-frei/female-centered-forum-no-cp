@@ -55,9 +55,9 @@ function AppContent() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   
-  // --- 核心状态 ---
+  // --- 状态管理 ---
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthChecking, setIsAuthChecking] = useState(true); // 拦截状态：初始为正在检查
+  const [isAuthChecking, setIsAuthChecking] = useState(true); // 全局启动拦截状态
   const [currentCategory, setCurrentCategory] = useState<Category | '全部'>((searchParams.get('cat') as Category) || '全部');
   const [searchQuery] = useState('');
   const [onlyEssence, setOnlyEssence] = useState(false);
@@ -65,14 +65,14 @@ function AppContent() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [usersMap, setUsersMap] = useState<Record<string, User>>({});
   const [displayPosts, setDisplayPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // 页面内容加载状态
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showCategoriesInMenu, setShowCategoriesInMenu] = useState(true);
 
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
-  // 1. 鉴权初始化逻辑：在刷新时找回 session
+  // 1. 系统启动：仅在刷新或首次进入时检查登录
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -91,16 +91,15 @@ function AppContent() {
       } catch (err) {
         console.error("Auth init error:", err);
       } finally {
-        // 关键：无论是否登录，最后都要关闭检查状态
-        setIsAuthChecking(false);
+        setIsAuthChecking(false); // 启动完成，关闭全屏拦截
       }
     };
     initAuth();
   }, []);
 
-  // 2. 加载帖子列表
+  // 2. 业务数据加载：仅在内容更新时触发
   useEffect(() => {
-    if (isAuthChecking) return; // 鉴权未完成时不请求数据
+    if (isAuthChecking) return; 
     const loadPosts = async () => {
       setIsLoading(true);
       const data = await get_posts(currentCategory, onlyEssence ? 'essence' : 'new');
@@ -113,7 +112,7 @@ function AppContent() {
     loadPosts();
   }, [currentCategory, onlyEssence, refreshKey, isAuthChecking]);
 
-  // 3. 用户数据映射
+  // 3. 用户映射表
   useEffect(() => {
     if (!user) return;
     get_all_users().then(list => {
@@ -137,19 +136,20 @@ function AppContent() {
     return content.slice(0, 100);
   };
 
-  // --- 拦截点：正在检查登录状态时渲染加载页 ---
+  // --- 拦截阶段：系统启动动画 (刷新时显示) ---
   if (isAuthChecking) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-        <div className="w-6 h-6 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin mb-4"></div>
-        <div className="text-zinc-500 text-sm font-medium animate-pulse">
-          正在刷新...
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="flex gap-2">
+          <div className="w-2.5 h-2.5 bg-zinc-800 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+          <div className="w-2.5 h-2.5 bg-zinc-800 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+          <div className="w-2.5 h-2.5 bg-zinc-800 rounded-full animate-bounce"></div>
         </div>
       </div>
     );
   }
 
-  // 首次登录强制改密逻辑
+  // 强制改密逻辑
   if (user && user.is_first_login) {
     return <ChangePasswordModal user={user} onComplete={(u) => { setUser(u); navigate('/feed'); }} />;
   }
@@ -171,6 +171,7 @@ function AppContent() {
               <h1 className="font-bold text-base md:text-lg cursor-pointer truncate" onClick={() => navigate('/feed')}>
                 女主无cp/无男主交流中心
               </h1>
+              
               <div className="hidden md:flex gap-1">
                 {CATEGORIES.map(c => (
                   <button
@@ -182,6 +183,7 @@ function AppContent() {
                   </button>
                 ))}
               </div>
+
               <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-2 hover:bg-zinc-100 rounded-full">
                 <Menu className="w-5 h-5" />
               </button>
@@ -198,7 +200,7 @@ function AppContent() {
         </nav>
       )}
 
-      {/* 移动端侧边菜单 */}
+      {/* 移动端菜单 */}
       {showMobileMenu && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden" onClick={() => setShowMobileMenu(false)}>
           <div className="bg-white w-64 h-full p-4" onClick={e => e.stopPropagation()}>
@@ -217,15 +219,15 @@ function AppContent() {
                 </button>
               ))}
               <div className="border-t mt-4 pt-4">
-                <button onClick={() => { navigate('/bookshelf'); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-2"><BookOpen className="w-4 h-4" /> 书架</button>
-                <button onClick={handleLogout} className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-2"><LogOut className="w-4 h-4" /> 退出</button>
+                <button onClick={() => { navigate('/bookshelf'); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-2 text-zinc-600"><BookOpen className="w-4 h-4" /> 我的书架</button>
+                <button onClick={handleLogout} className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-2 text-zinc-600"><LogOut className="w-4 h-4" /> 退出登录</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 路由系统：统一硬性守卫 */}
+      {/* 路由主体 */}
       <main className="max-w-5xl mx-auto">
         <Routes>
           <Route path="/" element={user ? <Navigate to="/feed" /> : <Landing onLoginClick={() => navigate('/login')} />} />
@@ -243,9 +245,13 @@ function AppContent() {
                     <PenSquare className="w-4 h-4" /> 发帖
                   </button>
                 </div>
+
                 <div className="divide-y divide-zinc-100">
                   {isLoading ? (
-                    <div className="py-20 text-center text-zinc-400">正在获取内容...</div>
+                    // 业务级文字变换提示
+                    <div className="py-20 text-center text-zinc-400 text-sm italic animate-pulse">
+                      正在获取最新动态...
+                    </div>
                   ) : (
                     displayPosts.filter(p => p.title.includes(searchQuery)).map(post => (
                       <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
