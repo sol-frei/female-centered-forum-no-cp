@@ -13,7 +13,10 @@ import {
   UserCircle, 
   Calendar, 
   Camera,
-  Loader2 
+  ArrowLeft,
+  Edit2,
+  Check,
+  X
 } from 'lucide-react';
 
 interface UserProfileProps {
@@ -21,6 +24,13 @@ interface UserProfileProps {
   onNavigateBack: () => void;
   onPostClick: (postId: string) => void;
 }
+
+// 统一的旋转圆圈组件
+const LoadingSpinner = () => (
+  <div className="py-20 flex items-center justify-center bg-white">
+    <div className="w-6 h-6 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin"></div>
+  </div>
+);
 
 export default function UserProfile({ userId, onNavigateBack, onPostClick }: UserProfileProps) {
   const [user, setUser] = useState<any>(null);
@@ -31,192 +41,184 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
   const [activeTab, setActiveTab] = useState<'posts' | 'messages' | 'collections'>('posts');
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // ✅ 新增：用户名编辑状态
   const [isEditingName, setIsEditingName] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [savingName, setSavingName] = useState(false);
 
-  // 获取当前登录用户
   useEffect(() => {
-    const getCurrentUser = async () => {
+    loadProfile();
+  }, [userId]);
+
+  const loadProfile = async () => {
+    setLoading(true);
+    try {
+      const userData = await get_user(userId);
+      setUser(userData);
+      setNewUserName(userData?.user_name || '');
+      
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        const userData = await get_user(session.user.id);
-        setCurrentUser(userData);
+        setCurrentUser(session.user);
+        if (session.user.id === userId) {
+          const count = await getUnreadNotificationCount(userId);
+          setUnreadCount(count);
+        }
       }
-    };
-    getCurrentUser();
-  }, []);
 
-  const isOwnProfile = currentUser && currentUser.id === userId;
-
-  // 加载资料
-  useEffect(() => {
-    const fetchAllData = async () => {
-      setLoading(true);
-      try {
-        const [userData, userPosts, notificationCount] = await Promise.all([
-          get_user(userId),
-          get_posts_by_user(userId),
-          isOwnProfile ? getUnreadNotificationCount(userId) : Promise.resolve(0)
-        ]);
-        setUser(userData);
-        setPosts(userPosts);
-        setUnreadCount(notificationCount);
-        setNewUserName(userData.user_name);
-      } catch (err) {
-        console.error('加载个人资料失败:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (currentUser) fetchAllData();
-  }, [userId, isOwnProfile, currentUser]);
-
-  // ✅ 保存用户名
-  const handleSaveUserName = async () => {
-    if (!newUserName.trim()) return alert('用户名不能为空');
-
-    try {
-      setSavingName(true);
-      await updateUser(userId, { user_name: newUserName.trim() });
-
-      setUser((prev: any) => ({ ...prev, user_name: newUserName.trim() }));
-      setCurrentUser((prev: any) => ({ ...prev, user_name: newUserName.trim() }));
-
-      setIsEditingName(false);
+      const userPosts = await get_posts_by_user(userId);
+      setPosts(userPosts);
     } catch (err) {
-      alert('修改失败');
+      console.error(err);
     } finally {
-      setSavingName(false);
+      setLoading(false);
     }
   };
 
-  // 头像上传
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !isOwnProfile) return;
+    if (!file || !user) return;
 
+    setUploading(true);
     try {
-      setUploading(true);
-      const publicUrl = await uploadImage(file, 'user_images', `avatars/${userId}`);
-      await updateUser(userId, { avatar: publicUrl });
-      setUser((prev: any) => ({ ...prev, avatar: publicUrl }));
-      setCurrentUser((prev: any) => ({ ...prev, avatar: publicUrl }));
+      const url = await uploadImage(file, 'avatars');
+      await updateUser(user.id, { avatar: url });
+      setUser({ ...user, avatar: url });
+    } catch (err) {
+      alert('上传失败');
     } finally {
       setUploading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center p-20">
-        <Loader2 className="animate-spin w-8 h-8 text-zinc-400" />
-      </div>
-    );
-  }
+  const handleUpdateName = async () => {
+    if (!newUserName.trim() || newUserName === user.user_name) {
+      setIsEditingName(false);
+      return;
+    }
+    setSavingName(true);
+    try {
+      await updateUser(user.id, { user_name: newUserName });
+      setUser({ ...user, user_name: newUserName });
+      setIsEditingName(false);
+    } catch (err) {
+      alert('更新失败');
+    } finally {
+      setSavingName(false);
+    }
+  };
 
-  if (!user) return <div className="p-8 text-center">用户不存在</div>;
+  const isOwnProfile = currentUser?.id === userId;
+
+  if (loading) return <LoadingSpinner />;
+  if (!user) return <div className="p-20 text-center text-zinc-400">用户不存在</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <button onClick={onNavigateBack} className="mb-6 text-sm text-zinc-500">← 返回</button>
+    <div className="max-w-4xl mx-auto px-4 py-8 pb-20">
+      <button onClick={onNavigateBack} className="mb-6 p-2 hover:bg-zinc-100 rounded-full transition-colors">
+        <ArrowLeft className="w-6 h-6" />
+      </button>
 
-      <div className="bg-white border p-6 flex gap-6">
-        {/* 头像 */}
+      <div className="flex flex-col md:flex-row items-center gap-8 bg-white border border-zinc-200 p-8 rounded-3xl">
         <div className="relative group">
-          <div className="w-24 h-24 rounded-full overflow-hidden bg-zinc-100 flex items-center justify-center">
+          <div className="w-32 h-32 rounded-full overflow-hidden bg-zinc-100 border-4 border-white shadow-sm">
             {user.avatar ? (
-              <img src={user.avatar} className="w-full h-full object-cover" />
+              <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
-              <UserCircle className="w-16 h-16 text-zinc-300" />
+              <UserCircle className="w-full h-full text-zinc-300" />
             )}
           </div>
-
           {isOwnProfile && (
-            <label className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer">
-              <Camera />
-              <input type="file" className="hidden" onChange={handleAvatarUpload} />
+            <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+              <Camera className="w-6 h-6" />
+              <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploading} />
             </label>
+          )}
+          {uploading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-full">
+              <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+            </div>
           )}
         </div>
 
-        {/* 信息 */}
-        <div className="flex-1">
-          {/* ✅ 用户名编辑 */}
-          <div className="flex items-center gap-2 mb-2">
-            {!isEditingName ? (
-              <>
-                <h1 className="text-3xl font-bold">{user.user_name}</h1>
-                {isOwnProfile && (
-                  <button
-                    onClick={() => setIsEditingName(true)}
-                    className="text-sm text-zinc-400"
-                  >
-                    编辑
-                  </button>
-                )}
-              </>
-            ) : (
-              <>
+        <div className="flex-1 text-center md:text-left">
+          <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+            {isEditingName ? (
+              <div className="flex items-center gap-2">
                 <input
                   value={newUserName}
                   onChange={(e) => setNewUserName(e.target.value)}
-                  className="border px-2 py-1 text-sm"
+                  className="px-2 py-1 border-b border-black outline-none text-2xl font-bold bg-transparent"
                   autoFocus
                 />
-                <button
-                  onClick={handleSaveUserName}
-                  disabled={savingName}
-                  className="bg-black text-white px-2 py-1 text-sm"
-                >
-                  保存
+                <button onClick={handleUpdateName} disabled={savingName} className="text-green-600">
+                  <Check className="w-5 h-5" />
                 </button>
-                <button
-                  onClick={() => {
-                    setIsEditingName(false);
-                    setNewUserName(user.user_name);
-                  }}
-                  className="text-sm text-zinc-500"
-                >
-                  取消
+                <button onClick={() => { setIsEditingName(false); setNewUserName(user.user_name); }} className="text-red-500">
+                  <X className="w-5 h-5" />
                 </button>
+              </div>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold">{user.user_name}</h1>
+                {isOwnProfile && (
+                  <button onClick={() => setIsEditingName(true)} className="text-zinc-400 hover:text-black">
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                )}
               </>
             )}
+            {user.role === 'admin' && (
+              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded">管理员</span>
+            )}
           </div>
-
-          <div className="text-sm text-zinc-500 flex items-center gap-2">
+          <div className="text-zinc-500 flex items-center justify-center md:justify-start gap-2 text-sm">
             <Calendar className="w-4 h-4" />
-            加入于 {new Date(user.created_at).toLocaleDateString('zh-CN')}
+            <span>{new Date(user.created_at).toLocaleDateString()} 加入</span>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="mt-6 border bg-white">
-        <div className="flex border-b">
-          <button onClick={() => setActiveTab('posts')} className="flex-1 py-3">
-            帖子 ({posts.length})
+      <div className="mt-8">
+        <div className="flex border-b border-zinc-200">
+          <button 
+            onClick={() => setActiveTab('posts')}
+            className={`px-8 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'posts' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
+          >
+            发布 ({posts.length})
           </button>
           {isOwnProfile && (
             <>
-              <button onClick={() => setActiveTab('messages')} className="flex-1 py-3">
-                消息
+              <button 
+                onClick={() => setActiveTab('messages')}
+                className={`px-8 py-4 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'messages' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
+              >
+                消息 {unreadCount > 0 && <span className="w-2 h-2 bg-red-500 rounded-full"></span>}
               </button>
-              <button onClick={() => setActiveTab('collections')} className="flex-1 py-3">
+              <button 
+                onClick={() => setActiveTab('collections')}
+                className={`px-8 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'collections' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
+              >
                 收藏
               </button>
             </>
           )}
         </div>
 
-        <div className="p-4">
-          {activeTab === 'posts' && posts.map(post => (
-            <div key={post.id} onClick={() => onPostClick(post.id)} className="border p-4 mb-3 cursor-pointer">
-              {post.title}
+        <div className="py-6">
+          {activeTab === 'posts' && (
+            <div className="grid gap-4">
+              {posts.length === 0 ? (
+                <div className="text-center py-20 text-zinc-400">尚未发布过帖子</div>
+              ) : (
+                posts.map(post => (
+                  <div key={post.id} onClick={() => onPostClick(post.id)} className="p-5 bg-white border border-zinc-200 rounded-2xl cursor-pointer hover:border-zinc-400 transition-all">
+                    <h3 className="font-bold mb-1 line-clamp-1">{post.title}</h3>
+                    <p className="text-xs text-zinc-400">{new Date(post.created_at).toLocaleString()}</p>
+                  </div>
+                ))
+              )}
             </div>
-          ))}
+          )}
 
           {activeTab === 'messages' && isOwnProfile && (
             <MessagesTab userId={userId} onPostClick={onPostClick} />
