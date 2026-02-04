@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, Star, Zap } from 'lucide-react';
+import { X, Save, Zap, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -14,7 +14,7 @@ export interface BookRatingData {
   book_name: string;
   book_author: string;
   book_platform: string;
-  reviewer_name: string; // 新增：打分人
+  reviewer_name: string;
   impressed_score: number;
   principle_scores: { [key: string]: 'yes' | 'no' | null };
   principle_remarks: { [key: string]: string };
@@ -68,42 +68,34 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
   const [extraRemark, setExtraRemark] = useState(initialData?.extra_remark || '');
   const [reviewerComment, setReviewerComment] = useState(initialData?.reviewer_comment || '');
 
-  // 计算最终得分
+  // 控制注意事项的折叠
+  const [showRules, setShowRules] = useState(true);
+
   const calculateFinalScore = () => {
     let deductions = 0;
     const baseScore = Number(impressedScore) || 0;
-    
-    PRINCIPLES.forEach((principle) => {
-      const answer = principleScores[principle.id];
-      if (principle.reverseScore) {
-        if (answer === 'no') deductions += 1;
-      } else {
-        if (answer === 'yes') deductions += 1;
-      }
+    PRINCIPLES.forEach((p) => {
+      const answer = principleScores[p.id];
+      if (p.reverseScore) { if (answer === 'no') deductions += 1; }
+      else { if (answer === 'yes') deductions += 1; }
     });
-    
     return Math.max(0, baseScore - deductions - extraDeduction);
   };
 
   const finalScore = calculateFinalScore();
 
-  // 一键满分功能
   const quickFillPerfect = () => {
     const perfectScores: { [key: string]: 'yes' | 'no' } = {};
-    PRINCIPLES.forEach(p => {
-      perfectScores[p.id] = p.reverseScore ? 'yes' : 'no';
-    });
+    PRINCIPLES.forEach(p => { perfectScores[p.id] = p.reverseScore ? 'yes' : 'no'; });
     setPrincipleScores(perfectScores);
     setImpressedScore(10);
     setExtraDeduction(0);
-    showToast('已自动填选：前22项为“没有”，后3项为“有”', 'info');
+    showToast('已一键填选最优选项', 'info');
   };
 
   const handleSave = () => {
-    if (!bookName.trim()) return showToast('请输入书名', 'error');
-    if (!bookAuthor.trim()) return showToast('请输入作者姓名', 'error');
-
-    const ratingData: BookRatingData = {
+    if (!bookName.trim() || !bookAuthor.trim()) return showToast('请完善书名和作者', 'error');
+    onSave({
       book_name: bookName,
       book_author: bookAuthor,
       book_platform: bookPlatform,
@@ -115,205 +107,169 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       extra_remark: extraRemark,
       final_score: finalScore,
       reviewer_comment: reviewerComment,
-    };
-
-    onSave(ratingData);
+    });
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col overflow-hidden">
-      {/* 头部固定 */}
-      <div className="bg-zinc-900 text-white px-6 py-4 flex items-center justify-between shadow-md">
+    <div className="fixed inset-0 bg-white z-50 flex flex-col overflow-hidden text-zinc-900">
+      {/* 头部 */}
+      <div className="px-6 py-4 flex items-center justify-between border-b border-zinc-100">
         <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Star className="text-yellow-400 fill-yellow-400" /> 女主小说严选评分
-          </h2>
+          <h2 className="text-xl font-bold tracking-tight">女主无cp/无男主小说评分</h2>
           <button 
             onClick={quickFillPerfect}
-            className="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-400 text-black px-3 py-1 rounded-full text-sm font-bold transition-all"
+            className="flex items-center gap-1.5 px-3 py-1 bg-zinc-100 hover:bg-zinc-200 rounded text-xs font-bold transition-colors text-zinc-600"
+            title="一键神作"
           >
-            <Zap className="w-4 h-4" /> 一键神作
+            <Zap className="w-3.5 h-3.5" /> 一键填选
           </button>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-full transition-colors">
+        <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
           <X className="w-6 h-6" />
         </button>
       </div>
 
-      {/* 内容滚动区 */}
-      <div className="flex-1 overflow-y-auto bg-zinc-50">
-        <div className="max-w-5xl mx-auto p-6 space-y-8">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-6 py-8 space-y-12">
           
-          {/* 规则卡片 */}
-          <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg shadow-sm">
-            <p className="text-sm text-amber-900 font-medium">
-              ❗ 减分制：最终得分 = 印象分 - 准则扣分 - 额外扣分。请严格执行，避免分数膨胀。
-            </p>
-          </div>
-
-          {/* 基本信息段落 */}
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-zinc-200">
-            <h3 className="text-lg font-bold mb-6 pb-2 border-b">基本信息</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-bold text-zinc-700 mb-2">书名 *</label>
-                <input
-                  type="text"
-                  value={bookName}
-                  onChange={(e) => setBookName(e.target.value)}
-                  className="w-full p-3 bg-zinc-50 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-black outline-none"
-                />
+          {/* 评分规则 (带折叠) */}
+          <section className="bg-zinc-50 rounded-xl overflow-hidden">
+            <button 
+              onClick={() => setShowRules(!showRules)}
+              className="w-full flex items-center justify-between p-4 hover:bg-zinc-100/50 transition-colors"
+            >
+              <div className="flex items-center gap-2 font-bold text-sm text-zinc-600">
+                <Info className="w-4 h-4" /> 📋 评分规则说明
               </div>
-              <div>
-                <label className="block text-sm font-bold text-zinc-700 mb-2">作者姓名 *</label>
-                <input
-                  type="text"
-                  value={bookAuthor}
-                  onChange={(e) => setBookAuthor(e.target.value)}
-                  className="w-full p-3 bg-zinc-50 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-black outline-none"
-                />
+              {showRules ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            {showRules && (
+              <div className="px-5 pb-5 pt-2 text-sm text-zinc-600 leading-relaxed border-t border-zinc-200/50">
+                <p>1. <strong>打分为减分制。</strong> 完结小说满分为10分，最终得分 = 印象分 - 减分项，最终得分 ≤ 10分。</p>
+                <p className="mt-1">2. <strong>打分规则。</strong> 各项基础扣分分值为1分，情节严重可增加扣分，无上限。</p>
+                <p className="mt-2 text-red-500 font-bold italic">❗❗❗ 注意：没有明确标注/提出的、不完全的、模棱两可的即需要扣分，请各位打分人严格执行！！</p>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-zinc-700 mb-2">打分人 (非必填)</label>
-                <input
-                  type="text"
-                  value={reviewerName}
-                  onChange={(e) => setReviewerName(e.target.value)}
-                  placeholder="默认: 发帖者"
-                  className="w-full p-3 bg-zinc-50 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-black outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-zinc-700 mb-2">阅读平台</label>
-                <input
-                  type="text"
-                  value={bookPlatform}
-                  onChange={(e) => setBookPlatform(e.target.value)}
-                  className="w-full p-3 bg-zinc-50 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-black outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-zinc-700 mb-2">初始印象分 (0-10)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={impressedScore}
-                  onChange={(e) => setImpressedScore(e.target.value)}
-                  className="w-full p-3 bg-zinc-50 border border-zinc-300 rounded-lg font-bold text-blue-600 focus:ring-2 focus:ring-black outline-none"
-                />
-              </div>
-            </div>
+            )}
           </section>
 
-          {/* 准则平铺段落 */}
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-zinc-200">
-            <h3 className="text-lg font-bold mb-6 pb-2 border-b">详细准则 (逐项核对)</h3>
-            <div className="space-y-4">
-              {PRINCIPLES.map((principle, index) => (
-                <div key={principle.id} className="p-4 rounded-lg border border-zinc-100 hover:bg-zinc-50 transition-colors">
-                  <div className="flex flex-col md:flex-row md:items-center gap-4">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-zinc-800">
-                        <span className="text-zinc-400 mr-2">{index + 1}.</span>
-                        {principle.text}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-6 bg-white p-2 rounded-md border border-zinc-200 shrink-0">
-                      <label className="flex items-center gap-2 cursor-pointer group">
-                        <input
-                          type="radio"
-                          name={principle.id}
-                          checked={principleScores[principle.id] === 'yes'}
-                          onChange={() => setPrincipleScores(prev => ({ ...prev, [principle.id]: 'yes' }))}
-                          className="w-4 h-4 accent-red-600"
-                        />
-                        <span className={`text-sm ${principleScores[principle.id] === 'yes' ? 'font-bold' : ''}`}>有</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer group">
-                        <input
-                          type="radio"
-                          name={principle.id}
-                          checked={principleScores[principle.id] === 'no'}
-                          onChange={() => setPrincipleScores(prev => ({ ...prev, [principle.id]: 'no' }))}
-                          className="w-4 h-4 accent-green-600"
-                        />
-                        <span className={`text-sm ${principleScores[principle.id] === 'no' ? 'font-bold' : ''}`}>没有</span>
-                      </label>
-                    </div>
-                  </div>
-                  {/* 备注输入框，直接显示 */}
+          {/* 基本信息 (无外边框) */}
+          <section>
+            <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-6 flex items-center gap-2">
+              <span className="w-4 h-px bg-zinc-200"></span> 基本信息
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
+              {[
+                { label: '书名 *', val: bookName, set: setBookName, ph: '书名' },
+                { label: '作者姓名 *', val: bookAuthor, set: setBookAuthor, ph: '作者' },
+                { label: '打分人', val: reviewerName, set: setReviewerName, ph: '不填默认发帖者' },
+                { label: '平台', val: bookPlatform, set: setBookPlatform, ph: '如：晋江' },
+                { label: '印象分 (0-10) *', val: impressedScore, set: setImpressedScore, type: 'number' },
+              ].map((item, i) => (
+                <div key={i}>
+                  <label className="block text-xs font-bold mb-2 text-zinc-500">{item.label}</label>
                   <input
-                    type="text"
-                    value={principleRemarks[principle.id] || ''}
-                    onChange={(e) => setPrincipleRemarks(prev => ({ ...prev, [principle.id]: e.target.value }))}
-                    placeholder="针对此项的补充说明（可选）"
-                    className="w-full mt-3 p-2 text-xs bg-transparent border-b border-zinc-200 focus:border-black outline-none"
+                    type={item.type || 'text'}
+                    value={item.val}
+                    onChange={(e) => item.set(item.type === 'number' ? e.target.value : e.target.value)}
+                    placeholder={item.ph}
+                    className="w-full pb-2 bg-transparent border-b border-zinc-200 focus:border-black outline-none transition-colors"
                   />
                 </div>
               ))}
             </div>
           </section>
 
-          {/* 补充评价 */}
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-zinc-200 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <h3 className="text-lg font-bold mb-4">额外扣分项</h3>
-              <input
-                type="number"
-                value={extraDeduction}
-                onChange={(e) => setExtraDeduction(Number(e.target.value))}
-                className="w-full p-3 border border-zinc-300 rounded-lg mb-3"
-                placeholder="扣分分值"
-              />
-              <textarea
-                value={extraRemark}
-                onChange={(e) => setExtraRemark(e.target.value)}
-                placeholder="请说明额外扣分原因..."
-                className="w-full p-3 border border-zinc-300 rounded-lg h-24 resize-none"
-              />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold mb-4">综合评价</h3>
-              <textarea
-                value={reviewerComment}
-                onChange={(e) => setReviewerComment(e.target.value)}
-                placeholder="写下你对本书的总体评价、推荐理由或避雷建议..."
-                className="w-full p-3 border border-zinc-300 rounded-lg h-[164px] resize-none"
-              />
+          {/* 准则 (无外边框平铺) */}
+          <section>
+            <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400 mb-6 flex items-center gap-2">
+              <span className="w-4 h-px bg-zinc-200"></span> 逐项核对
+            </h3>
+            <div className="space-y-6">
+              {PRINCIPLES.map((p, index) => (
+                <div key={p.id} className="group py-4 border-b border-zinc-50">
+                  <div className="flex flex-col md:flex-row md:items-start gap-4">
+                    <div className="flex-1">
+                      <p className="text-sm leading-snug text-zinc-700">
+                        <span className="text-zinc-300 font-mono mr-2">{(index + 1).toString().padStart(2, '0')}</span>
+                        {p.text}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4 shrink-0 mt-2 md:mt-0">
+                      {['yes', 'no'].map((type) => (
+                        <label key={type} className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name={p.id}
+                            checked={principleScores[p.id] === type}
+                            onChange={() => setPrincipleScores(prev => ({ ...prev, [p.id]: type as any }))}
+                            className="w-3.5 h-3.5 accent-black"
+                          />
+                          <span className={`text-xs ${principleScores[p.id] === type ? 'font-bold text-black' : 'text-zinc-400'}`}>
+                            {type === 'yes' ? '有' : '没有'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    value={principleRemarks[p.id] || ''}
+                    onChange={(e) => setPrincipleRemarks(prev => ({ ...prev, [p.id]: e.target.value }))}
+                    placeholder="添加补充..."
+                    className="mt-2 text-xs text-zinc-400 bg-transparent border-none outline-none w-full placeholder:text-zinc-200 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                  />
+                </div>
+              ))}
             </div>
           </section>
 
-          {/* 底部留空，防止被固定条遮挡 */}
-          <div className="h-24"></div>
+          {/* 补充 */}
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-8">
+            <div className="space-y-4">
+              <label className="block text-xs font-black text-zinc-400 uppercase tracking-widest">额外扣分原因</label>
+              <div className="flex gap-4 items-end mb-2">
+                <span className="text-sm text-zinc-500 whitespace-nowrap">分值:</span>
+                <input
+                  type="number"
+                  value={extraDeduction}
+                  onChange={(e) => setExtraDeduction(Number(e.target.value))}
+                  className="w-20 border-b border-zinc-200 outline-none focus:border-black pb-1 text-center"
+                />
+              </div>
+              <textarea
+                value={extraRemark}
+                onChange={(e) => setExtraRemark(e.target.value)}
+                placeholder="详细说明..."
+                className="w-full bg-zinc-50 rounded-lg p-4 h-24 text-sm outline-none border border-transparent focus:bg-white focus:border-zinc-200 transition-all"
+              />
+            </div>
+            <div className="space-y-4">
+              <label className="block text-xs font-black text-zinc-400 uppercase tracking-widest">爱女姐有话说</label>
+              <textarea
+                value={reviewerComment}
+                onChange={(e) => setReviewerComment(e.target.value)}
+                placeholder="综合阅读感受..."
+                className="w-full bg-zinc-50 rounded-lg p-4 h-[148px] text-sm outline-none border border-transparent focus:bg-white focus:border-zinc-200 transition-all"
+              />
+            </div>
+          </section>
+          <div className="h-20" />
         </div>
       </div>
 
-      {/* 底部计算与保存栏 */}
-      <div className="bg-white border-t border-zinc-200 p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center gap-8">
-          <div className="text-center md:text-left">
-            <span className="text-xs text-zinc-500 block">最终得分</span>
-            <span className="text-4xl font-black text-purple-700">{finalScore.toFixed(1)}</span>
-          </div>
-          <div className="text-xs text-zinc-400 leading-relaxed border-l pl-6">
-            计算逻辑：<br />
-            印象分({impressedScore}) - 准则项({(Number(impressedScore) - finalScore - extraDeduction).toFixed(1)}) - 额外({extraDeduction})
-          </div>
+      {/* 底部吸底 */}
+      <div className="p-6 border-t border-zinc-100 bg-white/80 backdrop-blur-md flex items-center justify-between">
+        <div className="flex items-baseline gap-2">
+          <span className="text-4xl font-black italic tracking-tighter">{finalScore.toFixed(1)}</span>
+          <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Final Score</span>
         </div>
-        
-        <div className="flex gap-4 w-full md:w-auto">
-          <button
-            onClick={onClose}
-            className="flex-1 md:flex-none px-8 py-3 border border-zinc-300 rounded-xl hover:bg-zinc-50 font-medium"
-          >
-            退出
-          </button>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="px-6 py-2.5 text-sm font-bold text-zinc-400 hover:text-zinc-600 transition-colors">取消</button>
           <button
             onClick={handleSave}
-            className="flex-1 md:flex-none px-12 py-3 bg-black text-white rounded-xl hover:bg-zinc-800 font-bold flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
+            className="px-10 py-2.5 bg-black text-white rounded-full text-sm font-bold hover:shadow-lg active:scale-95 transition-all flex items-center gap-2"
           >
-            <Save className="w-5 h-5" />
-            发布评分
+            <Save className="w-4 h-4" /> 保存评分报告
           </button>
         </div>
       </div>
