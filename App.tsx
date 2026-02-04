@@ -78,9 +78,9 @@ function AppContent() {
 
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
-  // 处理左滑返回逻辑
+  // 🟢 处理左滑手势：搜索时左滑清空搜索，而不是退出
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
+    const handlePopState = () => {
       if (searchQuery) {
         setSearchQuery('');
       }
@@ -145,6 +145,8 @@ function AppContent() {
   });
 
   const handleLogout = async () => {
+    // 🟢 修复点：退出时立即重置侧边栏状态
+    setShowMobileMenu(false);
     await supabase.auth.signOut();
     setUser(null);
     navigate('/login', { replace: true });
@@ -174,11 +176,11 @@ function AppContent() {
     <div className="min-h-screen bg-white text-zinc-900">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* 移动端菜单 */}
+      {/* 侧边栏 */}
       {showMobileMenu && (
         <div className="fixed inset-0 z-[100] md:hidden">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowMobileMenu(false)} />
-          <div className="relative w-64 bg-white h-full shadow-xl flex flex-col p-4">
+          <div className="relative w-72 bg-white h-full shadow-xl flex flex-col p-4">
             <div className="flex justify-between items-center mb-6">
               <span className="font-bold text-lg">板块选择</span>
               <button onClick={() => setShowMobileMenu(false)} className="p-1"><X className="w-6 h-6" /></button>
@@ -190,13 +192,13 @@ function AppContent() {
                   {c}
                 </button>
               ))}
-              <hr className="my-2" />
+              <hr className="my-4 border-zinc-100" />
               {user?.role === 'admin' && (
                 <button onClick={() => { navigate('/admin'); setShowMobileMenu(false); }} className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-zinc-100 rounded-lg">
                   <Shield className="w-4 h-4" /> 管理后台
                 </button>
               )}
-              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-lg">
+              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-4 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-xl mt-4 font-medium">
                 <LogOut className="w-4 h-4" /> 退出登录
               </button>
             </div>
@@ -207,15 +209,16 @@ function AppContent() {
       {user && !isLoginPage && !hideNavPages && (
         <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 md:gap-6">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-1.5 hover:bg-zinc-100 rounded-full">
                 <Menu className="w-5 h-5" />
               </button>
-              <h1 className="font-bold text-base md:text-lg cursor-pointer truncate hidden sm:block" onClick={() => navigate('/feed')}>
-                女主无cp/无男主交流中心
+              <h1 className="font-bold text-base md:text-lg cursor-pointer hidden sm:block" onClick={() => navigate('/feed')}>
+                女主无cp交流中心
               </h1>
             </div>
 
+            {/* 搜索框 */}
             <div className="flex-1 max-w-xs relative group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-black" />
               <input 
@@ -232,7 +235,7 @@ function AppContent() {
               )}
             </div>
 
-            <div className="flex items-center gap-1 md:gap-2">
+            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
               <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full"><BookOpen className="w-5 h-5 text-zinc-600" /></button>
               <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full"><Avatar url={user.avatar} className="w-6 h-6" /></button>
               <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"><LogOut className="w-5 h-5" /></button>
@@ -252,7 +255,6 @@ function AppContent() {
                 <div className="flex justify-between items-center mb-4 border-b pb-2">
                   <div className="flex items-center gap-2">
                     <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'border'}`}>蒂</button>
-                    {searchQuery && <span className="text-xs text-zinc-500">搜索中...</span>}
                   </div>
                   <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 rounded"><PenSquare className="w-4 h-4" /> 发帖</button>
                 </div>
@@ -261,7 +263,7 @@ function AppContent() {
                     <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
                       <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        {/* ✅ 修改点：移除了 truncate，添加了 break-words 和 whitespace-normal 确保完整显示标题 */}
+                        {/* ✅ 确保完整显示标题：去掉 truncate，改为换行 */}
                         <h3 className="font-medium break-words whitespace-normal text-[15px] leading-snug">
                           {post.is_essence && <span className="mr-1 bg-black text-white px-1 text-xs inline-block align-middle">蒂</span>}
                           {post.title}
