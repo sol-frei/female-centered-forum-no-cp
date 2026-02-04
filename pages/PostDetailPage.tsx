@@ -161,6 +161,19 @@ const PostDetailPage = ({
     };
   }, [postId]);
 
+  // 监听PostContent组件的图片预览事件
+  useEffect(() => {
+    const handlePreviewImage = (event: any) => {
+      setPreviewImage(event.detail.url);
+    };
+    
+    window.addEventListener('preview-image', handlePreviewImage);
+    
+    return () => {
+      window.removeEventListener('preview-image', handlePreviewImage);
+    };
+  }, []);
+
   const loadUserCollections = async () => {
     if (!user) return;
     try {
@@ -357,39 +370,39 @@ const PostDetailPage = ({
               <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
               <PostContent content={post.content} className="prose prose-zinc max-w-none" />
               
-              {/* 图书评分展示 (新整合) */}
+              {/* 图书评分展示 - 修复问题1和问题2：黑白灰配色、去掉边框、修复勾选显示逻辑 */}
               {bookRating && (
-                <div className="mt-6 bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg p-6">
+                <div className="mt-6 bg-zinc-50 rounded-lg p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold flex items-center gap-2">
+                    <h3 className="text-lg font-bold flex items-center gap-2 text-zinc-800">
                       <span className="text-2xl">📚</span> 图书评分
                     </h3>
                     <div className="text-right">
-                      <div className="text-3xl font-bold text-purple-600">{bookRating.final_score.toFixed(1)}</div>
+                      <div className="text-3xl font-bold text-zinc-800">{bookRating.final_score.toFixed(1)}</div>
                       <div className="text-xs text-zinc-500">最终得分</div>
                     </div>
                   </div>
 
                   <div className="bg-white rounded-lg p-4 mb-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                      <div><span className="text-zinc-500">书名：</span><span className="font-medium">{bookRating.book_name}</span></div>
-                      <div><span className="text-zinc-500">作者：</span><span className="font-medium">{bookRating.book_author}</span></div>
-                      {bookRating.book_platform && (<div><span className="text-zinc-500">平台：</span><span className="font-medium">{bookRating.book_platform}</span></div>)}
-                      <div><span className="text-zinc-500">评分人：</span><span className="font-medium">{bookRating.user_name}</span></div>
+                      <div><span className="text-zinc-500">书名：</span><span className="font-medium text-zinc-800">{bookRating.book_name}</span></div>
+                      <div><span className="text-zinc-500">作者：</span><span className="font-medium text-zinc-800">{bookRating.book_author}</span></div>
+                      {bookRating.book_platform && (<div><span className="text-zinc-500">平台：</span><span className="font-medium text-zinc-800">{bookRating.book_platform}</span></div>)}
+                      <div><span className="text-zinc-500">评分人：</span><span className="font-medium text-zinc-800">{bookRating.user_name}</span></div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     <div className="bg-white rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-blue-600">{bookRating.impressed_score}</div>
+                      <div className="text-2xl font-bold text-zinc-700">{bookRating.impressed_score}</div>
                       <div className="text-xs text-zinc-500 mt-1">印象分</div>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-red-600">-{(bookRating.impressed_score - bookRating.final_score - bookRating.extra_deduction).toFixed(1)}</div>
+                      <div className="text-2xl font-bold text-zinc-700">-{(bookRating.impressed_score - bookRating.final_score - bookRating.extra_deduction).toFixed(1)}</div>
                       <div className="text-xs text-zinc-500 mt-1">准则扣分</div>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-orange-600">-{bookRating.extra_deduction}</div>
+                      <div className="text-2xl font-bold text-zinc-700">-{bookRating.extra_deduction}</div>
                       <div className="text-xs text-zinc-500 mt-1">额外扣分</div>
                     </div>
                   </div>
@@ -402,7 +415,7 @@ const PostDetailPage = ({
                   )}
 
                   <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-purple-700 hover:text-purple-800 select-none">查看详细评分准则</summary>
+                    <summary className="cursor-pointer text-sm font-medium text-zinc-700 hover:text-zinc-900 select-none">▼ 查看详细评分准则</summary>
                     <div className="mt-3 bg-white rounded-lg p-4 space-y-2 max-h-96 overflow-y-auto">
                       {Object.entries(bookRating.principle_scores).map(([key, value]) => {
                         if (!value) return null;
@@ -411,11 +424,15 @@ const PostDetailPage = ({
                           '作者预收/写过/阅读男主文、bl、言情等非4B小说。', '连载中/断更/卡v/坑文等操作。', '文笔差 / 一般，剧情设定欠缺。', '评论区磕cp、吵架，作者关闭评论区等。', '作者现实其他骚操作（已婚、提男友、拒绝激女读者等）。', '描写氛围、语言、过于暧昧，女角色之间（非女主）关系有百合倾向。', '女男比例低于2：1。', '随父姓，默认任何角色随父姓，不单指主角，不指出也不批判也没改变。', '女性角色塑造不用心、刻板印象（取名随意、脸谱化、平面化）。', '服美役（白幼瘦、面部、高跟鞋、胸臀腿特写、衣服配饰等外貌方面的描写）。', '驴竞、拉踩其他女角色。', '忽略女性困难处境、物化女性。', '性别认知障碍，自称哥、爸、爷、弟等，女扮男装，女角色被称为先生等。', '扶持男性、接男儿，有男人分享女角色胜利果实/成果/遗产等。', '男性角色与女性角色存在单向/双向性缘。', '美化男性（母父对比、男性深情、男性友情、男性导师等）、偏爱男性。', '男性角色有高光、有成长线。', '掺腐（非批判）。', '存在厌女词、辱女词。', '存在男本位词。', '用性侵、造黄谣等方式惩罚女性。', '过度渲染女性苦楚，但反抗/觉醒占比少。', '是否有提到推广女权思想【没有扣分】。', '是否有明确反男权思想【没有扣分】。', '是否默认女性为第一性【没有扣分】。'
                         ];
                         const remark = bookRating.principle_remarks[key];
+                        // 修复问题1：后三项（p23-p25）如果选'no'应该是绿色对号
+                        const isLastThreePrinciples = principleIndex >= 22 && principleIndex <= 24;
+                        const shouldShowCheck = isLastThreePrinciples ? (value === 'no') : (value !== 'yes');
+                        
                         return (
-                          <div key={key} className="text-sm border-b border-zinc-100 pb-2 last:border-0">
+                          <div key={key} className="text-sm py-2">
                             <div className="flex items-start gap-2">
-                              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${value === 'yes' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                                {value === 'yes' ? '✗' : '✓'}
+                              <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${shouldShowCheck ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                {shouldShowCheck ? '✓' : '✗'}
                               </span>
                               <div className="flex-1">
                                 <p className="text-zinc-700">{principleIndex + 1}. {principleTexts[principleIndex]}</p>
@@ -429,9 +446,9 @@ const PostDetailPage = ({
                   </details>
 
                   {bookRating.extra_deduction > 0 && bookRating.extra_remark && (
-                    <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
-                      <p className="text-sm font-bold text-red-800 mb-1">额外扣分原因</p>
-                      <p className="text-sm text-red-700">{bookRating.extra_remark}</p>
+                    <div className="mt-3 bg-zinc-100 rounded-lg p-3">
+                      <p className="text-sm font-bold text-zinc-800 mb-1">额外扣分原因</p>
+                      <p className="text-sm text-zinc-700">{bookRating.extra_remark}</p>
                     </div>
                   )}
                 </div>
@@ -440,7 +457,7 @@ const PostDetailPage = ({
             </>
         </div>
 
-        {/* 交互与评论区 (原有代码保持一致) */}
+        {/* 交互与评论区 */}
         <div className="flex gap-6 py-4 border-y border-zinc-100 text-zinc-500 mb-8">
           <button onClick={handleLike} className={`flex items-center gap-1 transition-colors ${isLiked ? 'text-red-500' : 'hover:text-red-500'}`}>
             <Heart className="w-5 h-5" fill={isLiked ? 'currentColor' : 'none'} /> {post.likes?.length || 0}
@@ -449,6 +466,7 @@ const PostDetailPage = ({
           <button className="flex items-center gap-1"><MessageCircle className="w-5 h-5" /> {comments.length}</button>
         </div>
 
+        {/* 修复问题5：评论区图片完整显示 */}
         <div className="space-y-6">
           {comments.length === 0 ? (
             <div className="text-center py-8 text-zinc-400">暂无评论~</div>
@@ -465,14 +483,16 @@ const PostDetailPage = ({
                       <span className="font-medium text-base text-zinc-600">{commentAuthor?.user_name || '未知用户'}</span>
                       <span className="text-xs text-zinc-400">{timeAgo(c.created_at)}</span>
                     </div>
+                    {/* 修复问题4：被回复评论完整显示 */}
                     {repliedComment && (
                       <div className="bg-zinc-50 pl-3 py-2 mb-2 text-sm rounded">
-                        <div className="text-zinc-600 line-clamp-2">@{usersMap[repliedComment.user_id]?.user_name}: {repliedComment.content}</div>
+                        <div className="text-zinc-600">@{usersMap[repliedComment.user_id]?.user_name}: {repliedComment.content}</div>
                       </div>
                     )}
                     <p className="text-zinc-800 text-base mb-2">{(c.content || '').replace(/^@\S+\s*/, '')}</p>
+                    {/* 修复问题5：评论图片改为完整尺寸自适应显示 */}
                     {c.images?.map((img: string, idx: number) => (
-                      <img key={idx} src={img} className="w-24 h-24 object-cover rounded mt-2 mr-2 inline-block cursor-pointer" onClick={() => setPreviewImage(img)} alt="" />
+                      <img key={idx} src={img} className="w-full max-w-md rounded mt-2 cursor-pointer" onClick={() => setPreviewImage(img)} alt="" />
                     ))}
                     <div className="flex items-center gap-4 mt-2">
                       <button onClick={() => handleLikeComment(c.id)} className={`text-xs flex items-center gap-1 ${isCommentLiked ? 'text-red-500' : 'text-zinc-500 hover:text-red-500'}`}>
@@ -488,13 +508,29 @@ const PostDetailPage = ({
         </div>
       </main>
 
-      {/* 底部输入框 & 弹窗逻辑 (原有代码保持一致) */}
+      {/* 修复问题3：底部输入框添加图片预览 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg">
         <div className="max-w-2xl mx-auto">
           {replyToComment && (
             <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-2 mb-2 flex items-start justify-between">
               <div className="flex-1 text-sm text-zinc-700 line-clamp-1">回复 @{usersMap[replyToComment.user_id]?.user_name}: {replyToComment.content}</div>
               <button onClick={cancelReply} className="p-1 hover:bg-zinc-200 rounded"><X className="w-4 h-4" /></button>
+            </div>
+          )}
+          {/* 添加图片预览区域 */}
+          {commentImagePreviews.length > 0 && (
+            <div className="flex gap-2 mb-2 flex-wrap">
+              {commentImagePreviews.map((preview, idx) => (
+                <div key={idx} className="relative">
+                  <img src={preview} className="w-16 h-16 object-cover rounded" alt="" />
+                  <button 
+                    onClick={() => removeCommentImage(idx)}
+                    className="absolute -top-1 -right-1 bg-black text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-zinc-700"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
             </div>
           )}
           <div className="flex gap-2">
@@ -507,7 +543,7 @@ const PostDetailPage = ({
         </div>
       </div>
 
-      {/* 收藏 & 预览 Modal (原有代码保持一致) */}
+      {/* 收藏 & 预览 Modal */}
       {showCollectionModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowCollectionModal(false)}>
           <div className="bg-white rounded-lg max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
@@ -539,6 +575,7 @@ const PostDetailPage = ({
     showToast={showToast}
   />
 )} 
+      {/* 修复问题6：图片预览弹窗 */}
       {previewImage && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
           <img src={previewImage} className="max-w-full max-h-full" alt="" />
