@@ -438,7 +438,6 @@ const PostDetailPage = ({
               )}
               {renderPollOptions()}
             </>
-          )}
         </div>
 
         {/* 交互与评论区 (原有代码保持一致) */}
