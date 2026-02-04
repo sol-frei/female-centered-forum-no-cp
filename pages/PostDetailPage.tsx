@@ -485,7 +485,7 @@ const PostDetailPage = ({
                   <div className="flex-1">
                     <div className="flex justify-between items-center mb-1">
                       <span 
-                        className="font-medium text-base text-zinc-600 cursor-pointer hover:text-zinc-900 hover:underline"
+                        className="font-medium text-base text-zinc-600 cursor-pointer hover:text-zinc-900"
                         onClick={() => onViewProfile(c.user_id)}
                       >
                         {commentAuthor?.user_name || '未知用户'}
@@ -497,7 +497,7 @@ const PostDetailPage = ({
                       <div className="bg-zinc-50 pl-3 py-2 mb-2 text-sm rounded">
                         <div className="text-zinc-600">
                           <span 
-                            className="cursor-pointer hover:underline"
+                            className="cursor-pointer"
                             onClick={() => onViewProfile(repliedComment.user_id)}
                           >
                             @{usersMap[repliedComment.user_id]?.user_name}
@@ -550,20 +550,20 @@ const PostDetailPage = ({
               ))}
             </div>
           )}
-          <div className="flex gap-2">
-            <label className="cursor-pointer p-2 hover:bg-zinc-100 rounded-lg">
+          <div className="flex gap-2 items-start">
+            <label className="cursor-pointer p-2 hover:bg-zinc-100 rounded-lg flex-shrink-0">
               <ImageIcon className="w-5 h-5 text-zinc-500" /><input type="file" accept="image/*" multiple onChange={handleCommentImageSelect} className="hidden" />
             </label>
             <textarea 
               ref={commentInputRef} 
               value={newComment} 
               onChange={e => setNewComment(e.target.value)} 
-              className={`flex-1 bg-zinc-100 rounded-lg p-2 text-sm outline-none resize-none transition-all ${isCommentExpanded ? 'h-32' : 'h-10'}`}
+              className={`flex-1 bg-zinc-100 rounded-lg p-2 text-sm outline-none resize-none transition-all ${isCommentExpanded ? 'h-48' : 'h-10'}`}
               placeholder="写下你的评论..." 
             />
             <button 
               onClick={() => setIsCommentExpanded(!isCommentExpanded)}
-              className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-500"
+              className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-500 flex-shrink-0 h-10"
               title={isCommentExpanded ? "收起" : "展开"}
             >
               {isCommentExpanded ? (
@@ -576,7 +576,7 @@ const PostDetailPage = ({
                 </svg>
               )}
             </button>
-            <button onClick={handleComment} disabled={uploadingComment || (!newComment.trim() && commentImages.length === 0)} className="bg-black text-white px-4 rounded-lg text-sm font-bold disabled:bg-zinc-300">发送</button>
+            <button onClick={handleComment} disabled={uploadingComment || (!newComment.trim() && commentImages.length === 0)} className="bg-black text-white px-4 rounded-lg text-sm font-bold disabled:bg-zinc-300 flex-shrink-0 h-10">发送</button>
           </div>
         </div>
       </div>
@@ -613,12 +613,12 @@ const PostDetailPage = ({
     showToast={showToast}
   />
 )} 
-      {/* 修复问题2和6：图片预览弹窗添加关闭按钮 */}
+      {/* 图片预览弹窗 - 黑色背景白色× */}
       {previewImage && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
           <button 
             onClick={() => setPreviewImage(null)}
-            className="absolute top-6 right-6 w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white text-4xl font-light transition-colors backdrop-blur-sm"
+            className="absolute top-6 right-6 w-12 h-12 bg-black rounded-full flex items-center justify-center text-white text-4xl"
           >
             ×
           </button>
