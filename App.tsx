@@ -78,26 +78,20 @@ function AppContent() {
 
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
-  // 🟢 核心修改：处理左滑返回（拦截浏览器回退手势）
+  // 处理左滑返回逻辑
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
-      // 如果当前正在搜索，点击返回或左滑手势会清空搜索，而不是退出网站
       if (searchQuery) {
         setSearchQuery('');
-        // 阻止默认行为（虽然 popstate 无法直接 cancel，但我们通过管理 history 栈实现）
       }
     };
-
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [searchQuery]);
 
-  // 当搜索内容从无到有时，向历史栈推入一个新记录
   const handleSearchChange = (val: string) => {
     if (!searchQuery && val) {
       window.history.pushState({ searching: true }, '');
-    } else if (searchQuery && !val) {
-      // 如果手动删减到空，则不需要干扰历史栈，或者可以用 window.history.back()
     }
     setSearchQuery(val);
   };
@@ -180,6 +174,7 @@ function AppContent() {
     <div className="min-h-screen bg-white text-zinc-900">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
+      {/* 移动端菜单 */}
       {showMobileMenu && (
         <div className="fixed inset-0 z-[100] md:hidden">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowMobileMenu(false)} />
@@ -219,14 +214,6 @@ function AppContent() {
               <h1 className="font-bold text-base md:text-lg cursor-pointer truncate hidden sm:block" onClick={() => navigate('/feed')}>
                 女主无cp/无男主交流中心
               </h1>
-              <div className="hidden md:flex gap-1">
-                {CATEGORIES.map(c => (
-                  <button key={c} onClick={() => { setCurrentCategory(c); navigate('/feed'); }}
-                    className={`px-3 py-1 text-sm rounded-full ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}>
-                    {c}
-                  </button>
-                ))}
-              </div>
             </div>
 
             <div className="flex-1 max-w-xs relative group">
@@ -239,10 +226,7 @@ function AppContent() {
                 className="w-full bg-zinc-100 border-none rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-1 focus:ring-black transition-all"
               />
               {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-zinc-200 rounded-full"
-                >
+                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-zinc-200 rounded-full">
                   <X className="w-3 h-3 text-zinc-500" />
                 </button>
               )}
@@ -251,7 +235,6 @@ function AppContent() {
             <div className="flex items-center gap-1 md:gap-2">
               <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full"><BookOpen className="w-5 h-5 text-zinc-600" /></button>
               <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full"><Avatar url={user.avatar} className="w-6 h-6" /></button>
-              {user.role === 'admin' && <button onClick={() => navigate('/admin')} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"><Shield className="w-5 h-5" /></button>}
               <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"><LogOut className="w-5 h-5" /></button>
             </div>
           </div>
@@ -278,9 +261,13 @@ function AppContent() {
                     <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
                       <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium truncate">{post.is_essence && <span className="mr-1 bg-black text-white px-1 text-xs">蒂</span>}{post.title}</h3>
-                        <p className="text-sm text-zinc-500 line-clamp-2">{getPostPreview(post.content)}</p>
-                        <div className="text-xs text-zinc-400 mt-1">{post.category} · {usersMap[post.user_id]?.user_name || '匿名'} · {timeAgo(post.created_at)}</div>
+                        {/* ✅ 修改点：移除了 truncate，添加了 break-words 和 whitespace-normal 确保完整显示标题 */}
+                        <h3 className="font-medium break-words whitespace-normal text-[15px] leading-snug">
+                          {post.is_essence && <span className="mr-1 bg-black text-white px-1 text-xs inline-block align-middle">蒂</span>}
+                          {post.title}
+                        </h3>
+                        <p className="text-sm text-zinc-500 line-clamp-2 mt-1">{getPostPreview(post.content)}</p>
+                        <div className="text-xs text-zinc-400 mt-2">{post.category} · {usersMap[post.user_id]?.user_name || '匿名'} · {timeAgo(post.created_at)}</div>
                       </div>
                     </div>
                   ))}
