@@ -18,12 +18,11 @@ import { User, Post, Category } from './types';
 import { get_all_users, get_user, get_posts } from './services/storage';
 import { 
   Search, LogOut, Menu, UserCircle, 
-  PenSquare, X, Shield, BookOpen // 修正图标名为 BookOpen
+  PenSquare, X, Shield, BookOpen 
 } from 'lucide-react';
 
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
-// 工具函数：时间转换
 function timeAgo(dateInput: string | Date): string {
   const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   const now = new Date();
@@ -38,7 +37,6 @@ function timeAgo(dateInput: string | Date): string {
   return `${Math.floor(diffInDays / 30)}个月前`;
 }
 
-// 头像组件
 const Avatar = ({ url, className = "w-8 h-8" }: { url?: string, className?: string }) => {
   if (url) return <img src={url} alt="头像" className={`${className} rounded-full object-cover border border-zinc-100`} />;
   return <UserCircle className={`${className} text-zinc-300`} />;
@@ -59,8 +57,9 @@ function AppContent() {
   
   // 核心状态
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthChecking, setIsAuthChecking] = useState(true); // 新增：解决刷新跳转问题的关键状态
   const [currentCategory, setCurrentCategory] = useState<Category | '全部'>((searchParams.get('cat') as Category) || '全部');
-  const [searchQuery] = useState(''); // 搜索逻辑可后续扩展
+  const [searchQuery] = useState('');
   const [onlyEssence, setOnlyEssence] = useState(false);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -73,19 +72,26 @@ function AppContent() {
 
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
-  // 1. 初始化登录状态
+  // 1. 初始化登录状态（带 Loading 拦截）
   useEffect(() => {
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const freshUser = await get_user(session.user.id);
-      if (freshUser) {
-        if (freshUser.is_banned) {
-          await supabase.auth.signOut();
-          showToast('账号已被封禁', 'error');
-          return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const freshUser = await get_user(session.user.id);
+          if (freshUser) {
+            if (freshUser.is_banned) {
+              await supabase.auth.signOut();
+              showToast('账号已被封禁', 'error');
+            } else {
+              setUser(freshUser);
+            }
+          }
         }
-        setUser(freshUser);
+      } catch (err) {
+        console.error("Auth init error:", err);
+      } finally {
+        setIsAuthChecking(false); // 无论成功失败，标记初始化完成
       }
     };
     initAuth();
@@ -93,6 +99,7 @@ function AppContent() {
 
   // 2. 加载帖子数据
   useEffect(() => {
+    if (isAuthChecking) return; // 鉴权中不请求数据
     const loadPosts = async () => {
       setIsLoading(true);
       const data = await get_posts(currentCategory, onlyEssence ? 'essence' : 'new');
@@ -103,7 +110,7 @@ function AppContent() {
       setIsLoading(false);
     };
     loadPosts();
-  }, [currentCategory, onlyEssence, refreshKey]);
+  }, [currentCategory, onlyEssence, refreshKey, isAuthChecking]);
 
   // 3. 全局用户映射
   useEffect(() => {
@@ -129,12 +136,19 @@ function AppContent() {
     return content.slice(0, 100);
   };
 
-  // 强制改密逻辑
+  // 拦截点：正在检查登录状态时，显示加载中，防止路由“抢跑”跳转
+  if (isAuthChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white text-zinc-400">
+        正在同步书架数据...
+      </div>
+    );
+  }
+
   if (user && user.is_first_login) {
     return <ChangePasswordModal user={user} onComplete={(u) => { setUser(u); navigate('/feed'); }} />;
   }
 
-  // 页面判定逻辑
   const isLoginPage = location.pathname === '/login' || location.pathname === '/';
   const hideNavPages = location.pathname.startsWith('/post/') || 
                        location.pathname.startsWith('/profile/') || 
@@ -153,7 +167,6 @@ function AppContent() {
                 女主无cp/无男主交流中心
               </h1>
               
-              {/* 桌面端分类 */}
               <div className="hidden md:flex gap-1">
                 {CATEGORIES.map(c => (
                   <button
@@ -166,7 +179,6 @@ function AppContent() {
                 ))}
               </div>
 
-              {/* 移动端菜单开关 */}
               <button 
                 onClick={() => setShowMobileMenu(true)}
                 className="md:hidden p-2 hover:bg-zinc-100 rounded-full flex-shrink-0"
@@ -176,12 +188,10 @@ function AppContent() {
             </div>
 
             <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-              {/* 搜索 */}
               <button className="p-2 hover:bg-zinc-100 rounded-full" title="搜索">
                 <Search className="w-5 h-5 text-zinc-600" />
               </button>
               
-              {/* 书架 (新增) */}
               <button 
                 onClick={() => navigate('/bookshelf')}
                 className="p-2 hover:bg-zinc-100 rounded-full"
@@ -190,7 +200,6 @@ function AppContent() {
                 <BookOpen className="w-5 h-5 text-zinc-600" />
               </button>
 
-              {/* 头像/个人主页 */}
               <button 
                 onClick={() => navigate(`/profile/${user.id}`)} 
                 className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full flex-shrink-0"
@@ -208,10 +217,7 @@ function AppContent() {
                 </button>
               )}
               
-              <button 
-                onClick={handleLogout} 
-                className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"
-              >
+              <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full">
                 <LogOut className="w-5 h-5" />
               </button>
             </div>
@@ -219,17 +225,14 @@ function AppContent() {
         </nav>
       )}
 
-      {/* 移动端抽屉菜单 */}
+      {/* 移动端菜单 */}
       {showMobileMenu && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden" onClick={() => setShowMobileMenu(false)}>
           <div className="bg-white w-64 h-full p-4 overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">菜单</h3>
-              <button onClick={() => setShowMobileMenu(false)}>
-                <X className="w-5 h-5" />
-              </button>
+              <button onClick={() => setShowMobileMenu(false)}><X className="w-5 h-5" /></button>
             </div>
-            
             <div className="mb-4">
               <button 
                 onClick={() => setShowCategoriesInMenu(!showCategoriesInMenu)}
@@ -238,17 +241,12 @@ function AppContent() {
                 <span>分类</span>
                 <span className="text-xs">{showCategoriesInMenu ? '▼' : '▶'}</span>
               </button>
-              
               {showCategoriesInMenu && (
                 <div className="mt-2 space-y-1">
                   {CATEGORIES.map(c => (
                     <button
                       key={c}
-                      onClick={() => {
-                        setCurrentCategory(c);
-                        navigate('/feed');
-                        setShowMobileMenu(false);
-                      }}
+                      onClick={() => { setCurrentCategory(c); navigate('/feed'); setShowMobileMenu(false); }}
                       className={`w-full text-left px-4 py-2.5 rounded-lg text-sm ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
                     >
                       {c}
@@ -257,9 +255,7 @@ function AppContent() {
                 </div>
               )}
             </div>
-            
             <div className="border-t pt-4 space-y-1">
-              {/* 移动端书架 (新增) */}
               <button
                 onClick={() => { navigate('/bookshelf'); setShowMobileMenu(false); }}
                 className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2"
@@ -267,7 +263,6 @@ function AppContent() {
                 <BookOpen className="w-4 h-4" />
                 <span className="text-base">我的书架</span>
               </button>
-
               {user?.role === 'admin' && (
                 <button
                   onClick={() => { navigate('/admin'); setShowMobileMenu(false); }}
@@ -277,10 +272,7 @@ function AppContent() {
                   <span className="text-base">管理员面板</span>
                 </button>
               )}
-              <button
-                onClick={() => { handleLogout(); setShowMobileMenu(false); }}
-                className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2"
-              >
+              <button onClick={() => { handleLogout(); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2">
                 <LogOut className="w-4 h-4" />
                 <span className="text-base">退出登录</span>
               </button>
@@ -289,96 +281,56 @@ function AppContent() {
         </div>
       )}
 
-      {/* 路由主体 */}
+      {/* 路由主体 - 统一使用守卫逻辑 */}
       <main className="max-w-5xl mx-auto">
         <Routes>
           <Route path="/" element={user ? <Navigate to="/feed" /> : <Landing onLoginClick={() => navigate('/login')} />} />
           <Route path="/login" element={<LoginPage onLogin={(u) => { setUser(u); navigate('/feed'); }} />} />
           
-          {/* 动态 Feed */}
           <Route path="/feed" element={
-            <div className="p-4">
-              <div className="flex justify-between items-center mb-4 border-b pb-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={onlyEssence} 
-                    onChange={e => setOnlyEssence(e.target.checked)} 
-                    className="hidden"
-                  />
-                  <div className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'bg-white text-black border border-zinc-300'}`}>
-                    蒂
-                  </div>
-                </label>
-                <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 hover:bg-zinc-800">
-                  <PenSquare className="w-4 h-4" /> 发帖
-                </button>
-              </div>
-              
-              <div className="divide-y divide-zinc-100">
-                {isLoading ? (
-                  <div className="py-20 text-center text-zinc-400">加载中...</div>
-                ) : (
-                  displayPosts.filter(p => p.title.includes(searchQuery)).map(post => (
-                    <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
-                      <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium flex items-center gap-2 flex-wrap">
-                          {post.is_essence && (
-                            <span className="inline-block px-2 py-0.5 bg-black text-white text-xs font-bold rounded flex-shrink-0">蒂</span>
-                          )}
-                          <span className="flex-1">{post.title}</span>
-                        </h3>
-                        <p className="text-sm text-zinc-500 line-clamp-2">{getPostPreview(post.content)}</p>
-                        <div className="text-xs text-zinc-400 mt-1">
-                          {post.category} • {usersMap[post.user_id]?.user_name} • {timeAgo(post.created_at)}
+            user ? (
+              <div className="p-4">
+                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={onlyEssence} onChange={e => setOnlyEssence(e.target.checked)} className="hidden" />
+                    <div className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'bg-white text-black border border-zinc-300'}`}>蒂</div>
+                  </label>
+                  <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 hover:bg-zinc-800">
+                    <PenSquare className="w-4 h-4" /> 发帖
+                  </button>
+                </div>
+                <div className="divide-y divide-zinc-100">
+                  {isLoading ? (
+                    <div className="py-20 text-center text-zinc-400">加载中...</div>
+                  ) : (
+                    displayPosts.filter(p => p.title.includes(searchQuery)).map(post => (
+                      <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
+                        <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium flex items-center gap-2 flex-wrap">
+                            {post.is_essence && <span className="inline-block px-2 py-0.5 bg-black text-white text-xs font-bold rounded flex-shrink-0">蒂</span>}
+                            <span className="flex-1">{post.title}</span>
+                          </h3>
+                          <p className="text-sm text-zinc-500 line-clamp-2">{getPostPreview(post.content)}</p>
+                          <div className="text-xs text-zinc-400 mt-1">{post.category} • {usersMap[post.user_id]?.user_name} • {timeAgo(post.created_at)}</div>
                         </div>
                       </div>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
+            ) : <Navigate to="/login" replace />
           } />
 
-          {/* 详情页 */}
-          <Route path="/post/:postId" element={
-            user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" />
-          } />
-
-          {/* 个人主页 */}
-          <Route path="/profile/:userId" element={
-            user ? <UserProfile userId={user.id} onNavigateBack={() => navigate(-1)} onPostClick={(id) => navigate(`/post/${id}`)} /> : <Navigate to="/login" />
-          } />
-
-          {/* 书架 (新增) */}
-          <Route path="/bookshelf" element={
-            user ? (
-              <Bookshelf 
-                onNavigateBack={() => navigate(-1)} 
-                onBookClick={(postId) => navigate(`/post/${postId}`)}
-                showToast={showToast}
-              />
-            ) : (
-              <Navigate to="/login" />
-            )
-          } />
-
-          {/* 管理员面板 */}
-          <Route path="/admin" element={
-            user?.role === 'admin' ? <AdminPanel /> : <Navigate to="/feed" />
-          } />
+          <Route path="/post/:postId" element={user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" replace />} />
+          <Route path="/profile/:userId" element={user ? <UserProfile userId={user.id} onNavigateBack={() => navigate(-1)} onPostClick={(id) => navigate(`/post/${id}`)} /> : <Navigate to="/login" replace />} />
+          <Route path="/bookshelf" element={user ? <Bookshelf onNavigateBack={() => navigate(-1)} onBookClick={(postId) => navigate(`/post/${postId}`)} showToast={showToast} /> : <Navigate to="/login" replace />} />
+          <Route path="/admin" element={user?.role === 'admin' ? <AdminPanel /> : <Navigate to="/feed" replace />} />
         </Routes>
       </main>
 
-      {/* 发帖弹窗 */}
       {isCreatingPost && user && (
-        <CreatePostModal 
-          user={user} 
-          onClose={() => setIsCreatingPost(false)} 
-          onSuccess={() => { setIsCreatingPost(false); setRefreshKey(k => k + 1); }} 
-          showToast={showToast} 
-        />
+        <CreatePostModal user={user} onClose={() => setIsCreatingPost(false)} onSuccess={() => { setIsCreatingPost(false); setRefreshKey(k => k + 1); }} showToast={showToast} />
       )}
     </div>
   );
