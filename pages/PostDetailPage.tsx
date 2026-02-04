@@ -357,7 +357,7 @@ const PostDetailPage = ({
               <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
               <PostContent content={post.content} className="prose prose-zinc max-w-none" />
               
-            {/* 图书评分展示 (极简黑白审计风格) */}
+{/* 图书评分展示 (极简黑白审计风格) */}
 {bookRating && (
   <div className="mt-8 border-t-2 border-black pt-8 pb-4">
     {/* 顶部标题与核心分数 */}
@@ -380,7 +380,7 @@ const PostDetailPage = ({
       </div>
     </div>
 
-    {/* 基本信息栏 - 去掉左右边框，改用黑白灰配色 */}
+    {/* 基本信息栏 - 黑白灰配色，去掉侧边框 */}
     <div className="border-y border-zinc-100 py-4 mb-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-12">
         <div className="flex justify-between items-center border-b border-zinc-50 pb-1">
@@ -404,7 +404,7 @@ const PostDetailPage = ({
       </div>
     </div>
 
-    {/* 三分值矩阵 - 去掉左右边框，极简处理 */}
+    {/* 分值详情 - 去掉容器边框，居中对齐 */}
     <div className="grid grid-cols-3 mb-10">
       <div className="text-center">
         <div className="text-lg font-bold text-black">{bookRating.impressed_score}</div>
@@ -422,7 +422,7 @@ const PostDetailPage = ({
       </div>
     </div>
 
-    {/* 综合评价 */}
+    {/* 评价部分 */}
     {bookRating.reviewer_comment && (
       <div className="mb-10 group">
         <div className="flex items-center gap-2 mb-3">
@@ -435,34 +435,33 @@ const PostDetailPage = ({
       </div>
     )}
 
-    {/* 准则详情列表 */}
+    {/* 准则明细 - 修复了图标逻辑与边框 */}
     <details className="group border-t border-zinc-100 pt-6">
-      <summary className="list-none cursor-pointer">
-        <div className="flex justify-between items-center">
-          <div className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Detailed Principles / 审计明细</div>
-          <div className="text-zinc-300 group-open:rotate-180 transition-transform">↓</div>
-        </div>
+      <summary className="list-none cursor-pointer flex justify-between items-center">
+        <div className="text-[11px] font-black text-zinc-400 uppercase tracking-[0.2em]">Detailed Principles / 审计明细</div>
+        <div className="text-zinc-300 group-open:rotate-180 transition-transform">↓</div>
       </summary>
       
-      <div className="mt-6 space-y-0">
+      <div className="mt-6">
         {Object.entries(bookRating.principle_scores).map(([key, value]) => {
           const principleIndex = parseInt(key.replace('p', '')) - 1;
           const principleTexts = [
-            '作者预收/写过/阅读男主文、bl、言情等非4B小说。', '连载中/断更/卡v/坑文等操作。', '文笔差 / 一般，剧情设定欠缺。', '评论区磕cp、吵架，作者关闭评论区等。', '作者现实其他骚操作（已婚、提男友、拒绝激女读者等）。', '描写氛围、语言、过于暧昧，女角色之间（非女主）关系有百合倾向。', '女男比例低于2：1。', '随父姓，默认任何角色随父姓，不单指主角，不指出也不批判也没改变。', '女性角色塑造不用心、刻板印象（取名随意、脸谱化、平面化）。', '服美役（白幼瘦、面部、高跟鞋、胸臀腿特写、衣服配饰等外貌方面的描写）。', '驴竞、拉踩其他女角色。', '忽略女性困难处境、物化女性。', '性别认知障碍，自称哥、爸、爷、弟等，女扮男装，女角色被称为先生等。', '扶持男性、接男儿，有男人分享女角色胜利果实/成果/遗产等。', '男性角色与女性角色存在单向/双向性缘。', '美化男性（母父对比、男性深情、男性友情、男性导师等）、偏爱男性。', '男性角色有高光、有成长线。', '掺腐（非批判）。', '存在厌女词、辱女词。', '存在男本位词。', '用性侵、造黄谣等方式惩罚女性。', '过度渲染女性苦楚，但反开/觉醒占比少。', '是否有提到推广女权思想【不扣分】。', '是否有明确反男权思想【不扣分】。', '是否默认女性为第一性【不扣分】。'
+            '作者预收/写过/阅读男主文、bl、言情等非4B小说。', '连载中/断更/卡v/坑文等操作。', '文笔差 / 一般，剧情设定欠缺。', '评论区磕cp、吵架，作者关闭评论区等。', '作者现实其他骚操作（已婚、提男友、拒绝激女读者等）。', '描写氛围、语言、过于暧昧，女角色之间（非女主）关系有百合倾向。', '女男比例低于2：1。', '随父姓，默认任何角色随父姓，不单指主角，不指出也不批判也没改变。', '女性角色塑造不用心、刻板印象（取名随意、脸谱化、平面化）。', '服美役（白幼瘦、面部、高跟鞋、胸臀腿特写、衣服配饰等外貌方面的描写）。', '驴竞、拉踩其他女角色。', '忽略女性困难处境、物化女性。', '性别认知障碍，自称哥、爸、爷、弟等，女扮男装，女角色被称为先生等。', '扶持男性、接男儿，有男人分享女角色胜利果实/成果/遗产等。', '男性角色与女性角色存在单向/双向性缘。', '美化男性（母父对比、男性深情、男性友情、男性导师等）、偏爱男性。', '男性角色有高光、有成长线。', '掺腐（非批判）。', '存在厌女词、辱女词。', '存在男本位词。', '用性侵、造黄谣等方式惩罚女性。', '过度渲染女性苦楚，但反抗/觉醒占比少。', '是否有提到推广女权思想【不扣分】。', '是否有明确反男权思想【不扣分】。', '是否默认女性为第一性【不扣分】。'
           ];
           
-          // 逻辑处理：23, 24, 25 项是加分/正面项
+          // 逻辑处理：最后三项 (Index 22, 23, 24) 是正面加分项
           const isBonusItem = principleIndex >= 22;
           let StatusDot;
+          
           if (isBonusItem) {
-            // 后三项：Yes为绿点，No为灰点
+            // 后三项：选择了“有”显示绿色圆圈，否则显示灰色小点
             StatusDot = value === 'yes' ? 
-              <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" /> : 
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" /> : 
               <div className="w-1.5 h-1.5 rounded-full bg-zinc-100" />;
           } else {
-            // 前22项：Yes为红点，No为灰点
+            // 前22项：选择了“有”显示红色圆圈，否则显示灰色小点
             StatusDot = value === 'yes' ? 
-              <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" /> : 
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" /> : 
               <div className="w-1.5 h-1.5 rounded-full bg-zinc-100" />;
           }
 
@@ -473,12 +472,10 @@ const PostDetailPage = ({
                 {StatusDot}
               </div>
               <div className="flex-1">
-                <div className="flex items-start justify-between gap-4">
-                  <p className={`text-sm leading-snug ${value === 'yes' ? 'text-black font-semibold' : 'text-zinc-400'}`}>
-                    <span className="inline-block w-6 text-[10px] font-mono text-zinc-300">{(principleIndex + 1).toString().padStart(2, '0')}</span>
-                    {principleTexts[principleIndex]}
-                  </p>
-                </div>
+                <p className={`text-sm leading-snug ${value === 'yes' ? 'text-black font-semibold' : 'text-zinc-400'}`}>
+                  <span className="inline-block w-6 text-[10px] font-mono text-zinc-300">{(principleIndex + 1).toString().padStart(2, '0')}</span>
+                  {principleTexts[principleIndex]}
+                </p>
                 {remark && (
                   <div className="mt-2 ml-6 text-xs text-zinc-500 bg-zinc-50 p-2 border-l-2 border-zinc-200">
                     <span className="font-bold mr-1">NOTE:</span> {remark}
@@ -491,7 +488,7 @@ const PostDetailPage = ({
       </div>
     </details>
 
-    {/* 额外扣分 */}
+    {/* 底部额外扣分备注 */}
     {bookRating.extra_deduction > 0 && (
       <div className="mt-8 pt-6 border-t border-black">
         <div className="flex items-center gap-2 mb-2">
@@ -505,7 +502,6 @@ const PostDetailPage = ({
     )}
   </div>
 )}
-
         {/* 交互与评论区 (原有代码保持一致) */}
         <div className="flex gap-6 py-4 border-y border-zinc-100 text-zinc-500 mb-8">
           <button onClick={handleLike} className={`flex items-center gap-1 transition-colors ${isLiked ? 'text-red-500' : 'hover:text-red-500'}`}>
