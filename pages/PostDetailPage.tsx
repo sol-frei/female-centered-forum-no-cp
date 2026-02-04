@@ -15,13 +15,16 @@ import {
   toggle_like_comment,
   get_book_rating_by_post // 导入获取评分函数
 } from '../services/storage';
+
 import { uploadImage } from '../services/storageService';
 import { 
   Heart, MessageCircle, Trash2, X, Plus, Check, Star, 
   Image as ImageIcon, Bookmark, Send, Edit2, MoreVertical, ArrowLeft, UserCircle
 } from 'lucide-react';
+
 import PostContent from '../components/PostContent';
 import { ToastType } from '../components/Toast';
+import EditPostModal from '../components/EditPostModal';
 
 // Avatar 组件
 const Avatar = ({ url, className = "w-8 h-8" }: { url?: string; className?: string }) => {
@@ -84,7 +87,8 @@ const PostDetailPage = ({
   const [editCategory, setEditCategory] = useState<Category>('讨论👊🏻i女');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [selectedPollOption, setSelectedPollOption] = useState<number | null>(null);
-
+  const [showEditModal, setShowEditModal] = useState(false);
+  
   // --- 获取数据 ---
   const fetchPostAndComments = async () => {
     if (!postId) return;
@@ -321,7 +325,7 @@ const PostDetailPage = ({
           <ArrowLeft className="w-5 h-5" /> 返回
         </button>
         {canEditPost && (
-          <button onClick={openEditPost} className="text-zinc-600 hover:text-black">
+          <button onClick={() => setShowEditModal(true)} className="text-zinc-600 hover:text-black">
             <Edit2 className="w-5 h-5" />
           </button>
         )}
@@ -349,18 +353,6 @@ const PostDetailPage = ({
             )}
           </div>
 
-          {isEditingPost ? (
-            <div className="space-y-3">
-              <input className="w-full text-xl font-bold border-b p-2 outline-none focus:border-black" value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="标题" />
-              <select value={editCategory} onChange={e => setEditCategory(e.target.value as Category)} className="border p-2 rounded outline-none">
-                {CATEGORIES.filter(c => c !== '全部').map(c => (<option key={c} value={c}>{c}</option>))}
-              </select>
-              <div className="flex gap-2">
-                <button onClick={savePostEdit} className="bg-black text-white px-4 py-2 text-sm rounded hover:bg-zinc-800">保存</button>
-                <button onClick={() => setIsEditingPost(false)} className="bg-zinc-100 px-4 py-2 text-sm rounded hover:bg-zinc-200">取消</button>
-              </div>
-            </div>
-          ) : (
             <>
               <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
               <PostContent content={post.content} className="prose prose-zinc max-w-none" />
@@ -542,4 +534,18 @@ const PostDetailPage = ({
   );
 };
 
+{/* 编辑帖子弹窗 */}
+{showEditModal && (
+  <EditPostModal
+    user={user}
+    post={post}
+    bookRating={bookRating}
+    onClose={() => setShowEditModal(false)}
+    onSuccess={() => {
+      setShowEditModal(false);
+      fetchPostAndComments();
+    }}
+    showToast={showToast}
+  />
+)}
 export default PostDetailPage;
