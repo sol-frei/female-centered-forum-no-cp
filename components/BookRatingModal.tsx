@@ -177,7 +177,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
                   type="text"
                   value={bookPlatform}
                   onChange={(e) => setBookPlatform(e.target.value)}
-                  placeholder="如：晋江、长佩等"
+                  placeholder="如：晋江、番茄等"
                   className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
