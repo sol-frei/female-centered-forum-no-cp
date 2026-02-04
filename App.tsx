@@ -25,7 +25,7 @@ const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i�
 
 // ✅ 统一样式：黑色旋转圆圈
 const LoadingSpinner = ({ fullScreen = false }: { fullScreen?: boolean }) => (
-  <div className={`${fullScreen ? 'min-h-screen' : 'py-20'} flex items-center justify-center bg-white`}>
+  <div className={fullScreen ? "min-h-screen flex items-center justify-center bg-white" : "py-20 flex items-center justify-center bg-white"}>
     <div className="w-6 h-6 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin"></div>
   </div>
 );
@@ -65,7 +65,6 @@ function AppContent() {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true); 
   const [currentCategory, setCurrentCategory] = useState<Category | '全部'>((searchParams.get('cat') as Category) || '全部');
-  const [searchQuery] = useState('');
   const [onlyEssence, setOnlyEssence] = useState(false);
   const [isCreatingPost, setIsCreatingPost] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -104,10 +103,7 @@ function AppContent() {
     const loadPosts = async () => {
       setIsLoading(true);
       const data = await get_posts(currentCategory, onlyEssence ? 'essence' : 'new');
-      const sortedData = (data || []).sort((a, b) => 
-        new Date(b.last_comment_at || b.created_at).getTime() - new Date(a.last_comment_at || a.created_at).getTime()
-      );
-      setDisplayPosts(sortedData);
+      setDisplayPosts(data || []);
       setIsLoading(false);
     };
     loadPosts();
@@ -145,7 +141,8 @@ function AppContent() {
   const isLoginPage = location.pathname === '/login' || location.pathname === '/';
   const hideNavPages = location.pathname.startsWith('/post/') || 
                        location.pathname.startsWith('/profile/') || 
-                       location.pathname === '/admin';
+                       location.pathname === '/admin' ||
+                       location.pathname === '/bookshelf';
 
   return (
     <div className="min-h-screen bg-white text-zinc-900">
@@ -170,7 +167,7 @@ function AppContent() {
             </div>
             <div className="flex items-center gap-1 md:gap-2">
               <button className="p-2 hover:bg-zinc-100 rounded-full"><Search className="w-5 h-5 text-zinc-600" /></button>
-              <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full" title="书架"><BookOpen className="w-5 h-5 text-zinc-600" /></button>
+              <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full"><BookOpen className="w-5 h-5 text-zinc-600" /></button>
               <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full"><Avatar url={user.avatar} className="w-6 h-6" /></button>
               {user.role === 'admin' && <button onClick={() => navigate('/admin')} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"><Shield className="w-5 h-5" /></button>}
               <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"><LogOut className="w-5 h-5" /></button>
@@ -179,29 +176,8 @@ function AppContent() {
         </nav>
       )}
 
-      {showMobileMenu && (
-        <div className="fixed inset-0 bg-black/50 z-50 md:hidden" onClick={() => setShowMobileMenu(false)}>
-          <div className="bg-white w-64 h-full p-4" onClick={e => e.stopPropagation()}>
-             <div className="flex justify-between items-center mb-6">
-               <span className="font-bold">菜单</span>
-               <X className="w-5 h-5" onClick={() => setShowMobileMenu(false)} />
-             </div>
-             <div className="space-y-4">
-               {CATEGORIES.map(c => (
-                 <div key={c} onClick={() => { setCurrentCategory(c); navigate('/feed'); setShowMobileMenu(false); }} className="text-zinc-600 cursor-pointer">{c}</div>
-               ))}
-               <div className="border-t pt-4 space-y-4">
-                 <div onClick={() => { navigate('/bookshelf'); setShowMobileMenu(false); }} className="flex items-center gap-2 cursor-pointer"><BookOpen className="w-4 h-4" /> 书架</div>
-                 <div onClick={handleLogout} className="flex items-center gap-2 text-red-500 cursor-pointer"><LogOut className="w-4 h-4" /> 退出</div>
-               </div>
-             </div>
-          </div>
-        </div>
-      )}
-
       <main className="max-w-5xl mx-auto">
         <Routes>
-          {/* ✅ 关键修复：如果已登录，访问 / 或 /login 直接弹回 /feed */}
           <Route path="/" element={user ? <Navigate to="/feed" replace /> : <Landing onLoginClick={() => navigate('/login')} />} />
           <Route path="/login" element={user ? <Navigate to="/feed" replace /> : <LoginPage onLogin={(u) => { setUser(u); navigate('/feed', { replace: true }); }} />} />
           
@@ -209,37 +185,8 @@ function AppContent() {
             user ? (
               <div className="p-4">
                 <div className="flex justify-between items-center mb-4 border-b pb-2">
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'border'}`}>蒂</button>
-                  </div>
+                  <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'border'}`}>蒂</button>
                   <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2"><PenSquare className="w-4 h-4" /> 发帖</button>
                 </div>
                 <div className="divide-y">
-                  {isLoading ? <LoadingSpinner /> : displayPosts.map(post => (
-                    <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
-                      <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium truncate">{post.is_essence && <span className="mr-1 bg-black text-white px-1 text-xs">蒂</span>}{post.title}</h3>
-                        <p className="text-sm text-zinc-500 line-clamp-2">{getPostPreview(post.content)}</p>
-                        <div className="text-xs text-zinc-400 mt-1">{post.category} · {usersMap[post.user_id]?.user_name} · {timeAgo(post.created_at)}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : <Navigate to="/login" replace />
-          } />
-          
-          <Route path="/post/:postId" element={user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" replace />} />
-          <Route path="/profile/:userId" element={user ? <UserProfile userId={userId} onNavigateBack={() => navigate(-1)} onPostClick={(id) => navigate(`/post/${id}`)} /> : <Navigate to="/login" replace />} />
-          <Route path="/bookshelf" element={user ? <Bookshelf onNavigateBack={() => navigate(-1)} onBookClick={(postId) => navigate(`/post/${postId}`)} showToast={showToast} /> : <Navigate to="/login" replace />} />
-          <Route path="/admin" element={user?.role === 'admin' ? <AdminPanel /> : <Navigate to="/feed" replace />} />
-        </Routes>
-      </main>
-
-      {isCreatingPost && user && (
-        <CreatePostModal user={user} onClose={() => setIsCreatingPost(false)} onSuccess={() => { setIsCreatingPost(false); setRefreshKey(k => k + 1); }} showToast={showToast} />
-      )}
-    </div>
-  );
-}
+                  {isLoading ? <LoadingSpinner /> : displayPosts.map(post =>
