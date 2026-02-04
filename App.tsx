@@ -1,5 +1,5 @@
 import { supabase } from './services/supabaseClient';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 
 // 导入组件
@@ -71,36 +71,9 @@ function AppContent() {
   const [displayPosts, setDisplayPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(false); 
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
-  
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const touchStartX = useRef<number | null>(null);
 
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
-
-  // 🟢 统一处理返回逻辑：搜索时左滑清空搜索，其他页面左滑正常返回
-  useEffect(() => {
-    const handlePopState = () => {
-      if (searchQuery) {
-        setSearchQuery('');
-      }
-      // 侧边栏如果开着，返回时也关闭
-      if (showMobileMenu) {
-        setShowMobileMenu(false);
-      }
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [searchQuery, showMobileMenu]);
-
-  // 🟢 搜索变更时压入历史记录，确保左滑是“退出搜索”
-  const handleSearchChange = (val: string) => {
-    if (!searchQuery && val) {
-      window.history.pushState({ searching: true }, '');
-    }
-    setSearchQuery(val);
-  };
 
   useEffect(() => {
     const initAuth = async () => {
@@ -144,12 +117,6 @@ function AppContent() {
     });
   }, [user]);
 
-  const filteredPosts = displayPosts.filter(post => {
-    const searchLower = searchQuery.toLowerCase();
-    return post.title.toLowerCase().includes(searchLower) || 
-           post.content.toLowerCase().includes(searchLower);
-  });
-
   const handleLogout = async () => {
     setShowMobileMenu(false);
     await supabase.auth.signOut();
@@ -163,21 +130,6 @@ function AppContent() {
       if (Array.isArray(blocks)) return blocks.filter(b => b.type === 'text').map(b => b.value).join(' ').slice(0, 100);
     } catch {}
     return content.slice(0, 100);
-  };
-
-  // 侧边栏滑动关闭逻辑
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const currentX = e.touches[0].clientX;
-    const diffX = touchStartX.current - currentX;
-    if (diffX > 50) {
-      setShowMobileMenu(false);
-      touchStartX.current = null;
-    }
   };
 
   if (isAuthChecking) return <LoadingSpinner fullScreen />;
@@ -196,16 +148,11 @@ function AppContent() {
     <div className="min-h-screen bg-white text-zinc-900">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* 侧边栏 */}
+      {/* 🟢 移动端侧边栏增强：增加管理员按钮 */}
       {showMobileMenu && (
         <div className="fixed inset-0 z-[100] md:hidden">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowMobileMenu(false)} />
-          <div 
-            className="relative w-72 bg-white h-full shadow-xl flex flex-col p-4"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={() => touchStartX.current = null}
-          >
+          <div className="relative w-64 bg-white h-full shadow-xl flex flex-col p-4 animate-in slide-in-from-left duration-200">
             <div className="flex justify-between items-center mb-6">
               <span className="font-bold text-lg">板块选择</span>
               <button onClick={() => setShowMobileMenu(false)} className="p-1"><X className="w-6 h-6" /></button>
@@ -213,12 +160,18 @@ function AppContent() {
             <div className="flex flex-col gap-2">
               {CATEGORIES.map(c => (
                 <button key={c} onClick={() => { setCurrentCategory(c); setShowMobileMenu(false); navigate('/feed'); }}
-                  className={`px-4 py-3 text-left text-sm rounded-lg transition-colors ${currentCategory === c ? 'bg-black text-white' : 'hover:bg-zinc-100'}`}>
+                  className={`px-4 py-3 text-left text-sm rounded-lg ${currentCategory === c ? 'bg-black text-white' : 'hover:bg-zinc-100'}`}>
                   {c}
                 </button>
               ))}
-              <hr className="my-4 border-zinc-100" />
-              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-4 text-sm text-red-600 bg-red-50 rounded-xl mt-4 font-medium transition-all">
+              <hr className="my-2 border-zinc-100" />
+              {/* 🟢 侧边栏内的管理员入口 */}
+              {user?.role === 'admin' && (
+                <button onClick={() => { navigate('/admin'); setShowMobileMenu(false); }} className="flex items-center gap-2 px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-100 rounded-lg">
+                  <Shield className="w-4 h-4 text-zinc-500" /> 管理后台
+                </button>
+              )}
+              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-lg">
                 <LogOut className="w-4 h-4" /> 退出登录
               </button>
             </div>
@@ -228,35 +181,33 @@ function AppContent() {
 
       {user && !isLoginPage && !hideNavPages && (
         <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
-          <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-1.5 hover:bg-zinc-100 rounded-full transition-colors">
-                <Menu className="w-5 h-5" />
-              </button>
-              <h1 className="font-bold text-base md:text-lg cursor-pointer hidden sm:block" onClick={() => navigate('/feed')}>
+          <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+            <div className="flex items-center gap-2 md:gap-6 flex-1 min-w-0">
+              <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-2 hover:bg-zinc-100 rounded-full"><Menu className="w-5 h-5" /></button>
+              <h1 className="font-bold text-base md:text-lg cursor-pointer truncate" onClick={() => navigate('/feed')}>
                 女主无cp/无男主交流中心
               </h1>
+              <div className="hidden md:flex gap-1">
+                {CATEGORIES.map(c => (
+                  <button key={c} onClick={() => { setCurrentCategory(c); navigate('/feed'); }}
+                    className={`px-3 py-1 text-sm rounded-full ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}>
+                    {c}
+                  </button>
+                ))}
+              </div>
             </div>
-
-            <div className="flex-1 max-w-xs relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-black" />
-              <input 
-                type="text" 
-                placeholder="搜索帖子..." 
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full bg-zinc-100 border-none rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-1 focus:ring-black transition-all"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-zinc-200 rounded-full">
-                  <X className="w-3 h-3 text-zinc-500" />
+            
+            <div className="flex items-center gap-1 md:gap-2">
+              {/* 🟢 PC/平板端：头像左侧的管理员入口 */}
+              {user.role === 'admin' && (
+                <button onClick={() => navigate('/admin')} className="hidden md:flex p-2 hover:bg-zinc-100 rounded-full group" title="管理后台">
+                  <Shield className="w-5 h-5 text-zinc-600 group-hover:text-black transition-colors" />
                 </button>
               )}
-            </div>
-
-            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-              <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full transition-colors"><BookOpen className="w-5 h-5 text-zinc-600" /></button>
-              <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full transition-colors"><Avatar url={user.avatar} className="w-6 h-6" /></button>
+              
+              <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full"><BookOpen className="w-5 h-5 text-zinc-600" /></button>
+              <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full"><Avatar url={user.avatar} className="w-6 h-6" /></button>
+              <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"><LogOut className="w-5 h-5 text-zinc-500" /></button>
             </div>
           </div>
         </nav>
@@ -271,28 +222,27 @@ function AppContent() {
             user ? (
               <div className="p-4">
                 <div className="flex justify-between items-center mb-4 border-b pb-2">
-                  <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded transition-all ${onlyEssence ? 'bg-black text-white' : 'border border-zinc-200'}`}>蒂</button>
-                  <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 rounded active:scale-95 transition-transform"><PenSquare className="w-4 h-4" /> 发帖</button>
+                  <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'border'}`}>蒂</button>
+                  <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 rounded hover:bg-zinc-800 transition-colors"><PenSquare className="w-4 h-4" /> 发帖</button>
                 </div>
                 <div className="divide-y divide-zinc-100">
-                  {isLoading ? <LoadingSpinner /> : filteredPosts.map(post => (
+                  {isLoading ? <LoadingSpinner /> : displayPosts.map(post => (
                     <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3 transition-colors">
                       <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium break-words whitespace-normal text-[15px] leading-snug text-zinc-900">
-                          {post.is_essence && <span className="mr-1 bg-black text-white px-1 text-xs inline-block align-middle rounded-sm">蒂</span>}
+                        {/* 🟢 确保标题换行显示完整 */}
+                        <h3 className="font-medium break-words whitespace-normal leading-snug">
+                          {post.is_essence && <span className="mr-1 bg-black text-white px-1 text-xs inline-block align-middle">蒂</span>}
                           {post.title}
                         </h3>
                         <p className="text-sm text-zinc-500 line-clamp-2 mt-1">{getPostPreview(post.content)}</p>
-                        <div className="text-xs text-zinc-400 mt-2 flex items-center gap-2">
-                          <span className="bg-zinc-100 px-1.5 py-0.5 rounded text-zinc-600">{post.category}</span>
-                          <span>{usersMap[post.user_id]?.user_name || '匿名'}</span>
-                          <span>·</span>
-                          <span>{timeAgo(post.created_at)}</span>
-                        </div>
+                        <div className="text-xs text-zinc-400 mt-2">{post.category} · {usersMap[post.user_id]?.user_name || '匿名'} · {timeAgo(post.created_at)}</div>
                       </div>
                     </div>
                   ))}
+                  {!isLoading && displayPosts.length === 0 && (
+                    <div className="py-20 text-center text-zinc-400">暂无帖子内容</div>
+                  )}
                 </div>
               </div>
             ) : <Navigate to="/login" replace />
