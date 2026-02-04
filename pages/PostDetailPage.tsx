@@ -76,6 +76,7 @@ const PostDetailPage = ({
   const [commentImages, setCommentImages] = useState<File[]>([]);
   const [commentImagePreviews, setCommentImagePreviews] = useState<string[]>([]);
   const [uploadingComment, setUploadingComment] = useState(false);
+  const [isCommentExpanded, setIsCommentExpanded] = useState(false);
 
   // 收藏与编辑状态
   const [showCollectionModal, setShowCollectionModal] = useState(false);
@@ -415,7 +416,7 @@ const PostDetailPage = ({
                   )}
 
                   <details className="mt-4">
-                    <summary className="cursor-pointer text-base font-medium text-zinc-700 hover:text-zinc-900 select-none">▼ 查看详细评分准则</summary>
+                    <summary className="cursor-pointer text-base font-medium text-zinc-700 hover:text-zinc-900 select-none"> 查看详细评分准则</summary>
                     <div className="mt-3 bg-white rounded-lg p-4 space-y-2 max-h-96 overflow-y-auto">
                       {Object.entries(bookRating.principle_scores).map(([key, value]) => {
                         if (!value) return null;
@@ -465,7 +466,6 @@ const PostDetailPage = ({
           <button className="flex items-center gap-1"><MessageCircle className="w-5 h-5" /> {comments.length}</button>
         </div>
 
-        {/* 修复问题5：评论区图片完整显示 */}
         <div className="space-y-6">
           {comments.length === 0 ? (
             <div className="text-center py-8 text-zinc-400">暂无评论~</div>
@@ -476,16 +476,34 @@ const PostDetailPage = ({
               const isCommentLiked = c.likes?.includes(user?.id);
               return (
                 <div key={c.id} className="flex gap-3 pb-4 border-b border-zinc-50">
-                  <Avatar url={commentAuthor?.avatar} className="w-8 h-8 flex-shrink-0" />
+                  <div 
+                    className="cursor-pointer flex-shrink-0" 
+                    onClick={() => onViewProfile(c.user_id)}
+                  >
+                    <Avatar url={commentAuthor?.avatar} className="w-8 h-8" />
+                  </div>
                   <div className="flex-1">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="font-medium text-base text-zinc-600">{commentAuthor?.user_name || '未知用户'}</span>
+                      <span 
+                        className="font-medium text-base text-zinc-600 cursor-pointer hover:text-zinc-900 hover:underline"
+                        onClick={() => onViewProfile(c.user_id)}
+                      >
+                        {commentAuthor?.user_name || '未知用户'}
+                      </span>
                       <span className="text-xs text-zinc-400">{timeAgo(c.created_at)}</span>
                     </div>
                     {/* 修复问题4：被回复评论完整显示 */}
                     {repliedComment && (
                       <div className="bg-zinc-50 pl-3 py-2 mb-2 text-sm rounded">
-                        <div className="text-zinc-600">@{usersMap[repliedComment.user_id]?.user_name}: {repliedComment.content}</div>
+                        <div className="text-zinc-600">
+                          <span 
+                            className="cursor-pointer hover:underline"
+                            onClick={() => onViewProfile(repliedComment.user_id)}
+                          >
+                            @{usersMap[repliedComment.user_id]?.user_name}
+                          </span>
+                          : {repliedComment.content}
+                        </div>
                       </div>
                     )}
                     <p className="text-zinc-800 text-base mb-2">{(c.content || '').replace(/^@\S+\s*/, '')}</p>
@@ -536,7 +554,28 @@ const PostDetailPage = ({
             <label className="cursor-pointer p-2 hover:bg-zinc-100 rounded-lg">
               <ImageIcon className="w-5 h-5 text-zinc-500" /><input type="file" accept="image/*" multiple onChange={handleCommentImageSelect} className="hidden" />
             </label>
-            <textarea ref={commentInputRef} value={newComment} onChange={e => setNewComment(e.target.value)} className="flex-1 bg-zinc-100 rounded-lg p-2 text-sm outline-none resize-y min-h-10 max-h-40" placeholder="写下你的评论..." />
+            <textarea 
+              ref={commentInputRef} 
+              value={newComment} 
+              onChange={e => setNewComment(e.target.value)} 
+              className={`flex-1 bg-zinc-100 rounded-lg p-2 text-sm outline-none resize-none transition-all ${isCommentExpanded ? 'h-32' : 'h-10'}`}
+              placeholder="写下你的评论..." 
+            />
+            <button 
+              onClick={() => setIsCommentExpanded(!isCommentExpanded)}
+              className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-500"
+              title={isCommentExpanded ? "收起" : "展开"}
+            >
+              {isCommentExpanded ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+              )}
+            </button>
             <button onClick={handleComment} disabled={uploadingComment || (!newComment.trim() && commentImages.length === 0)} className="bg-black text-white px-4 rounded-lg text-sm font-bold disabled:bg-zinc-300">发送</button>
           </div>
         </div>
@@ -579,7 +618,7 @@ const PostDetailPage = ({
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
           <button 
             onClick={() => setPreviewImage(null)}
-            className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white text-2xl transition-colors"
+            className="absolute top-6 right-6 w-12 h-12 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white text-4xl font-light transition-colors backdrop-blur-sm"
           >
             ×
           </button>
