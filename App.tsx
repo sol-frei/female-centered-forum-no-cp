@@ -75,21 +75,26 @@ function AppContent() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 🟢 用于处理滑动关闭侧边栏的逻辑
   const touchStartX = useRef<number | null>(null);
 
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
+  // 🟢 统一处理返回逻辑：搜索时左滑清空搜索，其他页面左滑正常返回
   useEffect(() => {
     const handlePopState = () => {
       if (searchQuery) {
         setSearchQuery('');
       }
+      // 侧边栏如果开着，返回时也关闭
+      if (showMobileMenu) {
+        setShowMobileMenu(false);
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [searchQuery]);
+  }, [searchQuery, showMobileMenu]);
 
+  // 🟢 搜索变更时压入历史记录，确保左滑是“退出搜索”
   const handleSearchChange = (val: string) => {
     if (!searchQuery && val) {
       window.history.pushState({ searching: true }, '');
@@ -160,7 +165,7 @@ function AppContent() {
     return content.slice(0, 100);
   };
 
-  // 🟢 滑动手势处理函数
+  // 侧边栏滑动关闭逻辑
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
@@ -169,8 +174,6 @@ function AppContent() {
     if (touchStartX.current === null) return;
     const currentX = e.touches[0].clientX;
     const diffX = touchStartX.current - currentX;
-
-    // 如果向左滑动超过 50 像素，则关闭
     if (diffX > 50) {
       setShowMobileMenu(false);
       touchStartX.current = null;
@@ -193,7 +196,7 @@ function AppContent() {
     <div className="min-h-screen bg-white text-zinc-900">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* 🟢 优化后的侧边栏：支持滑动关闭 */}
+      {/* 侧边栏 */}
       {showMobileMenu && (
         <div className="fixed inset-0 z-[100] md:hidden">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowMobileMenu(false)} />
@@ -207,7 +210,7 @@ function AppContent() {
               <span className="font-bold text-lg">板块选择</span>
               <button onClick={() => setShowMobileMenu(false)} className="p-1"><X className="w-6 h-6" /></button>
             </div>
-            <div className="flex flex-col gap-2 text-zinc-600">
+            <div className="flex flex-col gap-2">
               {CATEGORIES.map(c => (
                 <button key={c} onClick={() => { setCurrentCategory(c); setShowMobileMenu(false); navigate('/feed'); }}
                   className={`px-4 py-3 text-left text-sm rounded-lg transition-colors ${currentCategory === c ? 'bg-black text-white' : 'hover:bg-zinc-100'}`}>
@@ -215,17 +218,10 @@ function AppContent() {
                 </button>
               ))}
               <hr className="my-4 border-zinc-100" />
-              {user?.role === 'admin' && (
-                <button onClick={() => { navigate('/admin'); setShowMobileMenu(false); }} className="flex items-center gap-2 px-4 py-3 text-sm hover:bg-zinc-100 rounded-lg">
-                  <Shield className="w-4 h-4" /> 管理后台
-                </button>
-              )}
-              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-4 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-xl mt-4 font-medium transition-all">
+              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-4 text-sm text-red-600 bg-red-50 rounded-xl mt-4 font-medium transition-all">
                 <LogOut className="w-4 h-4" /> 退出登录
               </button>
             </div>
-            {/* 提示条（可选） */}
-            <div className="mt-auto pb-4 text-center text-zinc-300 text-[10px]">向左滑动可快速关闭</div>
           </div>
         </div>
       )}
@@ -238,7 +234,7 @@ function AppContent() {
                 <Menu className="w-5 h-5" />
               </button>
               <h1 className="font-bold text-base md:text-lg cursor-pointer hidden sm:block" onClick={() => navigate('/feed')}>
-                女主无cp交流中心
+                女主无cp/无男主交流中心
               </h1>
             </div>
 
@@ -261,7 +257,6 @@ function AppContent() {
             <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
               <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full transition-colors"><BookOpen className="w-5 h-5 text-zinc-600" /></button>
               <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full transition-colors"><Avatar url={user.avatar} className="w-6 h-6" /></button>
-              <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full transition-colors"><LogOut className="w-5 h-5" /></button>
             </div>
           </div>
         </nav>
@@ -276,9 +271,7 @@ function AppContent() {
             user ? (
               <div className="p-4">
                 <div className="flex justify-between items-center mb-4 border-b pb-2">
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded transition-all ${onlyEssence ? 'bg-black text-white' : 'border border-zinc-200'}`}>蒂</button>
-                  </div>
+                  <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded transition-all ${onlyEssence ? 'bg-black text-white' : 'border border-zinc-200'}`}>蒂</button>
                   <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 rounded active:scale-95 transition-transform"><PenSquare className="w-4 h-4" /> 发帖</button>
                 </div>
                 <div className="divide-y divide-zinc-100">
@@ -300,9 +293,6 @@ function AppContent() {
                       </div>
                     </div>
                   ))}
-                  {!isLoading && filteredPosts.length === 0 && (
-                    <div className="py-20 text-center text-zinc-400 text-sm">暂无匹配的帖子</div>
-                  )}
                 </div>
               </div>
             ) : <Navigate to="/login" replace />
