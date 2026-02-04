@@ -219,7 +219,6 @@ function AppContent() {
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-2 md:gap-4">
             <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
               <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-1.5 hover:bg-zinc-100 rounded-full"><Menu className="w-5 h-5" /></button>
-              {/* 🟢 手机端隐藏标题 (hidden sm:block) */}
               <h1 className="font-bold text-base md:text-lg cursor-pointer truncate hidden sm:block" onClick={() => navigate('/feed')}>
                 女主无cp交流中心
               </h1>
@@ -242,16 +241,24 @@ function AppContent() {
             </div>
 
             <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-              {/* 🟢 PC 端：管理员 Shield 放在最左侧 */}
+              {/* 🟢 书架图标移到了功能区最左侧 */}
+              <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+                <BookOpen className="w-5 h-5 text-zinc-600" />
+              </button>
+
+              {/* 🟢 管理员图标紧邻头像 */}
               {user.role === 'admin' && (
                 <button onClick={() => navigate('/admin')} className="hidden md:flex p-2 hover:bg-zinc-100 rounded-full transition-colors" title="管理后台">
                   <Shield className="w-5 h-5 text-zinc-600" />
                 </button>
               )}
-              {/* 🟢 图书图标 BookOpen 现在位于管理员和头像之间 */}
-              <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full"><BookOpen className="w-5 h-5 text-zinc-600" /></button>
-              <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full"><Avatar url={user.avatar} className="w-6 h-6" /></button>
-              <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"><LogOut className="w-5 h-5 text-zinc-500" /></button>
+              
+              <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full transition-colors">
+                <Avatar url={user.avatar} className="w-6 h-6" />
+              </button>
+              <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full transition-colors">
+                <LogOut className="w-5 h-5 text-zinc-500" />
+              </button>
             </div>
           </div>
         </nav>
@@ -282,7 +289,6 @@ function AppContent() {
                       </div>
                     </div>
                   ))}
-                  {!isLoading && filteredPosts.length === 0 && <div className="py-20 text-center text-zinc-400 text-sm">未找到相关帖子</div>}
                 </div>
               </div>
             ) : <Navigate to="/login" replace />
