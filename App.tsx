@@ -55,9 +55,9 @@ function AppContent() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   
-  // 核心状态
+  // --- 核心状态 ---
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthChecking, setIsAuthChecking] = useState(true); // 新增：解决刷新跳转问题的关键状态
+  const [isAuthChecking, setIsAuthChecking] = useState(true); // 拦截状态：初始为正在检查
   const [currentCategory, setCurrentCategory] = useState<Category | '全部'>((searchParams.get('cat') as Category) || '全部');
   const [searchQuery] = useState('');
   const [onlyEssence, setOnlyEssence] = useState(false);
@@ -72,7 +72,7 @@ function AppContent() {
 
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
-  // 1. 初始化登录状态（带 Loading 拦截）
+  // 1. 鉴权初始化逻辑：在刷新时找回 session
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -91,15 +91,16 @@ function AppContent() {
       } catch (err) {
         console.error("Auth init error:", err);
       } finally {
-        setIsAuthChecking(false); // 无论成功失败，标记初始化完成
+        // 关键：无论是否登录，最后都要关闭检查状态
+        setIsAuthChecking(false);
       }
     };
     initAuth();
   }, []);
 
-  // 2. 加载帖子数据
+  // 2. 加载帖子列表
   useEffect(() => {
-    if (isAuthChecking) return; // 鉴权中不请求数据
+    if (isAuthChecking) return; // 鉴权未完成时不请求数据
     const loadPosts = async () => {
       setIsLoading(true);
       const data = await get_posts(currentCategory, onlyEssence ? 'essence' : 'new');
@@ -112,7 +113,7 @@ function AppContent() {
     loadPosts();
   }, [currentCategory, onlyEssence, refreshKey, isAuthChecking]);
 
-  // 3. 全局用户映射
+  // 3. 用户数据映射
   useEffect(() => {
     if (!user) return;
     get_all_users().then(list => {
@@ -136,15 +137,19 @@ function AppContent() {
     return content.slice(0, 100);
   };
 
-  // 拦截点：正在检查登录状态时，显示加载中，防止路由“抢跑”跳转
+  // --- 拦截点：正在检查登录状态时渲染加载页 ---
   if (isAuthChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white text-zinc-400">
-        正在同步书架数据...
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+        <div className="w-6 h-6 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin mb-4"></div>
+        <div className="text-zinc-500 text-sm font-medium animate-pulse">
+          正在刷新...
+        </div>
       </div>
     );
   }
 
+  // 首次登录强制改密逻辑
   if (user && user.is_first_login) {
     return <ChangePasswordModal user={user} onComplete={(u) => { setUser(u); navigate('/feed'); }} />;
   }
@@ -158,7 +163,7 @@ function AppContent() {
     <div className="min-h-screen bg-white text-zinc-900">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* 顶部导航栏 */}
+      {/* 顶部导航 */}
       {user && !isLoginPage && !hideNavPages && (
         <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -166,7 +171,6 @@ function AppContent() {
               <h1 className="font-bold text-base md:text-lg cursor-pointer truncate" onClick={() => navigate('/feed')}>
                 女主无cp/无男主交流中心
               </h1>
-              
               <div className="hidden md:flex gap-1">
                 {CATEGORIES.map(c => (
                   <button
@@ -178,110 +182,50 @@ function AppContent() {
                   </button>
                 ))}
               </div>
-
-              <button 
-                onClick={() => setShowMobileMenu(true)}
-                className="md:hidden p-2 hover:bg-zinc-100 rounded-full flex-shrink-0"
-              >
+              <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-2 hover:bg-zinc-100 rounded-full">
                 <Menu className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-              <button className="p-2 hover:bg-zinc-100 rounded-full" title="搜索">
-                <Search className="w-5 h-5 text-zinc-600" />
-              </button>
-              
-              <button 
-                onClick={() => navigate('/bookshelf')}
-                className="p-2 hover:bg-zinc-100 rounded-full"
-                title="书架"
-              >
-                <BookOpen className="w-5 h-5 text-zinc-600" />
-              </button>
-
-              <button 
-                onClick={() => navigate(`/profile/${user.id}`)} 
-                className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full flex-shrink-0"
-              >
-                <Avatar url={user.avatar} className="w-6 h-6" />
-              </button>
-              
-              {user.role === 'admin' && (
-                <button 
-                  onClick={() => navigate('/admin')}
-                  className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"
-                  title="管理员面板"
-                >
-                  <Shield className="w-5 h-5" />
-                </button>
-              )}
-              
-              <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full">
-                <LogOut className="w-5 h-5" />
-              </button>
+            <div className="flex items-center gap-1 md:gap-2">
+              <button className="p-2 hover:bg-zinc-100 rounded-full"><Search className="w-5 h-5 text-zinc-600" /></button>
+              <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full" title="书架"><BookOpen className="w-5 h-5 text-zinc-600" /></button>
+              <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full"><Avatar url={user.avatar} className="w-6 h-6" /></button>
+              {user.role === 'admin' && <button onClick={() => navigate('/admin')} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"><Shield className="w-5 h-5" /></button>}
+              <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"><LogOut className="w-5 h-5" /></button>
             </div>
           </div>
         </nav>
       )}
 
-      {/* 移动端菜单 */}
+      {/* 移动端侧边菜单 */}
       {showMobileMenu && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden" onClick={() => setShowMobileMenu(false)}>
-          <div className="bg-white w-64 h-full p-4 overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white w-64 h-full p-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg">菜单</h3>
               <button onClick={() => setShowMobileMenu(false)}><X className="w-5 h-5" /></button>
             </div>
-            <div className="mb-4">
-              <button 
-                onClick={() => setShowCategoriesInMenu(!showCategoriesInMenu)}
-                className="w-full flex items-center justify-between px-2 py-2 text-base font-medium text-zinc-700 hover:bg-zinc-50 rounded"
-              >
-                <span>分类</span>
-                <span className="text-xs">{showCategoriesInMenu ? '▼' : '▶'}</span>
-              </button>
-              {showCategoriesInMenu && (
-                <div className="mt-2 space-y-1">
-                  {CATEGORIES.map(c => (
-                    <button
-                      key={c}
-                      onClick={() => { setCurrentCategory(c); navigate('/feed'); setShowMobileMenu(false); }}
-                      className={`w-full text-left px-4 py-2.5 rounded-lg text-sm ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="border-t pt-4 space-y-1">
-              <button
-                onClick={() => { navigate('/bookshelf'); setShowMobileMenu(false); }}
-                className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2"
-              >
-                <BookOpen className="w-4 h-4" />
-                <span className="text-base">我的书架</span>
-              </button>
-              {user?.role === 'admin' && (
+            <div className="space-y-1">
+              {CATEGORIES.map(c => (
                 <button
-                  onClick={() => { navigate('/admin'); setShowMobileMenu(false); }}
-                  className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2"
+                  key={c}
+                  onClick={() => { setCurrentCategory(c); navigate('/feed'); setShowMobileMenu(false); }}
+                  className={`w-full text-left px-4 py-2.5 rounded-lg text-sm ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
                 >
-                  <Shield className="w-4 h-4" />
-                  <span className="text-base">管理员面板</span>
+                  {c}
                 </button>
-              )}
-              <button onClick={() => { handleLogout(); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 rounded-lg text-zinc-600 hover:bg-zinc-100 flex items-center gap-2">
-                <LogOut className="w-4 h-4" />
-                <span className="text-base">退出登录</span>
-              </button>
+              ))}
+              <div className="border-t mt-4 pt-4">
+                <button onClick={() => { navigate('/bookshelf'); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-2"><BookOpen className="w-4 h-4" /> 书架</button>
+                <button onClick={handleLogout} className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-2"><LogOut className="w-4 h-4" /> 退出</button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 路由主体 - 统一使用守卫逻辑 */}
+      {/* 路由系统：统一硬性守卫 */}
       <main className="max-w-5xl mx-auto">
         <Routes>
           <Route path="/" element={user ? <Navigate to="/feed" /> : <Landing onLoginClick={() => navigate('/login')} />} />
@@ -301,15 +245,15 @@ function AppContent() {
                 </div>
                 <div className="divide-y divide-zinc-100">
                   {isLoading ? (
-                    <div className="py-20 text-center text-zinc-400">加载中...</div>
+                    <div className="py-20 text-center text-zinc-400">正在获取内容...</div>
                   ) : (
                     displayPosts.filter(p => p.title.includes(searchQuery)).map(post => (
                       <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
                         <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium flex items-center gap-2 flex-wrap">
-                            {post.is_essence && <span className="inline-block px-2 py-0.5 bg-black text-white text-xs font-bold rounded flex-shrink-0">蒂</span>}
-                            <span className="flex-1">{post.title}</span>
+                          <h3 className="font-medium flex items-center gap-2">
+                            {post.is_essence && <span className="px-2 py-0.5 bg-black text-white text-xs font-bold rounded">蒂</span>}
+                            <span className="truncate">{post.title}</span>
                           </h3>
                           <p className="text-sm text-zinc-500 line-clamp-2">{getPostPreview(post.content)}</p>
                           <div className="text-xs text-zinc-400 mt-1">{post.category} • {usersMap[post.user_id]?.user_name} • {timeAgo(post.created_at)}</div>
