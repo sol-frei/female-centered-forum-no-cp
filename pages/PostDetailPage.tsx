@@ -524,17 +524,9 @@ const PostDetailPage = ({
           </div>
         </div>
       )}
-      {previewImage && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
-          <img src={previewImage} className="max-w-full max-h-full" alt="" />
-        </div>
-      )}
-    </div>
-  );
-};
 
-{/* 编辑帖子弹窗 */}
-{showEditModal && (
+   {/* 编辑帖子弹窗 */}
+  {showEditModal && (
   <EditPostModal
     user={user}
     post={post}
@@ -546,5 +538,18 @@ const PostDetailPage = ({
     }}
     showToast={showToast}
   />
-)}
+)} 
+      {previewImage && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
+          <img src={previewImage} className="max-w-full max-h-full" alt="" />
+        </div>
+      )}
+
+
+      
+    </div>
+  );
+};
+
+
 export default PostDetailPage;
