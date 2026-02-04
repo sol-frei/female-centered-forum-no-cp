@@ -166,7 +166,6 @@ function AppContent() {
               <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-2 hover:bg-zinc-100 rounded-full"><Menu className="w-5 h-5" /></button>
             </div>
             <div className="flex items-center gap-1 md:gap-2">
-              <button className="p-2 hover:bg-zinc-100 rounded-full"><Search className="w-5 h-5 text-zinc-600" /></button>
               <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full"><BookOpen className="w-5 h-5 text-zinc-600" /></button>
               <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full"><Avatar url={user.avatar} className="w-6 h-6" /></button>
               {user.role === 'admin' && <button onClick={() => navigate('/admin')} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"><Shield className="w-5 h-5" /></button>}
@@ -189,4 +188,31 @@ function AppContent() {
                   <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2"><PenSquare className="w-4 h-4" /> 发帖</button>
                 </div>
                 <div className="divide-y">
-                  {isLoading ? <LoadingSpinner /> : displayPosts.map(post =>
+                  {isLoading ? <LoadingSpinner /> : displayPosts.map(post => (
+                    <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
+                      <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium truncate">{post.is_essence && <span className="mr-1 bg-black text-white px-1 text-xs">蒂</span>}{post.title}</h3>
+                        <p className="text-sm text-zinc-500 line-clamp-2">{getPostPreview(post.content)}</p>
+                        <div className="text-xs text-zinc-400 mt-1">{post.category} · {usersMap[post.user_id]?.user_name || '匿名'} · {timeAgo(post.created_at)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : <Navigate to="/login" replace />
+          } />
+          
+          <Route path="/post/:postId" element={user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" replace />} />
+          <Route path="/profile/:userId" element={user ? <UserProfile userId={user.id} onNavigateBack={() => navigate(-1)} onPostClick={(id: string) => navigate(`/post/${id}`)} /> : <Navigate to="/login" replace />} />
+          <Route path="/bookshelf" element={user ? <Bookshelf onNavigateBack={() => navigate(-1)} onBookClick={(postId: string) => navigate(`/post/${postId}`)} showToast={showToast} /> : <Navigate to="/login" replace />} />
+          <Route path="/admin" element={user?.role === 'admin' ? <AdminPanel /> : <Navigate to="/feed" replace />} />
+        </Routes>
+      </main>
+
+      {isCreatingPost && user && (
+        <CreatePostModal user={user} onClose={() => setIsCreatingPost(false)} onSuccess={() => { setIsCreatingPost(false); setRefreshKey(k => k + 1); }} showToast={showToast} />
+      )}
+    </div>
+  );
+}
