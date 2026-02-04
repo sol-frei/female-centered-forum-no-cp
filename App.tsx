@@ -77,6 +77,7 @@ function AppContent() {
   const touchStartX = useRef<number | null>(null);
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
+  // 1. 处理返回逻辑：如果是搜索状态，后退操作先清空搜索
   useEffect(() => {
     const handlePopState = () => {
       if (searchQuery) setSearchQuery('');
@@ -93,6 +94,7 @@ function AppContent() {
     setSearchQuery(val);
   };
 
+  // 2. 身份初始化
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -115,6 +117,7 @@ function AppContent() {
     initAuth();
   }, []);
 
+  // 3. 初始加载帖子
   useEffect(() => {
     if (isAuthChecking) return; 
     const loadPosts = async () => {
@@ -126,6 +129,34 @@ function AppContent() {
     loadPosts();
   }, [currentCategory, onlyEssence, refreshKey, isAuthChecking]);
 
+  // 4. 🟢 实时自动刷新逻辑：监听数据库变化
+  useEffect(() => {
+    if (isAuthChecking) return;
+
+    const postsSubscription = supabase
+      .channel('public:posts_list_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newPost = payload.new as Post;
+          // 仅当新帖符合当前选中的分类或处于“全部”版块时，自动插入顶部
+          if (currentCategory === '全部' || newPost.category === currentCategory) {
+            setDisplayPosts(prev => [newPost, ...prev]);
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          const updatedPost = payload.new as Post;
+          setDisplayPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
+        } else if (payload.eventType === 'DELETE') {
+          setDisplayPosts(prev => prev.filter(p => p.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(postsSubscription);
+    };
+  }, [currentCategory, isAuthChecking]);
+
+  // 加载用户映射
   useEffect(() => {
     if (!user) return;
     get_all_users().then(list => {
@@ -150,6 +181,7 @@ function AppContent() {
     return content.slice(0, 100);
   };
 
+  // 搜索过滤
   const filteredPosts = displayPosts.filter(post => {
     const searchLower = searchQuery.toLowerCase();
     return post.title.toLowerCase().includes(searchLower) || 
@@ -220,7 +252,7 @@ function AppContent() {
             <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
               <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-1.5 hover:bg-zinc-100 rounded-full"><Menu className="w-5 h-5" /></button>
               <h1 className="font-bold text-base md:text-lg cursor-pointer truncate hidden sm:block" onClick={() => navigate('/feed')}>
-                女主无cp/无男主交流中心
+                女主无cp交流中心
               </h1>
             </div>
 
@@ -241,24 +273,18 @@ function AppContent() {
             </div>
 
             <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-              {/* 🟢 书架图标移到了功能区最左侧 */}
+              {/* PC端：书架图标最左侧 */}
               <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
                 <BookOpen className="w-5 h-5 text-zinc-600" />
               </button>
-
-              {/* 🟢 管理员图标紧邻头像 */}
+              {/* PC端：管理员图标紧邻头像 */}
               {user.role === 'admin' && (
                 <button onClick={() => navigate('/admin')} className="hidden md:flex p-2 hover:bg-zinc-100 rounded-full transition-colors" title="管理后台">
                   <Shield className="w-5 h-5 text-zinc-600" />
                 </button>
               )}
-              
-              <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full transition-colors">
-                <Avatar url={user.avatar} className="w-6 h-6" />
-              </button>
-              <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full transition-colors">
-                <LogOut className="w-5 h-5 text-zinc-500" />
-              </button>
+              <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full transition-colors"><Avatar url={user.avatar} className="w-6 h-6" /></button>
+              <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full transition-colors"><LogOut className="w-5 h-5 text-zinc-500" /></button>
             </div>
           </div>
         </nav>
@@ -272,27 +298,46 @@ function AppContent() {
             user ? (
               <div className="p-4">
                 <div className="flex justify-between items-center mb-4 border-b pb-2">
-                  <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'border'}`}>蒂</button>
+                  <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'border border-zinc-200 hover:bg-zinc-50'}`}>蒂</button>
                   <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 rounded active:scale-95 transition-transform"><PenSquare className="w-4 h-4" /> 发帖</button>
                 </div>
+                
                 <div className="divide-y divide-zinc-100">
-                  {isLoading ? <LoadingSpinner /> : filteredPosts.map(post => (
-                    <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
-                      <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium break-words whitespace-normal text-[15px] leading-snug">
-                          {post.is_essence && <span className="mr-1 bg-black text-white px-1 text-xs inline-block align-middle rounded-sm">蒂</span>}
-                          {post.title}
-                        </h3>
-                        <p className="text-sm text-zinc-500 line-clamp-2 mt-1">{getPostPreview(post.content)}</p>
-                        <div className="text-xs text-zinc-400 mt-2">{post.category} · {usersMap[post.user_id]?.user_name || '匿名'} · {timeAgo(post.created_at)}</div>
+                  {isLoading ? (
+                    <LoadingSpinner />
+                  ) : filteredPosts.length > 0 ? (
+                    filteredPosts.map(post => (
+                      <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3 transition-colors">
+                        <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium break-words whitespace-normal text-[15px] leading-snug text-zinc-900">
+                            {post.is_essence && <span className="mr-1 bg-black text-white px-1 text-[10px] inline-block align-middle rounded-sm">蒂</span>}
+                            {post.title}
+                          </h3>
+                          <p className="text-sm text-zinc-500 line-clamp-2 mt-1">{getPostPreview(post.content)}</p>
+                          <div className="text-xs text-zinc-400 mt-2 flex items-center gap-2">
+                            <span className="bg-zinc-100 px-1.5 py-0.5 rounded text-zinc-600">{post.category}</span>
+                            <span>{usersMap[post.user_id]?.user_name || '匿名'}</span>
+                            <span>·</span>
+                            <span>{timeAgo(post.created_at)}</span>
+                          </div>
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    /* 🟢 修复：暂无内容/搜索空状态提示 */
+                    <div className="py-24 flex flex-col items-center justify-center text-zinc-400">
+                      <div className="bg-zinc-50 p-4 rounded-full mb-3">
+                        <Search className="w-8 h-8 text-zinc-200" />
+                      </div>
+                      <p className="text-sm">暂无相关帖子内容</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             ) : <Navigate to="/login" replace />
           } />
+          
           <Route path="/post/:postId" element={user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" replace />} />
           <Route path="/profile/:userId" element={user ? <UserProfile userId={user.id} onNavigateBack={() => navigate(-1)} onPostClick={(id: string) => navigate(`/post/${id}`)} /> : <Navigate to="/login" replace />} />
           <Route path="/bookshelf" element={user ? <Bookshelf onNavigateBack={() => navigate(-1)} onBookClick={(postId: string) => navigate(`/post/${postId}`)} showToast={showToast} /> : <Navigate to="/login" replace />} />
