@@ -68,16 +68,6 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
 
   const [showRules, setShowRules] = useState(false);
 
-  // 严格控制分数输入
-  const handleScoreChange = (val: string) => {
-    const num = parseFloat(val);
-    if (isNaN(num)) {
-      setImpressedScore('');
-    } else {
-      setImpressedScore(num > 10 ? 10 : num); // 强制不得超过10分
-    }
-  };
-
   const calculateFinalScore = () => {
     let deductions = 0;
     const baseScore = Number(impressedScore) || 0;
@@ -117,39 +107,39 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col overflow-hidden text-zinc-900 text-xl">
-      {/* 头部 - 黑白灰风格 */}
-      <div className="px-8 py-6 flex items-center justify-between border-b border-zinc-100 bg-white">
-        <div className="flex items-center gap-6">
-          <h2 className="text-3xl font-black tracking-tighter">女主无cp/无男主小说评分</h2>
+    <div className="fixed inset-0 bg-white z-50 flex flex-col overflow-hidden text-zinc-900 text-lg">
+      {/* 头部 */}
+      <div className="px-6 py-5 flex items-center justify-between border-b border-zinc-100">
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold tracking-tight">女主无cp/无男主小说评分</h2>
           <button 
             onClick={quickFillPerfect}
-            className="flex items-center gap-2 px-4 py-1.5 bg-zinc-900 text-white rounded hover:bg-zinc-700 text-sm font-bold transition-all shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1 bg-zinc-50 hover:bg-zinc-100 rounded border border-zinc-200 text-sm font-bold transition-colors text-zinc-500"
           >
             <Zap className="w-4 h-4" /> 一键填选
           </button>
         </div>
         <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-          <X className="w-10 h-10 text-zinc-400" />
+          <X className="w-8 h-8" />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto px-8 py-12 space-y-20">
+        <div className="max-w-5xl mx-auto px-6 py-10 space-y-16">
           
-          {/* 评分规则 (折叠 & 原始文字) */}
-          <section className="bg-zinc-50 border-y border-zinc-200">
+          {/* 评分规则 (默认折叠，文字完整恢复) */}
+          <section className="bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100">
             <button 
               onClick={() => setShowRules(!showRules)}
-              className="w-full flex items-center justify-between p-6 hover:bg-zinc-100 transition-colors"
+              className="w-full flex items-center justify-between p-5 hover:bg-zinc-100 transition-colors"
             >
-              <div className="flex items-center gap-4 font-black text-lg text-zinc-600">
-                <Info className="w-6 h-6" /> 📋 评分规则
+              <div className="flex items-center gap-3 font-bold text-base text-zinc-600">
+                <Info className="w-5 h-5" /> 📋 评分规则
               </div>
-              {showRules ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
+              {showRules ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             </button>
             {showRules && (
-              <div className="px-8 pb-8 pt-2 text-lg text-zinc-700 leading-relaxed space-y-4">
+              <div className="px-6 pb-6 pt-2 text-base text-zinc-700 leading-relaxed border-t border-zinc-200/50 space-y-3">
                 <p><strong>1. 打分为减分制。</strong></p>
                 <p>完结小说满分为10分，读者根据阅读后体验和感受，给一个印象得分，然后再根据组规进行减分。</p>
                 <p>即最终得分 = 印象分 - 减分项，最终得分 ≤ 10分。【谨慎打8分以上，禁止分数膨胀】</p>
@@ -160,50 +150,44 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
             )}
           </section>
 
-          {/* 基本信息 - 无左右边框 */}
+          {/* 基本信息 */}
           <section>
-            <h3 className="text-base font-black text-zinc-400 mb-10 flex items-center gap-4 tracking-[0.2em] uppercase">
-              基本资料 <span className="h-px flex-1 bg-zinc-100"></span>
+            <h3 className="text-sm font-black text-zinc-300 mb-8 flex items-center gap-3 tracking-widest uppercase">
+              基本资料 <span className="h-px flex-1 bg-zinc-50"></span>
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-16 gap-y-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-12 gap-y-10">
               {[
-                { label: '书名 *', val: bookName, set: setBookName },
-                { label: '作者姓名 *', val: bookAuthor, set: setBookAuthor },
+                { label: '书名 *', val: bookName, set: setBookName, ph: '输入书名' },
+                { label: '作者姓名 *', val: bookAuthor, set: setBookAuthor, ph: '输入作者' },
                 { label: '打分人', val: reviewerName, set: setReviewerName, ph: '默认为发帖者' },
-                { label: '阅读平台', val: bookPlatform, set: setBookPlatform, ph: '如：晋江' },
-                { 
-                  label: '初始印象分 (最大10) *', 
-                  val: impressedScore, 
-                  set: handleScoreChange, 
-                  type: 'number' 
-                },
+                { label: '平台', val: bookPlatform, set: setBookPlatform, ph: '如：晋江、番茄' },
+                { label: '印象分 (0-10) *', val: impressedScore, set: setImpressedScore, type: 'number' },
               ].map((item, i) => (
-                <div key={i} className="border-b-2 border-zinc-100 py-2 focus-within:border-zinc-900 transition-colors">
-                  <label className="block text-xs font-black mb-3 text-zinc-400 uppercase tracking-widest">{item.label}</label>
+                <div key={i}>
+                  <label className="block text-sm font-black mb-3 text-zinc-400 uppercase tracking-tighter">{item.label}</label>
                   <input
                     type={item.type || 'text'}
                     value={item.val}
-                    max={item.type === 'number' ? 10 : undefined}
                     onChange={(e) => item.set(e.target.value)}
-                    placeholder={item.ph || ''}
-                    className="w-full bg-transparent outline-none text-2xl font-bold placeholder:text-zinc-200"
+                    placeholder={item.ph}
+                    className="w-full pb-2 bg-transparent border-b-2 border-zinc-100 focus:border-zinc-900 outline-none transition-all text-xl font-medium placeholder:text-zinc-200"
                   />
                 </div>
               ))}
             </div>
           </section>
 
-          {/* 准则核对 - 无左右边框，黑白灰配色 */}
+          {/* 准则 (颜色逻辑修正) */}
           <section>
-            <h3 className="text-base font-black text-zinc-400 mb-10 flex items-center gap-4 tracking-[0.2em] uppercase">
-              逐项核对 <span className="h-px flex-1 bg-zinc-100"></span>
+            <h3 className="text-sm font-black text-zinc-300 mb-8 flex items-center gap-3 tracking-widest uppercase">
+              逐项核对 <span className="h-px flex-1 bg-zinc-50"></span>
             </h3>
-            <div className="divide-y divide-zinc-100">
+            <div className="divide-y divide-zinc-50">
               {PRINCIPLES.map((p, index) => {
                 const currentAnswer = principleScores[p.id];
+                // 逻辑判断：普通项选Yes是红(扣分)，反向项选Yes是绿(合规)
                 const getLabelColor = (type: 'yes' | 'no') => {
-                  if (currentAnswer !== type) return 'text-zinc-200';
-                  // 后三项(p23-p25)是反向逻辑
+                  if (currentAnswer !== type) return 'text-zinc-300';
                   if (p.reverseScore) {
                     return type === 'yes' ? 'text-green-600' : 'text-red-600';
                   }
@@ -211,38 +195,38 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
                 };
 
                 return (
-                  <div key={p.id} className="py-10 first:pt-0">
-                    <div className="flex flex-col md:flex-row md:items-start gap-10">
+                  <div key={p.id} className="py-8 first:pt-0">
+                    <div className="flex flex-col md:flex-row md:items-start gap-8">
                       <div className="flex-1">
-                        <p className="text-xl leading-relaxed text-zinc-800 font-semibold">
-                          <span className="text-zinc-300 font-mono mr-5 text-base italic">{(index + 1).toString().padStart(2, '0')}</span>
+                        <p className="text-lg leading-relaxed text-zinc-700 font-medium">
+                          <span className="text-zinc-300 font-mono mr-4 text-sm tracking-tighter italic">{(index + 1).toString().padStart(2, '0')}</span>
                           {p.text}
                         </p>
                       </div>
-                      <div className="flex items-center gap-10 shrink-0 pt-1">
+                      <div className="flex items-center gap-6 shrink-0 pt-1">
                         {(['yes', 'no'] as const).map((type) => (
-                          <label key={type} className="flex items-center gap-3 cursor-pointer group">
+                          <label key={type} className="flex items-center gap-2 cursor-pointer group">
                             <input
                               type="radio"
                               name={p.id}
                               checked={currentAnswer === type}
                               onChange={() => setPrincipleScores(prev => ({ ...prev, [p.id]: type }))}
-                              className="w-6 h-6 accent-zinc-900"
+                              className="w-5 h-5 accent-zinc-900"
                             />
-                            <span className={`text-xl font-black uppercase transition-colors ${getLabelColor(type)}`}>
+                            <span className={`text-base font-black tracking-tighter uppercase transition-colors ${getLabelColor(type)}`}>
                               {type === 'yes' ? '有' : '没有'}
                             </span>
                           </label>
                         ))}
                       </div>
                     </div>
-                    <div className="mt-8">
+                    <div className="mt-5 pl-11">
                       <input
                         type="text"
                         value={principleRemarks[p.id] || ''}
                         onChange={(e) => setPrincipleRemarks(prev => ({ ...prev, [p.id]: e.target.value }))}
-                        placeholder="在此处输入该项的详细备注说明..."
-                        className="w-full text-lg text-zinc-800 bg-zinc-50 px-6 py-4 rounded-lg border border-zinc-200 focus:border-zinc-900 focus:bg-white outline-none transition-all placeholder:text-zinc-300"
+                        placeholder="点击输入补充备注..."
+                        className="w-full text-base text-zinc-800 bg-zinc-50 px-4 py-3 rounded-lg border-2 border-zinc-100 focus:border-zinc-300 focus:bg-white outline-none transition-all placeholder:text-zinc-300"
                       />
                     </div>
                   </div>
@@ -251,48 +235,48 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
             </div>
           </section>
 
-          {/* 额外扣分 - 极简黑白灰 */}
-          <section className="pt-12 border-t border-zinc-100">
-            <div className="max-w-2xl space-y-10">
+          {/* 额外扣分 */}
+          <section className="pt-10 border-t border-zinc-100">
+            <div className="max-w-2xl space-y-8">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-black text-zinc-400 uppercase tracking-widest">其他恶劣情节减分</label>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-zinc-500 font-bold">扣分分值:</span>
+                <label className="text-sm font-black text-zinc-400 uppercase tracking-widest">其他恶劣情节扣分</label>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-zinc-400 font-bold uppercase">扣分分值:</span>
                   <input
                     type="number"
                     value={extraDeduction}
                     onChange={(e) => setExtraDeduction(Number(e.target.value))}
-                    className="w-24 border-b-2 border-zinc-200 outline-none focus:border-zinc-900 text-center text-2xl font-black pb-1"
+                    className="w-20 border-b-2 border-zinc-200 outline-none focus:border-black text-center text-xl font-bold pb-1"
                   />
                 </div>
               </div>
               <textarea
                 value={extraRemark}
                 onChange={(e) => setExtraRemark(e.target.value)}
-                placeholder="详细说明额外扣分的原因..."
-                className="w-full bg-zinc-50 rounded-xl p-6 h-40 text-xl outline-none border border-zinc-200 focus:border-zinc-900 focus:bg-white transition-all placeholder:text-zinc-300"
+                placeholder="在此说明额外扣分的原因..."
+                className="w-full bg-zinc-50 rounded-xl p-5 h-32 text-lg outline-none border-2 border-zinc-100 focus:border-zinc-300 focus:bg-white transition-all placeholder:text-zinc-300"
               />
             </div>
           </section>
           
-          <div className="h-48" />
+          <div className="h-40" />
         </div>
       </div>
 
-      {/* 底部吸底 - 极简白背景 */}
-      <div className="px-12 py-10 border-t border-zinc-100 bg-white flex items-center justify-between shadow-2xl">
-        <div className="flex items-baseline gap-6">
+      {/* 底部吸底 */}
+      <div className="px-10 py-8 border-t border-zinc-100 bg-white/90 backdrop-blur-lg flex items-center justify-between shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+        <div className="flex items-baseline gap-4">
           <span className="text-sm font-black text-zinc-300 uppercase tracking-[0.4em]">最终评分</span>
-          <span className="text-7xl font-black italic tracking-tighter text-zinc-900 leading-none">{finalScore.toFixed(1)}</span>
+          <span className="text-6xl font-black italic tracking-tighter text-zinc-900 leading-none">{finalScore.toFixed(1)}</span>
         </div>
-        <div className="flex items-center gap-12">
+        <div className="flex items-center gap-10">
           <button onClick={onClose} className="text-sm font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 transition-colors">取消</button>
           <button
             onClick={handleSave}
-            className="w-24 h-24 bg-zinc-900 text-white rounded-full flex items-center justify-center hover:bg-black hover:scale-105 active:scale-95 transition-all shadow-xl"
-            title="保存"
+            className="w-20 h-20 bg-zinc-900 text-white rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-2xl shadow-zinc-300"
+            title="保存评分"
           >
-            <Save className="w-10 h-10" />
+            <Save className="w-8 h-8" />
           </button>
         </div>
       </div>
