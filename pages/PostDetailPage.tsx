@@ -474,6 +474,10 @@ const PostDetailPage = ({
               const commentAuthor = usersMap[c.user_id];
               const repliedComment = c.reply_to_id ? comments.find(cm => cm.id === c.reply_to_id) : null;
               const isCommentLiked = c.likes?.includes(user?.id);
+              
+              // 调试：打印user_id信息
+              console.log('评论ID:', c.id, '| 评论user_id:', c.user_id, '| 当前用户ID:', user?.id, '| 评论作者:', commentAuthor?.user_name);
+              
               return (
                 <div key={c.id} className="flex gap-3 pb-4 border-b border-zinc-50">
                   <div 
