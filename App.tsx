@@ -23,7 +23,7 @@ import {
 
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
-// 统一的黑色旋转圆圈加载组件
+// ✅ 统一样式：黑色旋转圆圈
 const LoadingSpinner = ({ fullScreen = false }: { fullScreen?: boolean }) => (
   <div className={`${fullScreen ? 'min-h-screen' : 'py-20'} flex items-center justify-center bg-white`}>
     <div className="w-6 h-6 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin"></div>
@@ -62,9 +62,8 @@ function AppContent() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   
-  // --- 状态管理 ---
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthChecking, setIsAuthChecking] = useState(true); // 全局启动拦截
+  const [isAuthChecking, setIsAuthChecking] = useState(true); 
   const [currentCategory, setCurrentCategory] = useState<Category | '全部'>((searchParams.get('cat') as Category) || '全部');
   const [searchQuery] = useState('');
   const [onlyEssence, setOnlyEssence] = useState(false);
@@ -72,13 +71,12 @@ function AppContent() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [usersMap, setUsersMap] = useState<Record<string, User>>({});
   const [displayPosts, setDisplayPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(false); // 局部业务更新
+  const [isLoading, setIsLoading] = useState(false); 
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
-  // 1. 初始化鉴权：防止刷新时路由“抢跑”
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -94,8 +92,6 @@ function AppContent() {
             }
           }
         }
-      } catch (err) {
-        console.error("Auth initialization failed:", err);
       } finally {
         setIsAuthChecking(false);
       }
@@ -103,7 +99,6 @@ function AppContent() {
     initAuth();
   }, []);
 
-  // 2. 加载帖子数据
   useEffect(() => {
     if (isAuthChecking) return; 
     const loadPosts = async () => {
@@ -118,7 +113,6 @@ function AppContent() {
     loadPosts();
   }, [currentCategory, onlyEssence, refreshKey, isAuthChecking]);
 
-  // 3. 维护用户映射表
   useEffect(() => {
     if (!user) return;
     get_all_users().then(list => {
@@ -131,7 +125,7 @@ function AppContent() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    navigate('/');
+    navigate('/login', { replace: true });
   };
 
   const getPostPreview = (content: string) => {
@@ -142,14 +136,10 @@ function AppContent() {
     return content.slice(0, 100);
   };
 
-  // --- 拦截：启动时显示全屏小圆圈 ---
-  if (isAuthChecking) {
-    return <LoadingSpinner fullScreen />;
-  }
+  if (isAuthChecking) return <LoadingSpinner fullScreen />;
 
-  // 强制改密逻辑
   if (user && user.is_first_login) {
-    return <ChangePasswordModal user={user} onComplete={(u) => { setUser(u); navigate('/feed'); }} />;
+    return <ChangePasswordModal user={user} onComplete={(u) => { setUser(u); navigate('/feed', { replace: true }); }} />;
   }
 
   const isLoginPage = location.pathname === '/login' || location.pathname === '/';
@@ -161,7 +151,6 @@ function AppContent() {
     <div className="min-h-screen bg-white text-zinc-900">
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* 顶部导航 */}
       {user && !isLoginPage && !hideNavPages && (
         <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
           <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -171,20 +160,14 @@ function AppContent() {
               </h1>
               <div className="hidden md:flex gap-1">
                 {CATEGORIES.map(c => (
-                  <button
-                    key={c}
-                    onClick={() => { setCurrentCategory(c); navigate('/feed'); }}
-                    className={`px-3 py-1 text-sm rounded-full ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
-                  >
+                  <button key={c} onClick={() => { setCurrentCategory(c); navigate('/feed'); }}
+                    className={`px-3 py-1 text-sm rounded-full ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}>
                     {c}
                   </button>
                 ))}
               </div>
-              <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-2 hover:bg-zinc-100 rounded-full">
-                <Menu className="w-5 h-5" />
-              </button>
+              <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-2 hover:bg-zinc-100 rounded-full"><Menu className="w-5 h-5" /></button>
             </div>
-
             <div className="flex items-center gap-1 md:gap-2">
               <button className="p-2 hover:bg-zinc-100 rounded-full"><Search className="w-5 h-5 text-zinc-600" /></button>
               <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full" title="书架"><BookOpen className="w-5 h-5 text-zinc-600" /></button>
@@ -196,76 +179,59 @@ function AppContent() {
         </nav>
       )}
 
-      {/* 移动端菜单 */}
       {showMobileMenu && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 md:hidden" onClick={() => setShowMobileMenu(false)}>
+        <div className="fixed inset-0 bg-black/50 z-50 md:hidden" onClick={() => setShowMobileMenu(false)}>
           <div className="bg-white w-64 h-full p-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">菜单</h3>
-              <button onClick={() => setShowMobileMenu(false)}><X className="w-5 h-5" /></button>
-            </div>
-            <div className="space-y-1">
-              {CATEGORIES.map(c => (
-                <button
-                  key={c}
-                  onClick={() => { setCurrentCategory(c); navigate('/feed'); setShowMobileMenu(false); }}
-                  className={`w-full text-left px-4 py-2.5 rounded-lg text-sm ${currentCategory === c ? 'bg-black text-white' : 'text-zinc-600 hover:bg-zinc-100'}`}
-                >
-                  {c}
-                </button>
-              ))}
-              <div className="border-t mt-4 pt-4">
-                <button onClick={() => { navigate('/bookshelf'); setShowMobileMenu(false); }} className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-2 text-zinc-600"><BookOpen className="w-4 h-4" /> 我的书架</button>
-                <button onClick={handleLogout} className="w-full text-left px-4 py-3 rounded-lg flex items-center gap-2 text-zinc-600"><LogOut className="w-4 h-4" /> 退出登录</button>
-              </div>
-            </div>
+             <div className="flex justify-between items-center mb-6">
+               <span className="font-bold">菜单</span>
+               <X className="w-5 h-5" onClick={() => setShowMobileMenu(false)} />
+             </div>
+             <div className="space-y-4">
+               {CATEGORIES.map(c => (
+                 <div key={c} onClick={() => { setCurrentCategory(c); navigate('/feed'); setShowMobileMenu(false); }} className="text-zinc-600 cursor-pointer">{c}</div>
+               ))}
+               <div className="border-t pt-4 space-y-4">
+                 <div onClick={() => { navigate('/bookshelf'); setShowMobileMenu(false); }} className="flex items-center gap-2 cursor-pointer"><BookOpen className="w-4 h-4" /> 书架</div>
+                 <div onClick={handleLogout} className="flex items-center gap-2 text-red-500 cursor-pointer"><LogOut className="w-4 h-4" /> 退出</div>
+               </div>
+             </div>
           </div>
         </div>
       )}
 
       <main className="max-w-5xl mx-auto">
         <Routes>
-          <Route path="/" element={user ? <Navigate to="/feed" /> : <Landing onLoginClick={() => navigate('/login')} />} />
-          <Route path="/login" element={<LoginPage onLogin={(u) => { setUser(u); navigate('/feed'); }} />} />
+          {/* ✅ 关键修复：如果已登录，访问 / 或 /login 直接弹回 /feed */}
+          <Route path="/" element={user ? <Navigate to="/feed" replace /> : <Landing onLoginClick={() => navigate('/login')} />} />
+          <Route path="/login" element={user ? <Navigate to="/feed" replace /> : <LoginPage onLogin={(u) => { setUser(u); navigate('/feed', { replace: true }); }} />} />
           
           <Route path="/feed" element={
             user ? (
               <div className="p-4">
                 <div className="flex justify-between items-center mb-4 border-b pb-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={onlyEssence} onChange={e => setOnlyEssence(e.target.checked)} className="hidden" />
-                    <div className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'bg-white text-black border border-zinc-300'}`}>蒂</div>
-                  </label>
-                  <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 hover:bg-zinc-800">
-                    <PenSquare className="w-4 h-4" /> 发帖
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'border'}`}>蒂</button>
+                  </div>
+                  <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2"><PenSquare className="w-4 h-4" /> 发帖</button>
                 </div>
-
-                <div className="divide-y divide-zinc-100">
-                  {isLoading ? (
-                    <LoadingSpinner />
-                  ) : (
-                    displayPosts.filter(p => p.title.includes(searchQuery)).map(post => (
-                      <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
-                        <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium flex items-center gap-2">
-                            {post.is_essence && <span className="px-2 py-0.5 bg-black text-white text-xs font-bold rounded">蒂</span>}
-                            <span className="truncate">{post.title}</span>
-                          </h3>
-                          <p className="text-sm text-zinc-500 line-clamp-2">{getPostPreview(post.content)}</p>
-                          <div className="text-xs text-zinc-400 mt-1">{post.category} • {usersMap[post.user_id]?.user_name} • {timeAgo(post.created_at)}</div>
-                        </div>
+                <div className="divide-y">
+                  {isLoading ? <LoadingSpinner /> : displayPosts.map(post => (
+                    <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3">
+                      <Avatar url={usersMap[post.user_id]?.avatar} className="w-10 h-10 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium truncate">{post.is_essence && <span className="mr-1 bg-black text-white px-1 text-xs">蒂</span>}{post.title}</h3>
+                        <p className="text-sm text-zinc-500 line-clamp-2">{getPostPreview(post.content)}</p>
+                        <div className="text-xs text-zinc-400 mt-1">{post.category} · {usersMap[post.user_id]?.user_name} · {timeAgo(post.created_at)}</div>
                       </div>
-                    ))
-                  )}
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : <Navigate to="/login" replace />
           } />
-
+          
           <Route path="/post/:postId" element={user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" replace />} />
-          <Route path="/profile/:userId" element={user ? <UserProfile userId={user.id} onNavigateBack={() => navigate(-1)} onPostClick={(id) => navigate(`/post/${id}`)} /> : <Navigate to="/login" replace />} />
+          <Route path="/profile/:userId" element={user ? <UserProfile userId={userId} onNavigateBack={() => navigate(-1)} onPostClick={(id) => navigate(`/post/${id}`)} /> : <Navigate to="/login" replace />} />
           <Route path="/bookshelf" element={user ? <Bookshelf onNavigateBack={() => navigate(-1)} onBookClick={(postId) => navigate(`/post/${postId}`)} showToast={showToast} /> : <Navigate to="/login" replace />} />
           <Route path="/admin" element={user?.role === 'admin' ? <AdminPanel /> : <Navigate to="/feed" replace />} />
         </Routes>
