@@ -77,7 +77,6 @@ function AppContent() {
   const touchStartX = useRef<number | null>(null);
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
-  // 处理返回手势/浏览器后退
   useEffect(() => {
     const handlePopState = () => {
       if (searchQuery) setSearchQuery('');
@@ -87,7 +86,6 @@ function AppContent() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [searchQuery, showMobileMenu]);
 
-  // 搜索逻辑
   const handleSearchChange = (val: string) => {
     if (!searchQuery && val) {
       window.history.pushState({ searching: true }, '');
@@ -158,7 +156,6 @@ function AppContent() {
            post.content.toLowerCase().includes(searchLower);
   });
 
-  // 侧边栏滑动关闭
   const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStartX.current === null) return;
@@ -219,16 +216,16 @@ function AppContent() {
 
       {user && !isLoginPage && !hideNavPages && (
         <nav className="border-b border-zinc-200 sticky top-0 bg-white z-40">
-          <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+          <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-2 md:gap-4">
             <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
               <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-1.5 hover:bg-zinc-100 rounded-full"><Menu className="w-5 h-5" /></button>
-              <h1 className="font-bold text-base md:text-lg cursor-pointer truncate" onClick={() => navigate('/feed')}>
-                女主无cp/无男主交流中心
+              {/* 🟢 手机端隐藏标题 (hidden sm:block) */}
+              <h1 className="font-bold text-base md:text-lg cursor-pointer truncate hidden sm:block" onClick={() => navigate('/feed')}>
+                女主无cp交流中心
               </h1>
             </div>
 
-            {/* 🟢 修复后的搜索框：PC 和 移动端均可见 */}
-            <div className="flex-1 max-w-xs relative group">
+            <div className="flex-1 max-w-xs relative group mx-2 sm:mx-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-black" />
               <input 
                 type="text" 
@@ -245,11 +242,13 @@ function AppContent() {
             </div>
 
             <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+              {/* 🟢 PC 端：管理员 Shield 放在最左侧 */}
               {user.role === 'admin' && (
                 <button onClick={() => navigate('/admin')} className="hidden md:flex p-2 hover:bg-zinc-100 rounded-full transition-colors" title="管理后台">
                   <Shield className="w-5 h-5 text-zinc-600" />
                 </button>
               )}
+              {/* 🟢 图书图标 BookOpen 现在位于管理员和头像之间 */}
               <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full"><BookOpen className="w-5 h-5 text-zinc-600" /></button>
               <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full"><Avatar url={user.avatar} className="w-6 h-6" /></button>
               <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full"><LogOut className="w-5 h-5 text-zinc-500" /></button>
@@ -288,7 +287,6 @@ function AppContent() {
               </div>
             ) : <Navigate to="/login" replace />
           } />
-          {/* 其他路由保持不变 */}
           <Route path="/post/:postId" element={user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" replace />} />
           <Route path="/profile/:userId" element={user ? <UserProfile userId={user.id} onNavigateBack={() => navigate(-1)} onPostClick={(id: string) => navigate(`/post/${id}`)} /> : <Navigate to="/login" replace />} />
           <Route path="/bookshelf" element={user ? <Bookshelf onNavigateBack={() => navigate(-1)} onBookClick={(postId: string) => navigate(`/post/${postId}`)} showToast={showToast} /> : <Navigate to="/login" replace />} />
