@@ -29,7 +29,7 @@ export const check_sensitive_words = async (text: string): Promise<void> => {
 // ==========================================
 
 export const create_post = async (post_data: any) => {
-  // 提取文本内容进行敏感词检查
+  // 提取真实文本内容进行敏感词检查
   let textToCheck = post_data.title || '';
   try {
     const contentBlocks = JSON.parse(post_data.content);
@@ -59,7 +59,6 @@ export const create_post = async (post_data: any) => {
 };
 
 export const update_post = async (postId: string, updates: any) => {
-  // 同样进行敏感词检查
   if (updates.title) await check_sensitive_words(updates.title);
   
   const { data, error } = await supabase
@@ -82,7 +81,9 @@ export const delete_post = async (postId: string) => {
   if (error) throw error;
 };
 
-// 修复：添加 PostDetailPage 需要的加精函数
+/**
+ * 切换帖子的加精（蒂贴）状态 - PostDetailPage 调用
+ */
 export const toggle_essence_post = async (postId: string, isEssence: boolean) => {
   const { error } = await supabase
     .from('posts')
@@ -108,7 +109,9 @@ export const toggle_like_post = async (postId: string, userId: string, isLiked: 
   }
 };
 
-// 修正：调整参数顺序以匹配 PostDetailPage 的调用: (postId, userId, optionIndex)
+/**
+ * 投票功能 - 已修正参数顺序匹配 PostDetailPage 调用
+ */
 export const vote_poll = async (postId: string, userId: string, optionIndex: number) => {
   const { error } = await supabase
     .from('poll_votes')
@@ -170,14 +173,16 @@ export const create_collection = async (userId: string, name: string) => {
   return data;
 };
 
-// 修复：添加 PostDetailPage 调用的 addToCollection 函数
+/**
+ * 添加到合集 - PostDetailPage 调用
+ */
 export const addToCollection = async (collectionId: string, postId: string) => {
   const { error } = await supabase
     .from('collection_posts')
     .insert([{ collection_id: collectionId, post_id: postId }]);
 
   if (error) {
-    if (error.code === '23505') return; // 如果已经收藏过了，忽略错误
+    if (error.code === '23505') return; 
     throw error;
   }
 };
@@ -185,6 +190,19 @@ export const addToCollection = async (collectionId: string, postId: string) => {
 // ==========================================
 // 5. 图书评分 (Book Rating Operations)
 // ==========================================
+
+/**
+ * 获取所有图书评分列表 - Bookshelf.tsx 调用
+ */
+export const get_all_book_ratings = async () => {
+  const { data, error } = await supabase
+    .from('book_ratings')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
 
 export const get_book_rating_by_post = async (postId: string) => {
   const { data, error } = await supabase
@@ -230,7 +248,7 @@ export const delete_book_rating = async (postId: string) => {
 };
 
 // ==========================================
-// 6. 管理员及其他功能
+// 6. 管理员及统计功能
 // ==========================================
 
 export async function get_all_sensitive_words() {
@@ -289,7 +307,7 @@ export async function search_book_ratings(query: string) {
     const { data, error } = await supabase
       .from('book_ratings')
       .select('*')
-      .or(`book_name.ilike.%${query}%,author.ilike.%${query}%`)
+      .or(`book_name.ilike.%${query}%,reviewer_name.ilike.%${query}%`)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
