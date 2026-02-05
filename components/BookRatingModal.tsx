@@ -168,8 +168,21 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
                   <input
                     type={item.type || 'text'}
                     value={item.val}
-                    onChange={(e) => item.set(e.target.value)}
+                    onChange={(e) => {
+                      // 如果是印象分输入框，限制最大值为10
+                      if (item.type === 'number' && item.label.includes('印象分')) {
+                        const value = parseFloat(e.target.value);
+                        if (e.target.value === '' || (value >= 0 && value <= 10)) {
+                          item.set(e.target.value);
+                        }
+                      } else {
+                        item.set(e.target.value);
+                      }
+                    }}
                     placeholder={item.ph}
+                    min={item.type === 'number' ? 0 : undefined}
+                    max={item.type === 'number' && item.label.includes('印象分') ? 10 : undefined}
+                    step={item.type === 'number' ? 0.1 : undefined}
                     className="w-full pb-2 bg-transparent border-b-2 border-zinc-100 focus:border-zinc-900 outline-none transition-all text-xl font-medium placeholder:text-zinc-200"
                   />
                 </div>
