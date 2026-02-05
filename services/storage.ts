@@ -4,7 +4,7 @@ import { ToastType,User, Post, Category, Collection, Notification, SensitiveWord
 
 // 敏感词处理逻辑
 
-// 只负责：发布前校验，发现敏感词直接拦截
+// 只负责:发布前校验,发现敏感词直接拦截
 export const check_sensitive_words = async (text: string): Promise<void> => {
   if (!text) return;
 
@@ -19,7 +19,7 @@ export const check_sensitive_words = async (text: string): Promise<void> => {
   );
 
   if (hit) {
-    throw new Error('内容包含违禁词，发布失败');
+    throw new Error('内容包含违禁词,发布失败');
   }
 };
 
@@ -29,7 +29,7 @@ export const check_sensitive_words = async (text: string): Promise<void> => {
 
 export const create_post = async (post_data: any) => {
 
-  // ✅ 1️⃣ 提取真实文本内容进行敏感词检查（修复：正确处理JSON格式）
+  // ✅ 1️⃣ 提取真实文本内容进行敏感词检查(修复:正确处理JSON格式)
   let textToCheck = post_data.title || '';
   
   try {
@@ -43,11 +43,11 @@ export const create_post = async (post_data: any) => {
         .join(' ');
       textToCheck += ' ' + textContent;
     } else {
-      // 如果不是数组，当作普通文本处理
+      // 如果不是数组,当作普通文本处理
       textToCheck += ' ' + post_data.content;
     }
   } catch {
-    // 解析失败，当作普通文本处理（兼容旧数据）
+    // 解析失败,当作普通文本处理(兼容旧数据)
     textToCheck += ' ' + (post_data.content || '');
   }
 
@@ -101,13 +101,12 @@ export const get_posts = async (category: Category | '全部', sort: 'new' | 'es
   return data;
 };
 
-// 点赞/取消点赞
-
+// 点赞/取消点赞帖子 - 🟢 新增通知功能
 export const toggle_like_post = async (post_id: string, user_id: string) => {
   // 1. 先从数据库获取最新的点赞数据
   const { data: currentPost, error: fetchError } = await supabase
     .from('posts')
-    .select('likes')
+    .select('likes, user_id, title')
     .eq('id', post_id)
     .single();
 
@@ -127,6 +126,37 @@ export const toggle_like_post = async (post_id: string, user_id: string) => {
     .eq('id', post_id);
 
   if (updateError) throw updateError;
+
+  // 3. 🟢 新增:如果是点赞操作(不是取消点赞),且不是自己给自己点赞,则创建通知
+  if (!is_liked && user_id !== currentPost.user_id) {
+    try {
+      // 获取点赞者的用户名
+      const { data: liker } = await supabase
+        .from('users')
+        .select('user_name')
+        .eq('id', user_id)
+        .single();
+
+      if (liker) {
+        await supabase
+          .from('notifications')
+          .insert([{
+            user_id: currentPost.user_id, // 通知帖子作者
+            from_user_id: user_id,
+            from_user_name: liker.user_name,
+            type: 'like',
+            post_id: post_id,
+            content: null,
+            is_read: false,
+            created_at: new Date().toISOString()
+          }]);
+      }
+    } catch (err) {
+      console.error('创建点赞通知失败:', err);
+      // 不影响主功能,继续执行
+    }
+  }
+
   return new_likes;
 };
 
@@ -144,15 +174,15 @@ export const toggle_collection = async (collection_id: string, post_id: string) 
     .maybeSingle();
 
   if (existing) {
-    // 2. 如果已存在，则删除记录（取消收藏）
+    // 2. 如果已存在,则删除记录(取消收藏)
     await supabase
       .from('collection_posts')
       .delete()
       .eq('id', existing.id);
     return false;
   } else {
-    // 3. 如果不存在，则插入记录（收藏成功）
-    // 注意：这里只写 collection_id 和 post_id
+    // 3. 如果不存在,则插入记录(收藏成功)
+    // 注意:这里只写 collection_id 和 post_id
     await supabase
       .from('collection_posts')
       .insert([{ 
@@ -179,7 +209,7 @@ export const get_user = async (id: string) => {
     .from('users')
     .select('*')
     .eq('id', id)
-    .maybeSingle(); // 意思是：如果找到了就给一个对象，没找到就给 null
+    .maybeSingle(); // 意思是:如果找到了就给一个对象,没找到就给 null
 
   if (error) {
     console.error('获取用户信息失败:', error.message);
@@ -199,22 +229,22 @@ export const vote_poll = async (post_id: string, opt_id: string, user_id: string
 
   const new_poll = { ...post.poll };
 
-  // 2. 🔴 关键修改：检查用户是否已经在任何选项中投过票
+  // 2. 🔴 关键修改:检查用户是否已经在任何选项中投过票
   const hasVoted = new_poll.options.some((opt: any) => 
     opt.votes && opt.votes.includes(user_id)
   );
 
   if (hasVoted) {
-    // 如果已经投过票，直接抛出错误，阻止后续更新
-    throw new Error('您已经参与过投票，结果不可更改');
+    // 如果已经投过票,直接抛出错误,阻止后续更新
+    throw new Error('您已经参与过投票,结果不可更改');
   }
 
-  // 3. 🟢 更新逻辑：只负责把用户 ID 加到选中的选项里
+  // 3. 🟢 更新逻辑:只负责把用户 ID 加到选中的选项里
   new_poll.options = new_poll.options.map((opt: any) => {
     if (opt.id === opt_id) {
       return { 
         ...opt, 
-        // 使用解构赋值确保原有的 votes 数组被保留，并加入新用户
+        // 使用解构赋值确保原有的 votes 数组被保留,并加入新用户
         votes: [...(opt.votes || []), user_id] 
       };
     }
@@ -228,7 +258,7 @@ export const vote_poll = async (post_id: string, opt_id: string, user_id: string
 
 //评论功能
 /**
- * 添加评论（精简版：通知由数据库触发器处理）
+ * 添加评论(精简版:通知由数据库触发器处理)
  */
 export async function add_comment(
   commentData: {
@@ -240,8 +270,8 @@ export async function add_comment(
     images?: string[] | null;
     likes?: string[];
   },
-  post_user_id: string, // 触发器会自动处理，这个参数后续可以不用传了
-  post_title: string    // 同上，这个也可以不用传了
+  post_user_id: string, // 触发器会自动处理,这个参数后续可以不用传了
+  post_title: string    // 同上,这个也可以不用传了
 ) {
   // 1. 发布前敏感词拦截
   await check_sensitive_words(commentData.content);
@@ -263,7 +293,7 @@ export async function add_comment(
     .single();
   if (error) throw error;
   
-  // 3. ✅ 更新帖子的最后评论时间（用于顶帖排序）
+  // 3. ✅ 更新帖子的最后评论时间(用于顶帖排序)
   const { error: updateError } = await supabase
     .from('posts')
     .update({ last_comment_at: new Date().toISOString() })
@@ -271,30 +301,30 @@ export async function add_comment(
   
   if (updateError) {
     console.error('更新帖子最后评论时间失败:', updateError);
-    // 不抛出错误，因为评论已经成功添加
+    // 不抛出错误,因为评论已经成功添加
   }
   
-  // 🎉 注意：这里删除了原来几十行关于 notifications 的判断和插入逻辑
-  // 数据库触发器检测到 comments 表有新行时，会自动完成通知任务
+  // 🎉 注意:这里删除了原来几十行关于 notifications 的判断和插入逻辑
+  // 数据库触发器检测到 comments 表有新行时,会自动完成通知任务
   return data;
 }
 
 /**
- * 更新评论（替换原有的 update_comment 函数）
- * 新增功能：支持更新图片
+ * 更新评论(替换原有的 update_comment 函数)
+ * 新增功能:支持更新图片
  */
 export async function update_comment(
   commentId: string, 
   content: string, 
-  images?: string[]  // 新增：可选的图片数组
+  images?: string[]  // 新增:可选的图片数组
 ) {
-  // ✅ ① 编辑前敏感词拦截（只拦截发布）
+  // ✅ ① 编辑前敏感词拦截(只拦截发布)
   await check_sensitive_words(content);
   const updateData: any = {
     content,
     updated_at: new Date().toISOString(),
   };
-  // 如果传入了 images 参数，则更新图片
+  // 如果传入了 images 参数,则更新图片
   if (images !== undefined) {
     updateData.images = images;
   }
@@ -307,8 +337,8 @@ export async function update_comment(
 
 
 /**
- * 删除评论（替换原有的 delete_comment 函数）
- * 功能保持不变，但确保完整性
+ * 删除评论(替换原有的 delete_comment 函数)
+ * 功能保持不变,但确保完整性
  */
 export async function delete_comment(commentId: string) {
   const { error } = await supabase
@@ -320,13 +350,13 @@ export async function delete_comment(commentId: string) {
 }
 
 /**
- * 切换评论点赞（精简版）
+ * 切换评论点赞 - 🟢 新增通知功能
  */
 export async function toggle_like_comment(commentId: string, userId: string) {
   // 1. 获取当前评论信息
   const { data: comment, error: fetchError } = await supabase
     .from('comments')
-    .select('likes, user_id, post_id')
+    .select('likes, user_id, post_id, content')
     .eq('id', commentId)
     .single();
 
@@ -347,125 +377,102 @@ export async function toggle_like_comment(commentId: string, userId: string) {
 
   if (updateError) throw updateError;
 
-  // 🎉 这里原本有一大段手动 insert notifications 的代码，现在也删掉了
-  // 如果你为"点赞表"也写了触发器，它会自动生效
+  // 3. 🟢 新增:如果是点赞操作且不是自己给自己点赞,则创建通知
+  if (!hasLiked && userId !== comment.user_id) {
+    try {
+      // 获取点赞者的用户名
+      const { data: liker } = await supabase
+        .from('users')
+        .select('user_name')
+        .eq('id', userId)
+        .single();
 
-  return { hasLiked: !hasLiked, likesCount: newLikes.length };
-}
-
-/**
- * 获取评论列表（你已经有这个函数了，不需要重复添加）
- * 保持你现有的 getComments 函数不变即可
- */
-// export async function getComments(postId: string) {
-//   // 你已经有这个函数了，在 storage.ts 第 451-465 行
-// }
-
-// --- 帖子管理 (管理员功能) ---
-
-//切换精华状态
-
-export const toggle_essence_post = async (post_id: string, is_essence: boolean) => {
-  const { error } = await supabase.from('posts').update({ is_essence }).eq('id', post_id);
-  if (error) throw error;
-};
-
-// 切换锁定状态
- 
-export const toggle_lock_post = async (post_id: string, is_locked: boolean) => {
-  const { error } = await supabase.from('posts').update({ is_locked }).eq('id', post_id);
-  if (error) throw error;
-};
-
-//更新帖子内容 (修改帖子)
-
-export const update_post = async (post_id: string, update_data: any) => {
-  const { error } = await supabase.from('posts').update(update_data).eq('id', post_id);
-  if (error) throw error;
-};
-
-//删除帖子
-
-export const delete_post = async (post_id: string) => {
-  const { error } = await supabase.from('posts').delete().eq('id', post_id);
-  if (error) throw error;
-};
-
-// --- 收藏功能 ---
-
-//创建新收藏夹
-
-export const create_collection = async (user_id: string, name: string) => {
-  const { error } = await supabase.from('collections').insert([{
-    user_id,
-    name,
-  }]);
-  if (error) throw error;
-};
-
-
-/**
- * 获取指定帖子的所有评论
- * @param postId 帖子ID
- * @returns 评论列表
- */
-export async function getComments(postId: string) {
-  try {
-    const { data, error } = await supabase
-      .from('comments')
-      .select('*')
-      .eq('post_id', postId)
-      .order('created_at', { ascending: true });
-
-    if (error) throw error;
-    return data || [];
-  } catch (error: any) {
-    console.error('获取评论失败:', error);
-    throw new Error(`获取评论失败: ${error.message}`);
+      if (liker) {
+        await supabase
+          .from('notifications')
+          .insert([{
+            user_id: comment.user_id, // 通知评论作者
+            from_user_id: userId,
+            from_user_name: liker.user_name,
+            type: 'like',
+            post_id: comment.post_id,
+            comment_id: commentId,
+            content: comment.content.substring(0, 50), // 只保留前50字
+            is_read: false,
+            created_at: new Date().toISOString()
+          }]);
+      }
+    } catch (err) {
+      console.error('创建点赞通知失败:', err);
+      // 不影响主功能,继续执行
+    }
   }
+
+  return newLikes;
 }
 
-/**
- * 更新用户信息
- * @param userId 用户ID
- * @param updates 要更新的字段
- * @returns 更新后的用户对象
- */
-export async function updateUser(userId: string, updates: {
-  user_name?: string;
-  avatar?: string;
-  bio?: string;
-  password?: string;
-  is_first_login?: boolean;
-  [key: string]: any;
-}) {
-  try {
-    const { data, error } = await supabase
-      .from('users')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId)
-      .select()
-      .single();
+export const get_posts_by_user = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return data;
-  } catch (error: any) {
-    console.error('更新用户信息失败:', error);
-    throw new Error(`更新用户信息失败: ${error.message}`);
-  }
-}
+  if (error) throw error;
+  return data;
+};
+
+export const get_comments_by_post = async (postId: string) => {
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const get_post_by_id = async (postId: string) => {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('id', postId)
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const update_post = async (postId: string, updates: any) => {
+  await check_sensitive_words(updates.title || '');
+  
+  const { error } = await supabase
+    .from('posts')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', postId);
+
+  if (error) throw error;
+};
+
+export const delete_post = async (postId: string) => {
+  const { error } = await supabase
+    .from('posts')
+    .delete()
+    .eq('id', postId);
+
+  if (error) throw error;
+};
 
 /**
- * 获取用户未读通知数量
- * @param userId 用户ID
- * @returns 未读通知数量
+ * 🟢 新增:获取用户的未读消息数量
  */
-export async function getUnreadNotificationCount(userId: string): Promise<number> {
+export const getUnreadNotificationCount = async (userId: string): Promise<number> => {
   try {
-    const { data, error, count } = await supabase
+    const { count, error } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
@@ -473,136 +480,94 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
 
     if (error) throw error;
     return count || 0;
-  } catch (error: any) {
-    console.error('获取未读通知数量失败:', error);
-    return 0; // 失败时返回0，不影响主流程
+  } catch (err) {
+    console.error('获取未读消息数量失败:', err);
+    return 0;
   }
-}
+};
 
 /**
- * 将帖子添加到收藏夹 (修正版)
- * @param collectionId 收藏夹的 UUID
- * @param postId 帖子的 UUID
+ * 🟢 新增:批量标记用户所有消息为已读
  */
-export async function addToCollection(collectionId: string, postId: string) {
+export const markAllNotificationsAsRead = async (userId: string): Promise<void> => {
   try {
-    // 1. 检查是否已经收藏：操作目标改为 collection_posts 关联表
-    const { data: existing, error: checkError } = await supabase
-      .from('collection_posts')
-      .select('id')
-      .eq('collection_id', collectionId)
-      .eq('post_id', postId)
-      .maybeSingle(); // 使用 maybeSingle 避免找不到记录时抛出异常
-
-    if (checkError) throw checkError;
-
-    if (existing) {
-      throw new Error('该帖子已在此收藏夹中');
-    }
-
-    // 2. 添加到关联表：建立收藏夹与帖子的绑定关系
-    const { data, error } = await supabase
-      .from('collection_posts')
-      .insert({
-        collection_id: collectionId,
-        post_id: postId
-      })
-      .select()
-      .single();
+    const { error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', userId)
+      .eq('is_read', false); // 只更新未读的
 
     if (error) throw error;
-
-    // 3. (可选) 更新计数逻辑：如果你的数据库有 rpc，请确保参数名正确
-    // 通常关联表模式下，计数可以通过 SQL 聚合函数完成，不一定需要手动维护
-    
-    return data;
-  } catch (error: any) {
-    console.error('添加到收藏夹失败:', error);
-    throw new Error(error.message || '添加到收藏夹失败');
+  } catch (err) {
+    console.error('批量标记已读失败:', err);
+    throw err;
   }
-}
-/**
- * 更新帖子信息（修复版：正确处理JSON格式的敏感词检查）
- * @param postId 帖子ID
- * @param updates 要更新的字段
- * @returns 更新后的帖子对象
- */
-export async function updatePost(
-  postId: string,
-  updates: {
-    title?: string;
-    content?: string;
-    category?: string;
-    images?: string[];
-    is_essence?: boolean;
-    is_locked?: boolean;
-    [key: string]: any;
-  }
-) {
-  try {
-    // ✅ ① 提取真实文本内容进行敏感词检查（修复：正确处理JSON格式）
-    let textToCheck = updates.title || '';
-    
-    if (updates.content) {
-      try {
-        // 尝试解析content为JSON
-        const contentBlocks = JSON.parse(updates.content);
-        if (Array.isArray(contentBlocks)) {
-          // 只提取文本块的内容
-          const textContent = contentBlocks
-            .filter(block => block.type === 'text')
-            .map(block => block.value)
-            .join(' ');
-          textToCheck += ' ' + textContent;
-        } else {
-          // 如果不是数组，当作普通文本处理
-          textToCheck += ' ' + updates.content;
-        }
-      } catch {
-        // 解析失败，当作普通文本处理（兼容旧数据）
-        textToCheck += ' ' + updates.content;
-      }
-    }
+};
 
-    if (textToCheck.trim()) {
-      await check_sensitive_words(textToCheck);
-    }
-
-    // ✅ ② 再执行真正的更新
-    const { data, error } = await supabase
-      .from('posts')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', postId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  } catch (error: any) {
-    console.error('更新帖子失败:', error);
-    throw new Error(`更新帖子失败: ${error.message}`);
-  }
-}
-
-/**
- * 获取特定用户的帖子列表 (用于个人主页)
- */
-export const get_posts_by_user = async (user_id: string) => {
+export const create_collection = async (userId: string, name: string) => {
   const { data, error } = await supabase
-    .from('posts')
+    .from('collections')
+    .insert([{
+      user_id: userId,
+      name: name,
+      post_ids: []
+    }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+export const get_collections = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('collections')
     .select('*')
-    .eq('user_id', user_id) // ✅ 必须改为 user_id，因为数据库 posts 表里只有这一列
+    .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('获取用户帖子失败:', error.message);
-    throw error;
-  }
-
+  if (error) throw error;
   return data || [];
+};
+
+export const delete_collection = async (collectionId: string) => {
+  const { error } = await supabase
+    .from('collections')
+    .delete()
+    .eq('id', collectionId);
+
+  if (error) throw error;
+};
+
+export const rename_collection = async (collectionId: string, newName: string) => {
+  const { error } = await supabase
+    .from('collections')
+    .update({ name: newName })
+    .eq('id', collectionId);
+
+  if (error) throw error;
+};
+
+export const get_collected_posts = async (collectionId: string) => {
+  const { data, error } = await supabase
+    .from('collection_posts')
+    .select(`
+      post_id,
+      posts (*)
+    `)
+    .eq('collection_id', collectionId);
+
+  if (error) throw error;
+  return data?.map(item => item.posts).filter(Boolean) || [];
+};
+
+export const updateUser = async (userId: string, updates: Partial<User>) => {
+  const { error } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('id', userId);
+
+  if (error) throw error;
 };
 
 /**
@@ -622,7 +587,7 @@ export const toggle_ban_user = async (userId: string, currentStatus: boolean) =>
  * 批量保存敏感词
  */
 export const set_banned_words = async (words: string[]) => {
-  // 先删除旧的，再插入新的（这是一种简单替换逻辑）
+  // 先删除旧的,再插入新的(这是一种简单替换逻辑)
   await supabase.from('sensitive_words').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // 清空
   
   const insertData = words.map(w => ({ word: w }));
@@ -646,7 +611,7 @@ export const get_banned_words = async () => {
  * 云端生成新用户 (管理员用)
  * 同时在 Supabase Auth 和 users 表创建用户
  */
-// 前端：createUser.ts
+// 前端:createUser.ts
 export async function createUser(role: 'user' | 'admin' | 'i女er' = 'user') {
   const { data: sessionData } = await supabase.auth.getSession()
 
