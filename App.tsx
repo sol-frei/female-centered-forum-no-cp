@@ -215,16 +215,37 @@ function AppContent() {
       )
     : displayPosts;
 
-  const getPostPreview = (content: any) => {
-    if (typeof content === 'string') return content;
-    try {
-      const blocks = JSON.parse(content);
-      return blocks.filter((b: any) => b.type === 'text').map((b: any) => b.value).join(' ');
-    } catch {
-      return '';
+const getPostPreview = (content: any) => {
+    if (!content) return '';
+    
+    // 如果是对象类型（已经解析过），直接处理
+    if (Array.isArray(content)) {
+      return content
+        .filter((b: any) => b.type === 'text')
+        .map((b: any) => b.value)
+        .join(' ');
     }
+
+    // 如果是字符串，尝试解析是否为 JSON 数组
+    if (typeof content === 'string') {
+      try {
+        const blocks = JSON.parse(content);
+        if (Array.isArray(blocks)) {
+          return blocks
+            .filter((b: any) => b.type === 'text')
+            .map((b: any) => b.value)
+            .join(' ');
+        }
+        return content; // 如果是普通字符串，直接返回
+      } catch {
+        return content; // 解析失败（说明不是JSON），按原样显示
+      }
+    }
+    
+    return '';
   };
 
+  
   const handleTouchStart = (e: React.TouchEvent) => touchStartX.current = e.touches[0].clientX;
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!touchStartX.current) return;
