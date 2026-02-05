@@ -190,7 +190,10 @@ const PostDetailPage = ({
   const isLiked = post?.likes?.includes(user?.id);
 
   const handleBack = () => navigate(-1);
-  const onViewProfile = (uid: string) => navigate(`/profile/${uid}`);
+  const onViewProfile = (uid: string) => {
+    console.log('跳转到用户主页, UID:', uid);
+    navigate(`/profile/${uid}`);
+  };
 
   const handleLike = async () => {
     if (!user || !post) return;
@@ -475,22 +478,11 @@ const PostDetailPage = ({
               const repliedComment = c.reply_to_id ? comments.find(cm => cm.id === c.reply_to_id) : null;
               const isCommentLiked = c.likes?.includes(user?.id);
               
-              // 调试：打印user_id信息
-              console.log('评论ID:', c.id, '| 评论user_id:', c.user_id, '| 当前用户ID:', user?.id, '| 评论作者:', commentAuthor?.user_name);
-              
               return (
                 <div key={c.id} className="flex gap-3 pb-4 border-b border-zinc-50">
                   <div 
                     className="cursor-pointer flex-shrink-0" 
-                    onClick={() => {
-                      console.log('=== 点击头像 ===');
-                      console.log('评论对象:', c);
-                      console.log('评论user_id:', c.user_id);
-                      console.log('评论作者信息:', commentAuthor);
-                      console.log('当前登录用户ID:', user?.id);
-                      alert(`将要跳转到:\n用户ID: ${c.user_id}\n用户名: ${commentAuthor?.user_name || '未知'}\n\n你的ID: ${user?.id}`);
-                      onViewProfile(c.user_id);
-                    }}
+                    onClick={() => onViewProfile(c.user_id)}
                   >
                     <Avatar url={commentAuthor?.avatar} className="w-8 h-8" />
                   </div>
@@ -498,15 +490,7 @@ const PostDetailPage = ({
                     <div className="flex justify-between items-center mb-1">
                       <span 
                         className="font-medium text-base text-zinc-600 cursor-pointer hover:text-zinc-900"
-                        onClick={() => {
-                          console.log('=== 点击昵称 ===');
-                          console.log('评论对象:', c);
-                          console.log('评论user_id:', c.user_id);
-                          console.log('评论作者信息:', commentAuthor);
-                          console.log('当前登录用户ID:', user?.id);
-                          alert(`将要跳转到:\n用户ID: ${c.user_id}\n用户名: ${commentAuthor?.user_name || '未知'}\n\n你的ID: ${user?.id}`);
-                          onViewProfile(c.user_id);
-                        }}
+                        onClick={() => onViewProfile(c.user_id)}
                       >
                         {commentAuthor?.user_name || '未知用户'}
                       </span>
