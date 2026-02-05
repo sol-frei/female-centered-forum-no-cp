@@ -912,3 +912,40 @@ export async function get_book_rating_stats(): Promise<{
     };
   }
 }
+
+/**
+ * 切换帖子的精华（蒂贴）状态
+ */
+export const toggle_essence_post = async (postId: string, isEssence: boolean) => {
+  const { error } = await supabase
+    .from('posts')
+    .update({ is_essence: isEssence })
+    .eq('id', postId);
+
+  if (error) throw error;
+  return isEssence;
+};
+
+/**
+ * 添加帖子到合集 (供 PostDetailPage 调用的别名函数)
+ */
+export const addToCollection = async (collectionId: string, postId: string) => {
+  const { data: existing } = await supabase
+    .from('collection_posts')
+    .select('id')
+    .eq('collection_id', collectionId)
+    .eq('post_id', postId)
+    .maybeSingle();
+
+  if (existing) return true;
+
+  const { error } = await supabase
+    .from('collection_posts')
+    .insert([{ 
+      collection_id: collectionId, 
+      post_id: postId 
+    }]);
+
+  if (error) throw error;
+  return true;
+};
