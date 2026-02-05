@@ -4,7 +4,8 @@ import {
   get_user, 
   getUnreadNotificationCount, 
   get_posts_by_user,
-  updateUser
+  updateUser,
+  markAllNotificationsAsRead
 } from '../services/storage'; 
 import { uploadImage } from '../services/storageService';
 import { CollectionsTab } from '../components/CollectionsTab';
@@ -16,7 +17,8 @@ import {
   ArrowLeft,
   Edit2,
   Check,
-  X
+  X,
+  Bell
 } from 'lucide-react';
 
 interface UserProfileProps {
@@ -48,7 +50,7 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
   useEffect(() => {
     console.log('UserProfile: userId changed to:', userId);
     
-    // 当userId变化时，先清空旧数据，避免显示上一个用户的信息
+    // 当userId变化时,先清空旧数据,避免显示上一个用户的信息
     setUser(null);
     setPosts([]);
     setUnreadCount(0);
@@ -71,6 +73,16 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
         if (session.user.id === userId) {
           const count = await getUnreadNotificationCount(userId);
           setUnreadCount(count);
+          
+          // 🟢 新增:进入自己的主页时自动标记所有消息为已读
+          if (count > 0) {
+            try {
+              await markAllNotificationsAsRead(userId);
+              setUnreadCount(0); // 立即更新UI
+            } catch (err) {
+              console.error('批量标记已读失败:', err);
+            }
+          }
         }
       }
 
@@ -122,14 +134,16 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
   if (!user) return <div className="p-20 text-center text-zinc-400">用户不存在</div>;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 pb-20">
-      <button onClick={onNavigateBack} className="mb-6 p-2 hover:bg-zinc-100 rounded-full transition-colors">
-        <ArrowLeft className="w-6 h-6" />
+    <div className="max-w-4xl mx-auto px-4 py-6 pb-20">
+      <button onClick={onNavigateBack} className="mb-4 p-2 hover:bg-zinc-100 rounded-full transition-colors">
+        <ArrowLeft className="w-5 h-5" />
       </button>
 
-      <div className="flex flex-col md:flex-row items-center gap-8 bg-white border border-zinc-200 p-8 rounded-3xl">
+      {/* 🟢 优化后的用户信息卡片 - 更紧凑的布局 */}
+      <div className="flex flex-col md:flex-row items-center gap-6 bg-white border border-zinc-200 p-6 rounded-2xl">
         <div className="relative group">
-          <div className="w-32 h-32 rounded-full overflow-hidden bg-zinc-100 border-4 border-white shadow-sm">
+          {/* 🟢 优化头像尺寸 - 从w-32 h-32改为w-20 h-20 */}
+          <div className="w-20 h-20 rounded-full overflow-hidden bg-zinc-100 border-2 border-white shadow-sm">
             {user.avatar ? (
               <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
@@ -138,40 +152,41 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
           </div>
           {isOwnProfile && (
             <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-              <Camera className="w-6 h-6" />
+              <Camera className="w-5 h-5" />
               <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploading} />
             </label>
           )}
           {uploading && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-full">
-              <div className="w-6 h-6 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
             </div>
           )}
         </div>
 
         <div className="flex-1 text-center md:text-left">
-          <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+          <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
             {isEditingName ? (
               <div className="flex items-center gap-2">
                 <input
                   value={newUserName}
                   onChange={(e) => setNewUserName(e.target.value)}
-                  className="px-2 py-1 border-b border-black outline-none text-2xl font-bold bg-transparent"
+                  className="px-2 py-1 border-b border-black outline-none text-xl font-bold bg-transparent"
                   autoFocus
                 />
                 <button onClick={handleUpdateName} disabled={savingName} className="text-green-600">
-                  <Check className="w-5 h-5" />
+                  <Check className="w-4 h-4" />
                 </button>
                 <button onClick={() => { setIsEditingName(false); setNewUserName(user.user_name); }} className="text-red-500">
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             ) : (
               <>
-                <h1 className="text-3xl font-bold">{user.user_name}</h1>
+                {/* 🟢 优化昵称字号 - 从text-3xl改为text-xl */}
+                <h1 className="text-xl font-bold">{user.user_name}</h1>
                 {isOwnProfile && (
                   <button onClick={() => setIsEditingName(true)} className="text-zinc-400 hover:text-black">
-                    <Edit2 className="w-4 h-4" />
+                    <Edit2 className="w-3.5 h-3.5" />
                   </button>
                 )}
               </>
@@ -180,57 +195,59 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
               <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded">管理员</span>
             )}
           </div>
-          <div className="text-zinc-500 flex items-center justify-center md:justify-start gap-2 text-sm">
-            <Calendar className="w-4 h-4" />
+          <div className="text-zinc-500 flex items-center justify-center md:justify-start gap-2 text-xs">
+            <Calendar className="w-3.5 h-3.5" />
             <span>{new Date(user.created_at).toLocaleDateString()} 加入</span>
           </div>
         </div>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
+        {/* 🟢 标签页顺序调整:消息tab提前到第一位(仅自己可见) */}
         <div className="flex border-b border-zinc-200">
+          {isOwnProfile && (
+            <button 
+              onClick={() => setActiveTab('messages')}
+              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'messages' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
+            >
+              <Bell className="w-4 h-4" />
+              消息
+            </button>
+          )}
           <button 
             onClick={() => setActiveTab('posts')}
-            className={`px-8 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'posts' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
+            className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'posts' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
           >
             发布 ({posts.length})
           </button>
           {isOwnProfile && (
-            <>
-              <button 
-                onClick={() => setActiveTab('messages')}
-                className={`px-8 py-4 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'messages' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
-              >
-                消息 {unreadCount > 0 && <span className="w-2 h-2 bg-red-500 rounded-full"></span>}
-              </button>
-              <button 
-                onClick={() => setActiveTab('collections')}
-                className={`px-8 py-4 text-sm font-medium transition-colors border-b-2 ${activeTab === 'collections' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
-              >
-                收藏
-              </button>
-            </>
+            <button 
+              onClick={() => setActiveTab('collections')}
+              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'collections' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
+            >
+              收藏
+            </button>
           )}
         </div>
 
-        <div className="py-6">
+        <div className="py-4">
+          {activeTab === 'messages' && isOwnProfile && (
+            <MessagesTab userId={userId} onPostClick={onPostClick} />
+          )}
+
           {activeTab === 'posts' && (
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               {posts.length === 0 ? (
-                <div className="text-center py-20 text-zinc-400">尚未发布过帖子</div>
+                <div className="text-center py-16 text-zinc-400 text-sm">尚未发布过帖子</div>
               ) : (
                 posts.map(post => (
-                  <div key={post.id} onClick={() => onPostClick(post.id)} className="p-5 bg-white border border-zinc-200 rounded-2xl cursor-pointer hover:border-zinc-400 transition-all">
-                    <h3 className="font-bold mb-1 line-clamp-1">{post.title}</h3>
+                  <div key={post.id} onClick={() => onPostClick(post.id)} className="p-4 bg-white border border-zinc-200 rounded-xl cursor-pointer hover:border-zinc-400 transition-all">
+                    <h3 className="font-bold mb-1 line-clamp-1 text-sm">{post.title}</h3>
                     <p className="text-xs text-zinc-400">{new Date(post.created_at).toLocaleString()}</p>
                   </div>
                 ))
               )}
             </div>
-          )}
-
-          {activeTab === 'messages' && isOwnProfile && (
-            <MessagesTab userId={userId} onPostClick={onPostClick} />
           )}
 
           {activeTab === 'collections' && isOwnProfile && (
