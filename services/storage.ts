@@ -101,11 +101,15 @@ export const get_posts = async (category: Category | '全部', sort: 'new' | 'es
   return data;
 };
 
+/**
+ * 切换帖子点赞状态
+ * ✅ 已修复：删除前端手动插入通知逻辑，改由数据库触发器处理
+ */
 export const toggle_like_post = async (post_id: string, user_id: string) => {
-  // 1. 获取帖子详情，注意：必须包含 title 字段
+  // 1. 获取当前点赞状态
   const { data: currentPost, error: fetchError } = await supabase
     .from('posts')
-    .select('likes, user_id, title') 
+    .select('likes')
     .eq('id', post_id)
     .single();
 
@@ -114,11 +118,12 @@ export const toggle_like_post = async (post_id: string, user_id: string) => {
   const safe_likes = Array.isArray(currentPost.likes) ? currentPost.likes : [];
   const is_liked = safe_likes.includes(user_id);
   
+  // 2. 计算新的点赞数组
   const new_likes = is_liked
     ? safe_likes.filter(id => id !== user_id) 
     : [...safe_likes, user_id];
 
-  // 2. 更新点赞数组
+  // 3. 执行更新 (触发器会自动在此处运行)
   const { error: updateError } = await supabase
     .from('posts')
     .update({ likes: new_likes })
@@ -126,38 +131,8 @@ export const toggle_like_post = async (post_id: string, user_id: string) => {
 
   if (updateError) throw updateError;
 
-  // 3. 创建通知逻辑
-  if (!is_liked && user_id !== currentPost.user_id) {
-    try {
-      const { data: liker } = await supabase
-        .from('users')
-        .select('user_name')
-        .eq('id', user_id)
-        .single();
-
-      if (liker) {
-        await supabase
-          .from('notifications')
-          .insert([{
-            user_id: currentPost.user_id,
-            from_user_id: user_id,
-            from_user_name: liker.user_name,
-            type: 'like',
-            post_id: post_id,
-            post_title: currentPost.title, // ✅ 补齐数据库要求的 post_title
-            content: null,
-            is_read: false,
-            created_at: new Date().toISOString()
-          }]);
-      }
-    } catch (err) {
-      console.error('创建帖子点赞通知失败:', err);
-    }
-  }
-
   return new_likes;
 };
-
 
 // 收藏逻辑 (Collections)
 
@@ -333,30 +308,15 @@ export async function update_comment(
 }
 
 
+
 /**
- * 删除评论(替换原有的 delete_comment 函数)
- * 功能保持不变,但确保完整性
+ * 切换评论点赞状态
+ * ✅ 已修复：删除前端手动插入通知逻辑
  */
-export async function delete_comment(commentId: string) {
-  const { error } = await supabase
-    .from('comments')
-    .delete()
-    .eq('id', commentId);
-
-  if (error) throw error;
-}
-
 export async function toggle_like_comment(commentId: string, userId: string) {
-  // 1. 获取评论信息及所属帖子的标题
   const { data: comment, error: fetchError } = await supabase
     .from('comments')
-    .select(`
-      likes, 
-      user_id, 
-      post_id, 
-      content,
-      posts (title)
-    `)
+    .select('likes')
     .eq('id', commentId)
     .single();
 
@@ -368,7 +328,6 @@ export async function toggle_like_comment(commentId: string, userId: string) {
     ? currentLikes.filter((id: string) => id !== userId)
     : [...currentLikes, userId];
 
-  // 2. 更新评论点赞
   const { error: updateError } = await supabase
     .from('comments')
     .update({ likes: newLikes })
@@ -376,38 +335,10 @@ export async function toggle_like_comment(commentId: string, userId: string) {
 
   if (updateError) throw updateError;
 
-  // 3. 创建通知
-  if (!hasLiked && userId !== comment.user_id) {
-    try {
-      const { data: liker } = await supabase
-        .from('users')
-        .select('user_name')
-        .eq('id', userId)
-        .single();
-
-      if (liker) {
-        await supabase
-          .from('notifications')
-          .insert([{
-            user_id: comment.user_id,
-            from_user_id: userId,
-            from_user_name: liker.user_name,
-            type: 'like',
-            post_id: comment.post_id,
-            // @ts-ignore - 处理嵌套查询拿到的标题
-            post_title: comment.posts?.title || "评论消息", 
-            content: comment.content.substring(0, 50),
-            is_read: false,
-            created_at: new Date().toISOString()
-          }]);
-      }
-    } catch (err) {
-      console.error('创建评论点赞通知失败:', err);
-    }
-  }
-
   return newLikes;
 }
+
+
 export const get_posts_by_user = async (userId: string) => {
   const { data, error } = await supabase
     .from('posts')
