@@ -674,6 +674,7 @@ export async function create_book_rating(ratingData: {
   extra_remark: string;
   final_score: number;
   reviewer_comment: string;
+  reviewer_name:string
 }): Promise<BookRating> {
   try {
     const { data, error } = await supabase
@@ -692,6 +693,7 @@ export async function create_book_rating(ratingData: {
         extra_remark: ratingData.extra_remark,
         final_score: ratingData.final_score,
         reviewer_comment: ratingData.reviewer_comment,
+        reviewer_name:ratingData.reviewer_name,
         created_at: new Date().toISOString(),
       }])
       .select()
