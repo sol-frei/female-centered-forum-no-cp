@@ -1,6 +1,6 @@
 import { supabase } from './services/supabaseClient';
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useSearchParams, useLocation, useParams } from 'react-router-dom';
 
 // 导入组件
 import Bookshelf from './components/Bookshelf';
@@ -201,6 +201,19 @@ function AppContent() {
     return <ChangePasswordModal user={user} onComplete={(u) => { setUser(u); navigate('/feed', { replace: true }); }} />;
   }
 
+  // 用户主页包装组件 - 从 URL 获取正确的 userId
+  const UserProfileWrapper = () => {
+    const { userId } = useParams<{ userId: string }>();
+    if (!userId) return <Navigate to="/feed" replace />;
+    return (
+      <UserProfile 
+        userId={userId}
+        onNavigateBack={() => navigate(-1)} 
+        onPostClick={(id: string) => navigate(`/post/${id}`)} 
+      />
+    );
+  };
+
   const isLoginPage = location.pathname === '/login' || location.pathname === '/';
   const hideNavPages = location.pathname.startsWith('/post/') || 
                        location.pathname.startsWith('/profile/') || 
@@ -339,7 +352,7 @@ function AppContent() {
           } />
           
           <Route path="/post/:postId" element={user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" replace />} />
-          <Route path="/profile/:userId" element={user ? <UserProfile userId={user.id} onNavigateBack={() => navigate(-1)} onPostClick={(id: string) => navigate(`/post/${id}`)} /> : <Navigate to="/login" replace />} />
+          <Route path="/profile/:userId" element={user ? <UserProfileWrapper /> : <Navigate to="/login" replace />} />
           <Route path="/bookshelf" element={user ? <Bookshelf onNavigateBack={() => navigate(-1)} onBookClick={(postId: string) => navigate(`/post/${postId}`)} showToast={showToast} /> : <Navigate to="/login" replace />} />
           <Route path="/admin" element={user?.role === 'admin' ? <AdminPanel /> : <Navigate to="/feed" replace />} />
         </Routes>
