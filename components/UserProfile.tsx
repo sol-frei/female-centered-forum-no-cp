@@ -46,8 +46,17 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
   const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
+    console.log('UserProfile: userId changed to:', userId);
+    
+    // 当userId变化时，先清空旧数据，避免显示上一个用户的信息
+    setUser(null);
+    setPosts([]);
+    setUnreadCount(0);
+    setActiveTab('posts');
+    setIsEditingName(false);
+    
     loadProfile();
-  }, [userId]);
+  }, [userId]); // userId变化时重新执行
 
   const loadProfile = async () => {
     setLoading(true);
