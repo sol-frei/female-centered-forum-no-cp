@@ -15,7 +15,7 @@ import ChangePasswordModal from './components/ChangePasswordModal';
 
 // 导入类型与工具
 import { User, Post, Category } from './types';
-import { get_all_users, get_user, get_posts } from './services/storage';
+import { get_all_users, get_user, get_posts, getUnreadNotificationCount } from './services/storage';
 import { 
   Search, LogOut, Menu, UserCircle, 
   PenSquare, X, Shield, BookOpen 
@@ -73,11 +73,46 @@ function AppContent() {
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // 🟢 新增:未读消息数量状态
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const touchStartX = useRef<number | null>(null);
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
-  // 1. 处理返回逻辑：如果是搜索状态，后退操作先清空搜索
+  // 🟢 新增:加载未读消息数量
+  const loadUnreadCount = async () => {
+    if (user) {
+      const count = await getUnreadNotificationCount(user.id);
+      setUnreadCount(count);
+    }
+  };
+
+  // 🟢 新增:监听通知表变化,实时更新红点
+  useEffect(() => {
+    if (!user) return;
+
+    loadUnreadCount(); // 初始加载
+
+    // 订阅通知表的实时更新
+    const channel = supabase
+      .channel(`notifications_badge_${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        loadUnreadCount(); // 有变化时重新加载数量
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  // 1. 处理返回逻辑:如果是搜索状态,后退操作先清空搜索
   useEffect(() => {
     const handlePopState = () => {
       if (searchQuery) setSearchQuery('');
@@ -129,7 +164,7 @@ function AppContent() {
     loadPosts();
   }, [currentCategory, onlyEssence, refreshKey, isAuthChecking]);
 
-  // 4. 🟢 实时自动刷新逻辑：监听数据库变化
+  // 4. 🟢 实时自动刷新逻辑:监听数据库变化
   useEffect(() => {
     if (isAuthChecking) return;
 
@@ -138,7 +173,7 @@ function AppContent() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const newPost = payload.new as Post;
-          // 仅当新帖符合当前选中的分类或处于“全部”版块时，自动插入顶部
+          // 仅当新帖符合当前选中的分类或处于"全部"版块时,自动插入顶部
           if (currentCategory === '全部' || newPost.category === currentCategory) {
             setDisplayPosts(prev => [newPost, ...prev]);
           }
@@ -170,29 +205,31 @@ function AppContent() {
     setShowMobileMenu(false);
     await supabase.auth.signOut();
     setUser(null);
-    navigate('/login', { replace: true });
+    setUnreadCount(0); // 清空未读数
   };
 
-  const getPostPreview = (content: string) => {
+  const filteredPosts = searchQuery
+    ? displayPosts.filter(p =>
+        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (typeof p.content === 'string' && p.content.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : displayPosts;
+
+  const getPostPreview = (content: any) => {
+    if (typeof content === 'string') return content;
     try {
       const blocks = JSON.parse(content);
-      if (Array.isArray(blocks)) return blocks.filter(b => b.type === 'text').map(b => b.value).join(' ').slice(0, 100);
-    } catch {}
-    return content.slice(0, 100);
+      return blocks.filter((b: any) => b.type === 'text').map((b: any) => b.value).join(' ');
+    } catch {
+      return '';
+    }
   };
 
-  // 搜索过滤
-  const filteredPosts = displayPosts.filter(post => {
-    const searchLower = searchQuery.toLowerCase();
-    return post.title.toLowerCase().includes(searchLower) || 
-           post.content.toLowerCase().includes(searchLower);
-  });
-
-  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchStart = (e: React.TouchEvent) => touchStartX.current = e.touches[0].clientX;
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const diffX = touchStartX.current - e.touches[0].clientX;
-    if (diffX > 50) { setShowMobileMenu(false); touchStartX.current = null; }
+    if (!touchStartX.current) return;
+    const diff = e.touches[0].clientX - touchStartX.current;
+    if (diff < -50) setShowMobileMenu(false);
   };
 
   if (isAuthChecking) return <LoadingSpinner fullScreen />;
@@ -265,7 +302,7 @@ function AppContent() {
             <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
               <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-1.5 hover:bg-zinc-100 rounded-full"><Menu className="w-5 h-5" /></button>
               <h1 className="font-bold text-base md:text-lg cursor-pointer truncate hidden sm:block" onClick={() => navigate('/feed')}>
-                女主无cp交流中心
+                女主无cp/无男主小说交流中心
               </h1>
             </div>
 
@@ -286,17 +323,23 @@ function AppContent() {
             </div>
 
             <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-              {/* PC端：书架图标最左侧 */}
+              {/* PC端:书架图标最左侧 */}
               <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
                 <BookOpen className="w-5 h-5 text-zinc-600" />
               </button>
-              {/* PC端：管理员图标紧邻头像 */}
+              {/* PC端:管理员图标紧邻头像 */}
               {user.role === 'admin' && (
                 <button onClick={() => navigate('/admin')} className="hidden md:flex p-2 hover:bg-zinc-100 rounded-full transition-colors" title="管理后台">
                   <Shield className="w-5 h-5 text-zinc-600" />
                 </button>
               )}
-              <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full transition-colors"><Avatar url={user.avatar} className="w-6 h-6" /></button>
+              {/* 🟢 头像+红点提示 */}
+              <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full transition-colors relative">
+                <Avatar url={user.avatar} className="w-6 h-6" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                )}
+              </button>
               <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full transition-colors"><LogOut className="w-5 h-5 text-zinc-500" /></button>
             </div>
           </div>
@@ -338,7 +381,7 @@ function AppContent() {
                       </div>
                     ))
                   ) : (
-                    /* 🟢 修复：暂无内容/搜索空状态提示 */
+                    /* 🟢 修复:暂无内容/搜索空状态提示 */
                     <div className="py-24 flex flex-col items-center justify-center text-zinc-400">
                       <div className="bg-zinc-50 p-4 rounded-full mb-3">
                         <Search className="w-8 h-8 text-zinc-200" />
