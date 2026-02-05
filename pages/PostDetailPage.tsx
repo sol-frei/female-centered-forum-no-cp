@@ -11,7 +11,6 @@ import {
   create_collection, 
   addToCollection, 
   check_sensitive_words,
-  delete_comment,
   toggle_like_comment,
   get_book_rating_by_post // 导入获取评分函数
 } from '../services/storage';
