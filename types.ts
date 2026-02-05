@@ -142,4 +142,5 @@ export interface BookRating {
   reviewer_comment: string;
   created_at: string;
   updated_at?: string;
+  reviewer_name:string
 }
