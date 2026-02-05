@@ -161,10 +161,12 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
                       {Object.entries(book.principle_scores).map(([key, value]) => {
                         if (!value) return null;
                         const idx = parseInt(key.replace('p', '')) - 1;
+                        // 后三条准则(23, 24, 25)逻辑相反：有是绿色，没有是红色
+                        const isLastThree = idx >= 22; // idx 22, 23, 24 对应 p23, p24, p25
+                        const shouldBeGreen = isLastThree ? value === 'yes' : value === 'no';
                         return (
-                          <div key={key} className="text-sm border-b pb-2 flex gap-2">
-                            <span className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${value === 'yes' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                              {value === 'yes' ? '✗' : '✓'}
+                          <div key={key} className="text-base border-b pb-2 flex gap-2">
+                            <span className={`flex-shrink-0 w-5 h-5 rounded-full border-2 ${shouldBeGreen ? 'border-green-600' : 'border-red-600'}`}>
                             </span>
                             <div>
                                 <p>{PRINCIPLES_TEXT[idx]}</p>
