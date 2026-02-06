@@ -101,37 +101,109 @@ export const get_posts = async (category: Category | '全部', sort: 'new' | 'es
   return data;
 };
 
-/**
- * 切换帖子点赞状态
- * ✅ 已修复：删除前端手动插入通知逻辑，改由数据库触发器处理
- */
 export const toggle_like_post = async (post_id: string, user_id: string) => {
-  // 1. 获取当前点赞状态
-  const { data: currentPost, error: fetchError } = await supabase
-    .from('posts')
-    .select('likes')
-    .eq('id', post_id)
-    .single();
-
-  if (fetchError || !currentPost) throw new Error("无法获取帖子数据");
-
-  const safe_likes = Array.isArray(currentPost.likes) ? currentPost.likes : [];
-  const is_liked = safe_likes.includes(user_id);
+  console.log('==========================================');
+  console.log('🔵 toggle_like_post 开始');
+  console.log('参数:', { post_id, user_id });
+  console.log('参数类型:', { 
+    post_id_type: typeof post_id, 
+    user_id_type: typeof user_id 
+  });
   
-  // 2. 计算新的点赞数组
-  const new_likes = is_liked
-    ? safe_likes.filter(id => id !== user_id) 
-    : [...safe_likes, user_id];
+  try {
+    // 1. 获取当前点赞状态
+    console.log('📥 第1步: 获取帖子数据...');
+    const { data: currentPost, error: fetchError } = await supabase
+      .from('posts')
+      .select('likes')
+      .eq('id', post_id)
+      .single();
 
-  // 3. 执行更新 (触发器会自动在此处运行)
-  const { error: updateError } = await supabase
-    .from('posts')
-    .update({ likes: new_likes })
-    .eq('id', post_id);
+    console.log('📥 获取结果:', { 
+      success: !fetchError,
+      currentPost, 
+      fetchError 
+    });
 
-  if (updateError) throw updateError;
+    if (fetchError) {
+      console.error('❌ 获取失败:', fetchError);
+      throw new Error(`无法获取帖子数据: ${fetchError.message}`);
+    }
+    
+    if (!currentPost) {
+      console.error('❌ 帖子不存在');
+      throw new Error("帖子不存在");
+    }
 
-  return new_likes;
+    console.log('✅ 帖子数据:', currentPost);
+    console.log('likes原始值:', currentPost.likes);
+    console.log('likes类型:', typeof currentPost.likes);
+    console.log('likes是数组吗?', Array.isArray(currentPost.likes));
+
+    const safe_likes = Array.isArray(currentPost.likes) ? currentPost.likes : [];
+    const is_liked = safe_likes.includes(user_id);
+    
+    console.log('当前点赞状态:', {
+      safe_likes,
+      safe_likes_type: typeof safe_likes,
+      is_liked,
+      likes_count: safe_likes.length
+    });
+    
+    // 2. 计算新的点赞数组
+    const new_likes = is_liked
+      ? safe_likes.filter(id => id !== user_id) 
+      : [...safe_likes, user_id];
+
+    console.log('📝 第2步: 计算新的点赞数组');
+    console.log('新点赞数组:', new_likes);
+    console.log('新点赞数组类型:', typeof new_likes);
+    console.log('新点赞数组是数组吗?', Array.isArray(new_likes));
+    console.log('新点赞数组内容:', JSON.stringify(new_likes));
+
+    // 3. 执行更新
+    console.log('📤 第3步: 准备更新数据库...');
+    console.log('更新内容:', { likes: new_likes });
+    console.log('更新内容JSON:', JSON.stringify({ likes: new_likes }));
+    
+    const updatePayload = { likes: new_likes };
+    console.log('updatePayload:', updatePayload);
+    console.log('updatePayload.likes类型:', typeof updatePayload.likes);
+    
+    const { data: updateData, error: updateError } = await supabase
+      .from('posts')
+      .update(updatePayload)
+      .eq('id', post_id)
+      .select();
+
+    console.log('📤 更新完成');
+    console.log('更新结果:', { 
+      success: !updateError,
+      updateData, 
+      updateError 
+    });
+
+    if (updateError) {
+      console.error('❌ 更新失败 - 完整错误对象:', updateError);
+      console.error('错误消息:', updateError.message);
+      console.error('错误代码:', updateError.code);
+      console.error('错误详情:', updateError.details);
+      console.error('错误提示:', updateError.hint);
+      throw updateError;
+    }
+
+    console.log('✅ 点赞操作成功!');
+    console.log('==========================================');
+    return new_likes;
+    
+  } catch (error: any) {
+    console.error('❌❌❌ toggle_like_post 发生异常 ❌❌❌');
+    console.error('异常对象:', error);
+    console.error('异常消息:', error?.message);
+    console.error('异常堆栈:', error?.stack);
+    console.error('==========================================');
+    throw error;
+  }
 };
 
 // 收藏逻辑 (Collections)
