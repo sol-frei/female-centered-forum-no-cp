@@ -374,7 +374,7 @@ const getPostPreview = (content: any) => {
           <Route path="/feed" element={
             user ? (
               <div className="p-4">
-                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                <div className="flex justify-between items-center mb-4 pb-2">
                   <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'border border-zinc-200 hover:bg-zinc-50'}`}>蒂</button>
                   <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 rounded active:scale-95 transition-transform"><PenSquare className="w-4 h-4" /> 发帖</button>
                 </div>
