@@ -329,7 +329,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
               value={category}
               onChange={e => setCategory(e.target.value as Category)}
               disabled={isSubmitting}
-              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
+              className="w-full p-3 border-y border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
             >
               {CATEGORIES.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -349,12 +349,12 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
               maxLength={100}
               disabled={isSubmitting}
               placeholder="标题建议加上前缀如 【推书】"
-              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
+              className="w-full p-3 border-y border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
             />
           </div>
 
           {/* 内容编辑器 */}
-          <div className="border border-zinc-200 rounded-xl overflow-hidden">
+          <div className="rounded-xl overflow-hidden">
             {/* 编辑区 */}
             <div
               ref={editorRef}
