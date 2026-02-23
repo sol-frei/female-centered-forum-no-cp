@@ -10,7 +10,6 @@ interface BookshelfProps {
   showToast: (msg: string, type: ToastType) => void;
 }
 
-// ✅ 统一样式：黑色旋转圆圈
 const LoadingSpinner = () => (
   <div className="py-20 flex items-center justify-center bg-white">
     <div className="w-6 h-6 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin"></div>
@@ -45,12 +44,32 @@ const PRINCIPLES_TEXT = [
   '是否默认女性为第一性【没有需扣分】。',
 ];
 
+const BOOK_CATEGORIES = [
+  '现代都市', '古代言情', '玄幻奇幻', '科幻未来',
+  '悬疑推理', '历史架空', '校园青春', '职场商战', '武侠仙侠', '其他',
+];
+
+// 分类标签颜色映射
+const CATEGORY_COLORS: Record<string, string> = {
+  '现代都市': 'bg-blue-50 text-blue-600 border-blue-200',
+  '古代言情': 'bg-pink-50 text-pink-600 border-pink-200',
+  '玄幻奇幻': 'bg-purple-50 text-purple-600 border-purple-200',
+  '科幻未来': 'bg-cyan-50 text-cyan-600 border-cyan-200',
+  '悬疑推理': 'bg-amber-50 text-amber-700 border-amber-200',
+  '历史架空': 'bg-orange-50 text-orange-600 border-orange-200',
+  '校园青春': 'bg-green-50 text-green-600 border-green-200',
+  '职场商战': 'bg-slate-50 text-slate-600 border-slate-200',
+  '武侠仙侠': 'bg-red-50 text-red-600 border-red-200',
+  '其他': 'bg-zinc-50 text-zinc-500 border-zinc-200',
+};
+
 export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: BookshelfProps) {
   const [books, setBooks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('latest');
   const [filterBy, setFilterBy] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [expandedBookId, setExpandedBookId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,6 +102,10 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
       if (filterBy === 'low') return book.final_score < 5;
       return true;
     })
+    .filter(book => {
+      if (categoryFilter !== 'all') return book.book_category === categoryFilter;
+      return true;
+    })
     .sort((a, b) => {
       if (sortBy === 'latest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       if (sortBy === 'highest') return b.final_score - a.final_score;
@@ -90,97 +113,162 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
       return 0;
     });
 
-  const getScoreColor = (score: number) => {
-    if (score >= 8) return 'text-green-600 bg-green-50 border-green-200';
-    if (score >= 5) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-    return 'text-red-600 bg-red-50 border-red-200';
+  // 评分框样式（手机端缩小）
+  const getScoreStyle = (score: number) => {
+    if (score >= 8) return { box: 'text-green-600 bg-green-50 border-green-200', dot: 'bg-green-500' };
+    if (score >= 5) return { box: 'text-yellow-600 bg-yellow-50 border-yellow-200', dot: 'bg-yellow-500' };
+    return { box: 'text-red-600 bg-red-50 border-red-200', dot: 'bg-red-500' };
   };
 
   if (isLoading) return <LoadingSpinner />;
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      <div className="sticky top-0 bg-white border-b border-zinc-200 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4 mb-4">
-            <button onClick={onNavigateBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+      {/* 顶栏 */}
+      <div className="sticky top-0 bg-white border-b border-zinc-200 z-10 shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 py-3">
+          {/* 标题行 */}
+          <div className="flex items-center gap-3 mb-3">
+            <button onClick={onNavigateBack} className="p-1.5 hover:bg-zinc-100 rounded-full transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-2xl font-bold">书架</h1>
+            <h1 className="text-xl font-bold">书架</h1>
+            <span className="ml-auto text-xs text-zinc-400 bg-zinc-100 px-2 py-1 rounded-full">
+              共 {filteredAndSortedBooks.length} 本
+            </span>
           </div>
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
+
+          {/* 搜索框 */}
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索书名或作者..."
-              className="w-full pl-10 pr-4 py-2 border border-zinc-300 rounded-lg"
+              className="w-full pl-9 pr-4 py-2 border border-zinc-200 rounded-lg text-sm bg-zinc-50 focus:bg-white focus:border-zinc-400 outline-none transition-all"
             />
           </div>
-          <div className="flex gap-2">
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="px-3 py-1.5 border rounded-lg text-sm bg-white">
+
+          {/* 筛选行 */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="flex-shrink-0 px-3 py-1.5 border border-zinc-200 rounded-lg text-xs bg-white text-zinc-700 outline-none"
+            >
               <option value="latest">最新评分</option>
               <option value="highest">评分最高</option>
               <option value="lowest">评分最低</option>
             </select>
-            <select value={filterBy} onChange={(e) => setFilterBy(e.target.value)} className="px-3 py-1.5 border rounded-lg text-sm bg-white">
-              <option value="all">全部评分</option>
-              <option value="high">高分 (8分以上)</option>
-              <option value="medium">中等 (5-8分)</option>
-              <option value="low">低分 (5分以下)</option>
+            <select
+              value={filterBy}
+              onChange={(e) => setFilterBy(e.target.value)}
+              className="flex-shrink-0 px-3 py-1.5 border border-zinc-200 rounded-lg text-xs bg-white text-zinc-700 outline-none"
+            >
+              <option value="all">全部分数</option>
+              <option value="high">高分 ≥8</option>
+              <option value="medium">中等 5-8</option>
+              <option value="low">低分 &lt;5</option>
+            </select>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="flex-shrink-0 px-3 py-1.5 border border-zinc-200 rounded-lg text-xs bg-white text-zinc-700 outline-none"
+            >
+              <option value="all">全部分类</option>
+              {BOOK_CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
             </select>
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-6">
+      {/* 书籍列表 */}
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4">
         {filteredAndSortedBooks.length === 0 ? (
-          <div className="text-center py-20 text-zinc-400">暂无书籍评分</div>
+          <div className="text-center py-20 text-zinc-400 text-sm">暂无符合条件的书籍</div>
         ) : (
-          <div className="space-y-4">
-            {filteredAndSortedBooks.map((book) => (
-              <div key={book.id} className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-                <div className="p-4 flex items-start gap-4">
-                  <div className={`flex-shrink-0 w-20 h-20 rounded-lg border-2 flex flex-col items-center justify-center ${getScoreColor(book.final_score)}`}>
-                    <div className="text-3xl font-bold">{book.final_score.toFixed(1)}</div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold mb-1 line-clamp-1">{book.book_name}</h3>
-                    <p className="text-sm text-zinc-600">作者: {book.book_author}</p>
-                    <p className="text-xs text-zinc-500">评分人: {book.reviewer_name} · {new Date(book.created_at).toLocaleDateString()}</p>
-                  </div>
-                  <button onClick={() => setExpandedBookId(expandedBookId === book.id ? null : book.id)} className="p-2 hover:bg-zinc-100 rounded-full">
-                    <ChevronDown className={`w-5 h-5 transition-transform ${expandedBookId === book.id ? 'rotate-180' : ''}`} />
-                  </button>
-                </div>
-
-                {expandedBookId === book.id && (
-                  <div className="border-t border-zinc-200 bg-zinc-50 p-4">
-                    <div className="bg-white rounded-lg border p-4 space-y-2 max-h-96 overflow-y-auto">
-                      {Object.entries(book.principle_scores).map(([key, value]) => {
-                        if (!value) return null;
-                        const idx = parseInt(key.replace('p', '')) - 1;
-                        // 后三条准则(23, 24, 25)逻辑相反：有是绿色，没有是红色
-                        const isLastThree = idx >= 22; // idx 22, 23, 24 对应 p23, p24, p25
-                        const shouldBeGreen = isLastThree ? value === 'yes' : value === 'no';
-                        return (
-                          <div key={key} className="text-base border-b pb-2 flex gap-2">
-                            <span className={`flex-shrink-0 w-5 h-5 rounded-full border-2 ${shouldBeGreen ? 'border-green-600' : 'border-red-600'}`}>
-                            </span>
-                            <div>
-                                <p>{PRINCIPLES_TEXT[idx]}</p>
-                                {book.principle_remarks[key] && <p className="text-xs text-zinc-400 mt-1">备注: {book.principle_remarks[key]}</p>}
-                            </div>
-                          </div>
-                        );
-                      })}
+          <div className="space-y-3">
+            {filteredAndSortedBooks.map((book) => {
+              const scoreStyle = getScoreStyle(book.final_score);
+              return (
+                <div key={book.id} className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                  {/* 书籍主信息行 */}
+                  <div className="p-3 sm:p-4 flex items-center gap-3">
+                    {/* 评分框：手机端更紧凑 */}
+                    <div className={`flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl border-2 flex items-center justify-center ${scoreStyle.box}`}>
+                      <div className="text-xl sm:text-2xl font-bold leading-none">{book.final_score.toFixed(1)}</div>
                     </div>
-                    <button onClick={() => onBookClick(book.post_id)} className="mt-4 w-full py-2 bg-black text-white rounded-lg text-sm font-medium">查看完整帖子</button>
+
+                    {/* 书籍文字信息 */}
+                    <div className="flex-1 min-w-0">
+                      {/* 书名：允许换行，不截断 */}
+                      <h3 className="text-sm sm:text-base font-bold leading-snug mb-1 text-zinc-900 break-words">
+                        {book.book_name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <p className="text-xs text-zinc-500">{book.book_author}</p>
+                        {book.book_category && (
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full border font-medium ${CATEGORY_COLORS[book.book_category] || CATEGORY_COLORS['其他']}`}>
+                            {book.book_category}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {book.reviewer_name} · {new Date(book.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+
+                    {/* 展开按钮 */}
+                    <button
+                      onClick={() => setExpandedBookId(expandedBookId === book.id ? null : book.id)}
+                      className="flex-shrink-0 p-1.5 hover:bg-zinc-100 rounded-full transition-colors"
+                    >
+                      <ChevronDown className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${expandedBookId === book.id ? 'rotate-180' : ''}`} />
+                    </button>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* 展开内容：准则详情 */}
+                  {expandedBookId === book.id && (
+                    <div className="border-t border-zinc-100 bg-zinc-50/50 p-3 sm:p-4">
+                      <div className="bg-white rounded-xl border border-zinc-100 p-3 space-y-0 max-h-96 overflow-y-auto">
+                        {Object.entries(book.principle_scores).map(([key, value], entryIndex) => {
+                          if (!value) return null;
+                          const idx = parseInt(key.replace('p', '')) - 1;
+                          const isLastThree = idx >= 22;
+                          const shouldBeGreen = isLastThree ? value === 'yes' : value === 'no';
+                          return (
+                            <div
+                              key={key}
+                              className="flex gap-2.5 py-2.5"
+                            >
+                              {/* 实心填充的圆点 */}
+                              <span className={`flex-shrink-0 w-4 h-4 rounded-full mt-0.5 ${shouldBeGreen ? 'bg-green-500' : 'bg-red-500'}`} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm leading-relaxed text-zinc-700">{PRINCIPLES_TEXT[idx]}</p>
+                                {book.principle_remarks[key] && (
+                                  <p className="text-xs text-zinc-400 mt-1 bg-zinc-50 rounded px-2 py-1">
+                                    备注：{book.principle_remarks[key]}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <button
+                        onClick={() => onBookClick(book.post_id)}
+                        className="mt-3 w-full py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-medium hover:bg-zinc-700 transition-colors"
+                      >
+                        查看完整帖子
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
