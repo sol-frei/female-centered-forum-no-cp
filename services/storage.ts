@@ -2,9 +2,12 @@ import { supabase } from './supabaseClient';
 import { ToastType,User, Post, Category, Collection, Notification, SensitiveWords,BookRating } from '../types';
 
 
-// 敏感词处理逻辑
 
-// 只负责:发布前校验,发现敏感词直接拦截
+
+/**
+ * 修改后的敏感词处理逻辑
+ * 如果发现敏感词，抛出包含具体词汇的错误
+ */
 export const check_sensitive_words = async (text: string): Promise<void> => {
   if (!text) return;
 
@@ -14,12 +17,14 @@ export const check_sensitive_words = async (text: string): Promise<void> => {
 
   if (!words || words.length === 0) return;
 
-  const hit = words.some(({ word }) =>
+  // 查找第一个匹配到的敏感词
+  const hitWord = words.find(({ word }) =>
     text.toLowerCase().includes(word.toLowerCase())
   );
 
-  if (hit) {
-    throw new Error('内容包含违禁词,发布失败');
+  if (hitWord) {
+    // 🔴 这里抛出包含具体词汇的错误信息
+    throw new Error(`内容包含违禁词 "${hitWord.word}"，发布失败`);
   }
 };
 
