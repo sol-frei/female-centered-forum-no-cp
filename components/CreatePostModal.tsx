@@ -342,7 +342,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
             onChange={e => setTitle(e.target.value)}
             maxLength={100}
             disabled={isSubmitting}
-            placeholder="标题"
+            placeholder="标题建议加上前缀，如【推书】"
             className="w-full py-3 text-2xl font-bold text-zinc-800 placeholder-zinc-300 border-b border-zinc-100 focus:outline-none bg-transparent disabled:opacity-50"
           />
 
