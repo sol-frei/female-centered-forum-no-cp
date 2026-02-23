@@ -243,7 +243,7 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
   return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col">
       {/* 顶部栏 */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-100">
+      <div className="flex items-center justify-between px-4 py-3">
         <button
           onClick={onClose}
           disabled={isSubmitting}
@@ -268,139 +268,130 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
         </div>
       )}
 
+      {/* 分类选择 */}
+      <div className="px-4 pb-1">
+        <select
+          value={category}
+          onChange={e => setCategory(e.target.value as Category)}
+          disabled={isSubmitting}
+          className="text-sm text-zinc-400 bg-transparent border-none focus:outline-none cursor-pointer disabled:opacity-50"
+        >
+          {CATEGORIES.map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+      </div>
+
       {/* 表单内容 */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-6 py-6 space-y-5">
+      <div className="flex-1 overflow-y-auto flex flex-col px-4">
 
-          {/* 分类 */}
-          <div>
-            <label className="block text-sm font-bold mb-2 text-zinc-700">分类 *</label>
-            <select
-              value={category}
-              onChange={e => setCategory(e.target.value as Category)}
-              disabled={isSubmitting}
-              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
-            >
-              {CATEGORIES.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
+        {/* 标题 */}
+        <input
+          type="text"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          maxLength={100}
+          disabled={isSubmitting}
+          placeholder="标题"
+          className="w-full py-3 text-2xl font-bold text-zinc-800 placeholder-zinc-300 border-b border-zinc-100 focus:outline-none bg-transparent disabled:opacity-50"
+        />
 
-          {/* 标题 */}
-          <div>
-            <label className="block text-sm font-bold mb-2 text-zinc-700">
-              标题 * <span className="text-xs text-zinc-400 font-normal">({title.length}/100)</span>
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              maxLength={100}
-              disabled={isSubmitting}
-              placeholder="请输入标题"
-              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
-            />
-          </div>
+        {/* 内容编辑器 */}
+        <div className="flex-1 flex flex-col">
+          <div
+            ref={editorRef}
+            contentEditable={!isSubmitting}
+            className="flex-1 w-full py-4 text-zinc-800 focus:outline-none"
+            style={{ wordWrap: 'break-word', whiteSpace: 'pre-wrap', minHeight: '200px' }}
+          />
+        </div>
 
-          {/* 内容编辑器 */}
-          <div className="border border-zinc-200 rounded-xl overflow-hidden">
-            {/* 编辑区 */}
-            <div
-              ref={editorRef}
-              contentEditable={!isSubmitting}
-              className="w-full min-h-[280px] p-4 text-zinc-800 focus:outline-none overflow-y-auto"
-              style={{ wordWrap: 'break-word', whiteSpace: 'pre-wrap' }}
-            />
-
-            {/* 工具栏：底部 */}
-            <div className="flex items-center gap-1 px-3 py-2 border-t border-zinc-100 bg-zinc-50">
-              {/* 插入图片 */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isSubmitting || imageCount >= 9}
-                title="插入图片"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-200 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ImageIcon className="w-4 h-4" />
-                <span>图片</span>
-                {imageCount > 0 && <span className="text-xs text-zinc-400">{imageCount}/9</span>}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) { insertImage(file); e.target.value = ''; }
-                }}
-                className="hidden"
-              />
-
-              {/* 图书评分 */}
+        {/* 图书评分预览（已添加时展示） */}
+        {editRating && (
+          <div className="p-4 bg-purple-50 rounded-xl border border-purple-100 mb-4">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <p className="font-medium text-zinc-800">《{editRating.book_name}》</p>
+                <p className="text-sm text-zinc-500">{editRating.book_author}</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowRatingModal(true)}
-                disabled={isSubmitting}
-                title="添加/修改图书评分"
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-40 ${
-                  editRating
-                    ? 'text-purple-700 bg-purple-100 hover:bg-purple-200'
-                    : 'text-zinc-600 hover:bg-zinc-200'
-                }`}
+                className="text-xs text-purple-600 hover:underline"
               >
-                <BookOpen className="w-4 h-4" />
-                <span>{editRating ? `评分 ${editRating.final_score.toFixed(1)}` : '评分'}</span>
+                修改
               </button>
-
-              <span className="ml-auto text-xs text-zinc-300">{totalTextLength}/10000</span>
             </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-white rounded-lg p-2 text-center">
+                <div className="text-base font-bold text-blue-600">{editRating.impressed_score}</div>
+                <div className="text-[10px] text-zinc-400">印象分</div>
+              </div>
+              <div className="bg-white rounded-lg p-2 text-center">
+                <div className="text-base font-bold text-red-500">
+                  -{(editRating.impressed_score - editRating.final_score - editRating.extra_deduction).toFixed(1)}
+                </div>
+                <div className="text-[10px] text-zinc-400">准则扣分</div>
+              </div>
+              <div className="bg-white rounded-lg p-2 text-center">
+                <div className="text-base font-bold text-purple-600">{editRating.final_score.toFixed(1)}</div>
+                <div className="text-[10px] text-zinc-400">最终得分</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditRating(null)}
+              className="mt-3 text-xs text-red-500 hover:underline"
+            >
+              移除评分
+            </button>
           </div>
+        )}
 
-          {/* 图书评分预览（已添加时展示） */}
-          {editRating && (
-            <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <p className="font-medium text-zinc-800">《{editRating.book_name}》</p>
-                  <p className="text-sm text-zinc-500">{editRating.book_author}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowRatingModal(true)}
-                  className="text-xs text-purple-600 hover:underline"
-                >
-                  修改
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-white rounded-lg p-2 text-center">
-                  <div className="text-base font-bold text-blue-600">{editRating.impressed_score}</div>
-                  <div className="text-[10px] text-zinc-400">印象分</div>
-                </div>
-                <div className="bg-white rounded-lg p-2 text-center">
-                  <div className="text-base font-bold text-red-500">
-                    -{(editRating.impressed_score - editRating.final_score - editRating.extra_deduction).toFixed(1)}
-                  </div>
-                  <div className="text-[10px] text-zinc-400">准则扣分</div>
-                </div>
-                <div className="bg-white rounded-lg p-2 text-center">
-                  <div className="text-base font-bold text-purple-600">{editRating.final_score.toFixed(1)}</div>
-                  <div className="text-[10px] text-zinc-400">最终得分</div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditRating(null)}
-                className="mt-3 text-xs text-red-500 hover:underline"
-              >
-                移除评分
-              </button>
-            </div>
-          )}
+      </div>
 
-        </div>
+      {/* 底部工具栏 - 固定在底部 */}
+      <div className="flex items-center gap-1 px-3 py-2 border-t border-zinc-100 bg-white">
+        {/* 插入图片 */}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isSubmitting || imageCount >= 9}
+          title="插入图片"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ImageIcon className="w-4 h-4" />
+          <span>图片</span>
+          {imageCount > 0 && <span className="text-xs text-zinc-400">{imageCount}/9</span>}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) { insertImage(file); e.target.value = ''; }
+          }}
+          className="hidden"
+        />
+
+        {/* 图书评分 */}
+        <button
+          type="button"
+          onClick={() => setShowRatingModal(true)}
+          disabled={isSubmitting}
+          title="添加/修改图书评分"
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-40 ${
+            editRating
+              ? 'text-purple-700 bg-purple-100 hover:bg-purple-200'
+              : 'text-zinc-600 hover:bg-zinc-100'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>{editRating ? `评分 ${editRating.final_score.toFixed(1)}` : '评分'}</span>
+        </button>
+
+        <span className="ml-auto text-xs text-zinc-300">{totalTextLength}/10000</span>
       </div>
 
       {/* 图书评分弹窗 */}
