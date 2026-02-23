@@ -218,7 +218,7 @@ const PostDetailPage = ({
     const newVote = { user_id: user.id, option_index: optionIndex };
     setPost({ ...post, poll_votes: [...(post.poll_votes || []), newVote] });
     try { 
-      await vote_poll(post.id, user.id, optionIndex);
+      await vote_poll(post.id, user.id, String(optionIndex));
       showToast('投票成功', 'success');
     } catch (e) {
       setSelectedPollOption(null);
@@ -293,7 +293,7 @@ const PostDetailPage = ({
   const handleCreateCollection = async () => {
     if (!newCollectionName.trim()) { showToast('请输入合集名称', 'error'); return; }
     try {
-      const newCol = await create_collection(user.id, newCollectionName, '');
+      const newCol = await create_collection(user.id, newCollectionName);
       if (newCol) { await addToCollection(newCol.id, post.id); showToast('已创建合集并收藏', 'success'); setShowCollectionModal(false); setNewCollectionName(''); loadUserCollections(); }
     } catch { showToast('创建失败', 'error'); }
   };
@@ -391,7 +391,7 @@ const PostDetailPage = ({
                       <div><span className="text-zinc-500">书名：</span><span className="font-medium text-zinc-800">{bookRating.book_name}</span></div>
                       <div><span className="text-zinc-500">作者：</span><span className="font-medium text-zinc-800">{bookRating.book_author}</span></div>
                       {bookRating.book_platform && (<div><span className="text-zinc-500">平台：</span><span className="font-medium text-zinc-800">{bookRating.book_platform}</span></div>)}
-                      <div><span className="text-zinc-500">评分人：</span><span className="font-medium text-zinc-800">{bookRating.user_name}</span></div>
+                      <div><span className="text-zinc-500">评分人：</span><span className="font-medium text-zinc-800">{bookRating.reviewer_name || bookRating.user_name}</span></div>
                     </div>
                   </div>
 
