@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, ImageIcon, Trash2, Loader, BookOpen } from 'lucide-react';
 import { User, Category, BookRating } from '../types';
-import { update_post, update_book_rating, create_book_rating } from '../services/storage';
+import { update_post, update_book_rating, create_book_rating ,check_sensitive_words} from '../services/storage';
 import { uploadImages, deleteImage } from '../services/storageService';
 import BookRatingModal, { BookRatingData } from './BookRatingModal';
 

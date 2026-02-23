@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, ImageIcon, Plus, Trash2, Loader, BookOpen, BarChart2 } from 'lucide-react';
 import { User, Category } from '../types';
-import { create_post, create_book_rating } from '../services/storage';
+import { create_post, create_book_rating,check_sensitive_words} from '../services/storage';
 import { uploadImages, deleteImage } from '../services/storageService';
 import BookRatingModal, { BookRatingData } from './BookRatingModal';
 
@@ -198,16 +198,27 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
     return true;
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
+    // 基础表单验证（空标题、字数限制等）
     if (!validateForm()) return;
+    
     setIsSubmitting(true);
     setUploadProgress(0);
     let uploadedImageUrls: string[] = [];
 
     try {
+      // --- 🟢 第一步：发布前文本预校验 ---
+      // 在昂贵的图片上传操作之前，先检查标题和编辑器内的纯文本
+      // 这样如果包含“他妈的”等违禁词，会立即报错，不会浪费流量上传图片
+      const plainText = editorRef.current?.innerText || '';
+      const textToPreCheck = `${title} ${plainText}`;
+      await check_sensitive_words(textToPreCheck);
+
+      // 提取内容块（准备上传图片和转换格式）
       const contentBlocks = extractContentBlocks();
       const imageBlocks = contentBlocks.filter(b => b.type === 'image') as Array<ContentBlock & { type: 'image' }>;
 
+      // --- 🟢 第二步：上传图片 ---
       if (imageBlocks.length > 0) {
         showToast('正在上传图片...', 'info');
         uploadedImageUrls = await uploadImages(
@@ -218,6 +229,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         );
       }
 
+      // 组装最终提交给数据库的内容格式
       let imageUrlIndex = 0;
       const finalContent = contentBlocks
         .map(block => {
@@ -227,6 +239,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         })
         .filter(Boolean);
 
+      // 处理投票数据
       let pollData = null;
       if (enablePoll) {
         const validOptions = pollOptions.filter(opt => opt.trim());
@@ -245,6 +258,8 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         };
       }
 
+      // --- 🟢 第三步：调用接口创建帖子 ---
+      // create_post 内部会进行第二次深度校验（包含对 JSON 格式内容的解析检查）
       const newPost = await create_post({
         title,
         content: JSON.stringify(finalContent),
@@ -255,15 +270,13 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         poll: pollData,
       });
 
+      // --- 🟢 第四步：处理图书评分（如果有） ---
       if (bookRating) {
         try {
-          // 【修复】如果填写了打分人(reviewer_name)，优先用它作为 user_name
-          // 这样书架和帖子里显示的评分人保持一致
           const ratingUserName = bookRating.reviewer_name?.trim() && bookRating.reviewer_name !== '匿名发帖者'
             ? bookRating.reviewer_name.trim()
             : user.user_name;
-          // user_name 放在 ...bookRating 之后，确保覆盖 bookRating 内部同名字段
-          // as any 用于绕过类型检查，因为 create_book_rating 类型可能不包含 user_name
+
           await create_book_rating({
             post_id: newPost.id,
             user_id: user.id,
@@ -276,20 +289,35 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         }
       }
 
+      // --- 🟢 第五步：完成发布 ---
       showToast('发布成功', 'success');
-      onSuccess();
+      onSuccess(); // 只有到这一步才会关闭 Modal 并刷新列表
+
     } catch (error: any) {
+      // --- 🔴 错误处理 ---
       console.error('发布失败:', error);
-      if (uploadedImageUrls.length > 0) {
-        try { await Promise.all(uploadedImageUrls.map(url => deleteImage(url))); } catch {}
-      }
+      
+      // 这里会捕获到 check_sensitive_words 抛出的具体词汇错误
+      // 例如："内容包含违禁词 “他妈的”，发布失败"
       showToast(error.message || '发布失败，请重试', 'error');
+
+      // 自动清理：如果图片上传了但帖子由于违禁词或其他原因失败，删除已上传的图片
+      if (uploadedImageUrls.length > 0) {
+        try { 
+          await Promise.all(uploadedImageUrls.map(url => deleteImage(url))); 
+        } catch (cleanupError) {
+          console.error('清理图片失败:', cleanupError);
+        }
+      }
+      
+      // 注意：这里没有调用 onClose()，所以用户会留在当前页面修改违禁词
     } finally {
       setIsSubmitting(false);
       setUploadProgress(0);
     }
   };
 
+  
   return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col">
       {/* 顶部栏 */}
