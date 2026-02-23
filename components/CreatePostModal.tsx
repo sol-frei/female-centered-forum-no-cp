@@ -293,7 +293,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col">
       {/* 顶部栏 */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-100">
+      <div className="flex items-center justify-between px-4 py-3">
         <button
           onClick={onClose}
           disabled={isSubmitting}
@@ -318,105 +318,46 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         </div>
       )}
 
-      {/* 表单内容 */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-6 py-6 space-y-5">
+      {/* 分类选择 */}
+      <div className="px-4 pb-1">
+        <select
+          value={category}
+          onChange={e => setCategory(e.target.value as Category)}
+          disabled={isSubmitting}
+          className="text-sm text-zinc-400 bg-transparent border-none focus:outline-none cursor-pointer disabled:opacity-50"
+        >
+          {CATEGORIES.map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+      </div>
 
-          {/* 分类 */}
-          <div>
-            <label className="block text-sm font-bold mb-2 text-zinc-700">分类 *</label>
-            <select
-              value={category}
-              onChange={e => setCategory(e.target.value as Category)}
-              disabled={isSubmitting}
-              className="w-full p-3 border-y border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
-            >
-              {CATEGORIES.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
+      {/* 表单内容 */}
+      <div className="flex-1 overflow-y-auto flex flex-col px-4">
 
           {/* 标题 */}
-          <div>
-            <label className="block text-sm font-bold mb-2 text-zinc-700">
-              标题 * <span className="text-xs text-zinc-400 font-normal">({title.length}/100)</span>
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              maxLength={100}
-              disabled={isSubmitting}
-              placeholder="标题建议加上前缀如 【推书】"
-              className="w-full p-3 border-y border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
-            />
-          </div>
+          <input
+            type="text"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            maxLength={100}
+            disabled={isSubmitting}
+            placeholder="标题"
+            className="w-full py-3 text-2xl font-bold text-zinc-800 placeholder-zinc-300 border-b border-zinc-100 focus:outline-none bg-transparent disabled:opacity-50"
+          />
 
           {/* 内容编辑器 */}
-          <div className="rounded-xl overflow-hidden">
-            {/* 编辑区 */}
+          <div className="flex-1 flex flex-col">
             <div
               ref={editorRef}
               contentEditable={!isSubmitting}
               onPaste={handlePaste}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
-              className="w-full min-h-[280px] p-4 text-zinc-800 focus:outline-none overflow-y-auto"
-              style={{ wordWrap: 'break-word', whiteSpace: 'pre-wrap' }}
+              className="flex-1 w-full py-4 text-zinc-800 focus:outline-none"
+              style={{ wordWrap: 'break-word', whiteSpace: 'pre-wrap', minHeight: '200px' }}
               data-placeholder="写点什么..."
             />
-
-            {/* 工具栏：底部 */}
-            <div className="flex items-center gap-1 px-3 py-2 border-t border-zinc-100 bg-zinc-50">
-              {/* 插入图片 */}
-              <button
-                type="button"
-                onClick={handleImageButtonClick}
-                disabled={isSubmitting || imageCount >= 9}
-                title="插入图片"
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-200 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ImageIcon className="w-4 h-4" />
-                <span>图片</span>
-                {imageCount > 0 && <span className="text-xs text-zinc-400">{imageCount}/9</span>}
-              </button>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-
-              {/* 图书评分 */}
-              <button
-                type="button"
-                onClick={() => setShowRatingModal(true)}
-                disabled={isSubmitting}
-                title="添加图书评分"
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-40 ${
-                  bookRating
-                    ? 'text-purple-700 bg-purple-100 hover:bg-purple-200'
-                    : 'text-zinc-600 hover:bg-zinc-200'
-                }`}
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>{bookRating ? `评分 ${bookRating.final_score.toFixed(1)}` : '评分'}</span>
-              </button>
-
-              {/* 投票 */}
-              <button
-                type="button"
-                onClick={() => setEnablePoll(!enablePoll)}
-                disabled={isSubmitting}
-                title="添加投票"
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-40 ${
-                  enablePoll
-                    ? 'text-blue-700 bg-blue-100 hover:bg-blue-200'
-                    : 'text-zinc-600 hover:bg-zinc-200'
-                }`}
-              >
-                <BarChart2 className="w-4 h-4" />
-                <span>投票</span>
-              </button>
-
-              <span className="ml-auto text-xs text-zinc-300">{totalTextLength}/10000</span>
-            </div>
           </div>
 
           {/* 图书评分预览（已添加时展示） */}
@@ -518,7 +459,57 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
               </div>
             </div>
           )}
-        </div>
+      </div>
+
+      {/* 底部工具栏 - 固定在底部 */}
+      <div className="flex items-center gap-1 px-3 py-2 border-t border-zinc-100 bg-white">
+        {/* 插入图片 */}
+        <button
+          type="button"
+          onClick={handleImageButtonClick}
+          disabled={isSubmitting || imageCount >= 9}
+          title="插入图片"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ImageIcon className="w-4 h-4" />
+          <span>图片</span>
+          {imageCount > 0 && <span className="text-xs text-zinc-400">{imageCount}/9</span>}
+        </button>
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+
+        {/* 图书评分 */}
+        <button
+          type="button"
+          onClick={() => setShowRatingModal(true)}
+          disabled={isSubmitting}
+          title="添加图书评分"
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-40 ${
+            bookRating
+              ? 'text-purple-700 bg-purple-100 hover:bg-purple-200'
+              : 'text-zinc-600 hover:bg-zinc-100'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>{bookRating ? `评分 ${bookRating.final_score.toFixed(1)}` : '评分'}</span>
+        </button>
+
+        {/* 投票 */}
+        <button
+          type="button"
+          onClick={() => setEnablePoll(!enablePoll)}
+          disabled={isSubmitting}
+          title="添加投票"
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-40 ${
+            enablePoll
+              ? 'text-blue-700 bg-blue-100 hover:bg-blue-200'
+              : 'text-zinc-600 hover:bg-zinc-100'
+          }`}
+        >
+          <BarChart2 className="w-4 h-4" />
+          <span>投票</span>
+        </button>
+
+        <span className="ml-auto text-xs text-zinc-300">{totalTextLength}/10000</span>
       </div>
 
       {/* CSS placeholder */}
