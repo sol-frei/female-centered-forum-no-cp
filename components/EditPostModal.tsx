@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, ImageIcon, Trash2, Loader } from 'lucide-react';
+import { X, ImageIcon, Trash2, Loader, BookOpen } from 'lucide-react';
 import { User, Category, BookRating } from '../types';
 import { update_post, update_book_rating, create_book_rating } from '../services/storage';
 import { uploadImages, deleteImage } from '../services/storageService';
@@ -31,14 +31,14 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
       book_name: bookRating.book_name,
       book_author: bookRating.book_author,
       book_platform: bookRating.book_platform,
+      reviewer_name: bookRating.reviewer_name ?? '',
       impressed_score: bookRating.impressed_score,
       principle_scores: bookRating.principle_scores,
       principle_remarks: bookRating.principle_remarks,
       extra_deduction: bookRating.extra_deduction,
       extra_remark: bookRating.extra_remark,
       final_score: bookRating.final_score,
-      reviewer_comment: bookRating.reviewer_comment,
-    } : null
+    } as BookRatingData : null
   );
 
   // 富文本编辑器
@@ -92,7 +92,7 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
     const deleteBtn = document.createElement('button');
     deleteBtn.innerHTML = '✕';
     deleteBtn.className = 'delete-image-btn';
-    deleteBtn.style.cssText = 'position: absolute; top: 8px; right: 8px; background: #dc2626; color: white; border: none; border-radius: 9999px; width: 28px; height: 28px; cursor: pointer; opacity: 0; transition: opacity 0.2s;';
+    deleteBtn.style.cssText = 'position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 9999px; width: 28px; height: 28px; cursor: pointer; opacity: 0; transition: opacity 0.2s; font-size: 14px; display: flex; align-items: center; justify-content: center;';
     deleteBtn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -114,20 +114,9 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
   };
 
   const insertImage = (file: File) => {
-    if (imageMap.size >= 9) {
-      showToast('最多只能插入9张图片', 'warning');
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      showToast('只能上传图片文件', 'error');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('图片不能超过5MB', 'error');
-      return;
-    }
+    if (imageMap.size >= 9) { showToast('最多只能插入9张图片', 'warning'); return; }
+    if (!file.type.startsWith('image/')) { showToast('只能上传图片文件', 'error'); return; }
+    if (file.size > 5 * 1024 * 1024) { showToast('图片不能超过5MB', 'error'); return; }
 
     const reader = new FileReader();
     reader.onload = e => {
@@ -155,22 +144,14 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
     const traverse = (node: Node) => {
       if (node.nodeType === Node.TEXT_NODE) {
         const text = node.textContent || '';
-        if (text.trim()) {
-          blocks.push({ type: 'text', value: text });
-        }
+        if (text.trim()) blocks.push({ type: 'text', value: text });
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         const element = node as HTMLElement;
-        
         if (element.classList.contains('image-block')) {
           const imageId = element.getAttribute('data-image-id');
           if (imageId && imageMap.has(imageId)) {
             const imageInfo = imageMap.get(imageId)!;
-            blocks.push({
-              type: 'image',
-              file: imageInfo.file,
-              url: imageInfo.url,
-              id: imageId
-            });
+            blocks.push({ type: 'image', file: imageInfo.file, url: imageInfo.url, id: imageId });
           }
         } else {
           node.childNodes.forEach(child => traverse(child));
@@ -183,25 +164,17 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      showToast('请输入标题', 'error');
-      return;
-    }
+    if (!title.trim()) { showToast('请输入标题', 'error'); return; }
 
     const contentText = editorRef.current?.textContent?.trim() || '';
-    if (!contentText && imageMap.size === 0) {
-      showToast('请输入内容', 'error');
-      return;
-    }
+    if (!contentText && imageMap.size === 0) { showToast('请输入内容', 'error'); return; }
 
     setIsSubmitting(true);
     setUploadProgress(0);
 
     try {
-      // 1. 提取内容块
       const contentBlocks = extractContentBlocks();
       
-      // 2. 上传新图片
       const newImageBlocks = contentBlocks.filter(b => b.type === 'image' && b.file);
       let uploadedUrls: string[] = [];
       
@@ -211,32 +184,22 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
           newImageBlocks.map(b => b.file),
           'forum_images',
           `posts/${user.id}`,
-          (current, total) => {
-            setUploadProgress(Math.round((current / total) * 100));
-          }
+          (current, total) => setUploadProgress(Math.round((current / total) * 100))
         );
       }
       
-      // 3. 构建最终内容
       let uploadIndex = 0;
       const finalContent = contentBlocks
         .map(block => {
-          if (block.type === 'text') {
-            return block.value.trim() 
-              ? { type: 'text', value: block.value.trim() }
-              : null;
-          } else if (block.type === 'image') {
-            if (block.file) {
-              return { type: 'image', url: uploadedUrls[uploadIndex++] };
-            } else {
-              return { type: 'image', url: block.url };
-            }
+          if (block.type === 'text') return block.value.trim() ? { type: 'text', value: block.value.trim() } : null;
+          if (block.type === 'image') {
+            if (block.file) return { type: 'image', url: uploadedUrls[uploadIndex++] };
+            else return { type: 'image', url: block.url };
           }
           return null;
         })
         .filter(Boolean);
 
-      // 4. 更新帖子
       await update_post(post.id, {
         title,
         content: JSON.stringify(finalContent),
@@ -244,17 +207,22 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
         updated_at: new Date().toISOString()
       });
 
-      // 5. 更新/创建评分
+      // 更新/创建评分
       if (editRating) {
         if (bookRating) {
           await update_book_rating(bookRating.id, editRating);
         } else {
+          // 同 CreatePostModal 逻辑：优先使用填写的 reviewer_name 作为 user_name
+          const ratingUserName =
+            editRating.reviewer_name?.trim() && editRating.reviewer_name !== '匿名发帖者'
+              ? editRating.reviewer_name.trim()
+              : user.user_name;
           await create_book_rating({
             post_id: post.id,
             user_id: user.id,
-            user_name: user.user_name,
-            ...editRating
-          });
+            ...editRating,
+            user_name: ratingUserName,
+          } as any);
         }
       }
 
@@ -273,28 +241,37 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
   const imageCount = imageMap.size;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        {/* 头部 */}
-        <div className="sticky top-0 bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold">编辑帖子</h2>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full transition-colors" disabled={isSubmitting}>
-            <X className="w-5 h-5" />
-          </button>
+    <div className="fixed inset-0 bg-white z-50 flex flex-col">
+      {/* 顶部栏 */}
+      <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-100">
+        <button
+          onClick={onClose}
+          disabled={isSubmitting}
+          className="p-1.5 hover:bg-zinc-100 rounded-full transition-colors text-zinc-500"
+        >
+          <X className="w-5 h-5" />
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className="flex items-center gap-1.5 px-5 py-1.5 bg-black text-white text-sm font-medium rounded-full hover:bg-zinc-800 transition-colors disabled:bg-zinc-300 disabled:cursor-not-allowed"
+        >
+          {isSubmitting && <Loader className="w-3.5 h-3.5 animate-spin" />}
+          {isSubmitting ? '保存中...' : '保存修改'}
+        </button>
+      </div>
+
+      {/* 上传进度 */}
+      {isSubmitting && uploadProgress > 0 && uploadProgress < 100 && (
+        <div className="h-1 bg-zinc-100">
+          <div className="h-full bg-black transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
         </div>
+      )}
 
-        {/* 上传进度 */}
-        {isSubmitting && uploadProgress > 0 && uploadProgress < 100 && (
-          <div className="px-6 py-3 bg-blue-50 border-b border-blue-200">
-            <div className="w-full bg-blue-200 rounded-full h-2">
-              <div className="bg-blue-600 h-full transition-all" style={{ width: `${uploadProgress}%` }} />
-            </div>
-            <p className="text-xs text-zinc-500 mt-1 text-center">上传进度: {uploadProgress}%</p>
-          </div>
-        )}
+      {/* 表单内容 */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-6 py-6 space-y-5">
 
-        {/* 表单内容 */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {/* 分类 */}
           <div>
             <label className="block text-sm font-bold mb-2 text-zinc-700">分类 *</label>
@@ -302,7 +279,7 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
               value={category}
               onChange={e => setCategory(e.target.value as Category)}
               disabled={isSubmitting}
-              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
             >
               {CATEGORIES.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -322,26 +299,33 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
               maxLength={100}
               disabled={isSubmitting}
               placeholder="请输入标题"
-              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
             />
           </div>
 
-          {/* 富文本编辑器 */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-bold text-zinc-700">
-                内容 * 
-                <span className="text-xs text-zinc-400 font-normal ml-2">
-                  ({totalTextLength}/10000 字 · {imageCount}/9 图)
-                </span>
-              </label>
+          {/* 内容编辑器 */}
+          <div className="border border-zinc-200 rounded-xl overflow-hidden">
+            {/* 编辑区 */}
+            <div
+              ref={editorRef}
+              contentEditable={!isSubmitting}
+              className="w-full min-h-[280px] p-4 text-zinc-800 focus:outline-none overflow-y-auto"
+              style={{ wordWrap: 'break-word', whiteSpace: 'pre-wrap' }}
+            />
+
+            {/* 工具栏：底部 */}
+            <div className="flex items-center gap-1 px-3 py-2 border-t border-zinc-100 bg-zinc-50">
+              {/* 插入图片 */}
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isSubmitting || imageCount >= 9}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm bg-zinc-100 hover:bg-zinc-200 rounded-lg transition-colors disabled:opacity-50"
+                title="插入图片"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-200 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ImageIcon className="w-4 h-4" />
-                插入图片
+                <span>图片</span>
+                {imageCount > 0 && <span className="text-xs text-zinc-400">{imageCount}/9</span>}
               </button>
               <input
                 ref={fileInputRef}
@@ -349,82 +333,73 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
                 accept="image/*"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) {
-                    insertImage(file);
-                    e.target.value = '';
-                  }
+                  if (file) { insertImage(file); e.target.value = ''; }
                 }}
                 className="hidden"
               />
+
+              {/* 图书评分 */}
+              <button
+                type="button"
+                onClick={() => setShowRatingModal(true)}
+                disabled={isSubmitting}
+                title="添加/修改图书评分"
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors disabled:opacity-40 ${
+                  editRating
+                    ? 'text-purple-700 bg-purple-100 hover:bg-purple-200'
+                    : 'text-zinc-600 hover:bg-zinc-200'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>{editRating ? `评分 ${editRating.final_score.toFixed(1)}` : '评分'}</span>
+              </button>
+
+              <span className="ml-auto text-xs text-zinc-300">{totalTextLength}/10000</span>
             </div>
-            
-            <div
-              ref={editorRef}
-              contentEditable={!isSubmitting}
-              className="w-full min-h-[200px] p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black bg-white"
-              style={{ wordWrap: 'break-word', whiteSpace: 'pre-wrap' }}
-            />
           </div>
 
-          {/* 图书评分 */}
-          <div className="border-t border-zinc-200 pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-bold">图书评分（推书专用）</label>
-              {editRating && (
-                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded font-medium">
-                  当前评分: {editRating.final_score.toFixed(1)}分
-                </span>
-              )}
-            </div>
-            
-            <button
-              type="button"
-              onClick={() => setShowRatingModal(true)}
-              disabled={isSubmitting}
-              className="w-full py-3 border-2 border-dashed border-zinc-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors disabled:opacity-50"
-            >
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-2xl">📚</span>
-                <span className="text-sm font-medium text-zinc-700">
-                  {editRating ? '修改图书评分' : bookRating ? '修改图书评分' : '添加图书评分'}
-                </span>
-                {editRating && (
-                  <span className="text-xs text-zinc-500">
-                    《{editRating.book_name}》 · {editRating.book_author}
-                  </span>
-                )}
+          {/* 图书评分预览（已添加时展示） */}
+          {editRating && (
+            <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="font-medium text-zinc-800">《{editRating.book_name}》</p>
+                  <p className="text-sm text-zinc-500">{editRating.book_author}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowRatingModal(true)}
+                  className="text-xs text-purple-600 hover:underline"
+                >
+                  修改
+                </button>
               </div>
-            </button>
-
-            {editRating && (
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-white rounded-lg p-2 text-center">
+                  <div className="text-base font-bold text-blue-600">{editRating.impressed_score}</div>
+                  <div className="text-[10px] text-zinc-400">印象分</div>
+                </div>
+                <div className="bg-white rounded-lg p-2 text-center">
+                  <div className="text-base font-bold text-red-500">
+                    -{(editRating.impressed_score - editRating.final_score - editRating.extra_deduction).toFixed(1)}
+                  </div>
+                  <div className="text-[10px] text-zinc-400">准则扣分</div>
+                </div>
+                <div className="bg-white rounded-lg p-2 text-center">
+                  <div className="text-base font-bold text-purple-600">{editRating.final_score.toFixed(1)}</div>
+                  <div className="text-[10px] text-zinc-400">最终得分</div>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setEditRating(null)}
-                className="mt-2 text-xs text-red-600 hover:underline"
+                className="mt-3 text-xs text-red-500 hover:underline"
               >
                 移除评分
               </button>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
 
-        {/* 底部操作 */}
-        <div className="sticky bottom-0 bg-white border-t border-zinc-200 p-4 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 border border-zinc-300 rounded-lg hover:bg-zinc-50 transition-colors"
-            disabled={isSubmitting}
-          >
-            取消
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-6 py-2 bg-black text-white rounded-lg hover:bg-zinc-800 transition-colors disabled:bg-zinc-400 flex items-center gap-2"
-          >
-            {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}
-            {isSubmitting ? '保存中...' : '保存修改'}
-          </button>
         </div>
       </div>
 
@@ -442,21 +417,19 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
             book_name: bookRating.book_name,
             book_author: bookRating.book_author,
             book_platform: bookRating.book_platform,
+            reviewer_name: bookRating.reviewer_name ?? '',
             impressed_score: bookRating.impressed_score,
             principle_scores: bookRating.principle_scores,
             principle_remarks: bookRating.principle_remarks,
             extra_deduction: bookRating.extra_deduction,
             extra_remark: bookRating.extra_remark,
             final_score: bookRating.final_score,
-            reviewer_comment: bookRating.reviewer_comment,
-          } : undefined)}
+          } as BookRatingData : undefined)}
         />
       )}
 
       <style>{`
-        [contenteditable] {
-          outline: none;
-        }
+        [contenteditable] { outline: none; }
       `}</style>
     </div>
   );
