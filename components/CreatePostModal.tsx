@@ -293,7 +293,7 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
   return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col">
       {/* 顶部栏 */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
+      <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-100">
         <button
           onClick={onClose}
           disabled={isSubmitting}
@@ -301,7 +301,6 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
         >
           <X className="w-5 h-5" />
         </button>
-        <h2 className="text-base font-semibold text-zinc-800">发布新帖</h2>
         <button
           onClick={handleSubmit}
           disabled={isSubmitting}
@@ -321,39 +320,37 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
 
       {/* 表单内容 */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-6 py-6 space-y-5">
+        <div className="px-6 py-6 space-y-5">
 
           {/* 分类 */}
-          <div className="flex gap-2 flex-wrap">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setCategory(cat as Category)}
-                disabled={isSubmitting}
-                className={`px-3 py-1 text-sm rounded-full border transition-colors ${
-                  category === cat
-                    ? 'bg-black text-white border-black'
-                    : 'border-zinc-300 text-zinc-600 hover:border-zinc-500'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+          <div>
+            <label className="block text-sm font-bold mb-2 text-zinc-700">分类 *</label>
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value as Category)}
+              disabled={isSubmitting}
+              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
+            >
+              {CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
           </div>
 
           {/* 标题 */}
           <div>
+            <label className="block text-sm font-bold mb-2 text-zinc-700">
+              标题 * <span className="text-xs text-zinc-400 font-normal">({title.length}/100)</span>
+            </label>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
               maxLength={100}
               disabled={isSubmitting}
-              placeholder="标题（建议加前缀如【推书】）"
-              className="w-full text-lg font-medium placeholder-zinc-300 border-none outline-none bg-transparent"
+              placeholder="标题建议加上前缀如 【推书】"
+              className="w-full p-3 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black disabled:opacity-50"
             />
-            <div className="mt-1 text-xs text-zinc-300 text-right">{title.length}/100</div>
           </div>
 
           {/* 内容编辑器 */}
