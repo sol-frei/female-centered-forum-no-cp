@@ -101,7 +101,7 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
 
     setUploading(true);
     try {
-      const url = await uploadImage(file, 'user_images');
+      const url = await uploadImage(file, 'user_images','avatars');
       await updateUser(user.id, { avatar: url });
       setUser({ ...user, avatar: url });
     } catch (err) {
