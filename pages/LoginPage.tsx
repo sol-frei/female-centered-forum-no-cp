@@ -54,7 +54,7 @@ const LoginPage = ({ onLogin }: LoginProps) => {
       const { data: userData, error: queryError } = await supabase
         .from('users')
         .select('*')
-        .eq('login_id', loginIdInput)
+        .eq('login_id',loginIdInput.trim().toUpperCase())
         .single();
 
       if (queryError || !userData) {
@@ -108,7 +108,7 @@ const LoginPage = ({ onLogin }: LoginProps) => {
             <label className="text-xs font-bold uppercase tracking-widest text-zinc-400">用户 ID</label>
             <input
               value={loginIdInput}
-              onChange={e => setLoginIdInput(e.target.value)}
+              onChange={e => setLoginIdInput(e.target.value.trim().toUpperCase())}
               disabled={loading}
               className="w-full p-4 border border-zinc-200 outline-none focus:border-black transition-all bg-zinc-50 focus:bg-white font-mono disabled:opacity-50"
               placeholder="例如: AX79P2"
