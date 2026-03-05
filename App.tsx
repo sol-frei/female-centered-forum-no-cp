@@ -385,7 +385,7 @@ const getPostPreview = (content: any) => {
                   ) : filteredPosts.length > 0 ? (
                     filteredPosts.map(post => (
                    <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3 transition-colors">
-                   <Avatar url={usersMap[post.user_id]?.avatar} className="w-6 h-6 flex-shrink-0" />
+                   <Avatar url={usersMap[post.user_id]?.avatar} className="w-7 h-7 flex-shrink-0" />
                    <div className="flex-1 min-w-0">
                           <h3 className="font-medium break-words whitespace-normal text-[15px] leading-snug text-zinc-900">
                             {post.is_essence && <span className="mr-1 bg-black text-white px-1 text-[10px] inline-block align-middle rounded-sm">蒂</span>}
