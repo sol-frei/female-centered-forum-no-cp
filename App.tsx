@@ -379,12 +379,12 @@ const getPostPreview = (content: any) => {
                   <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 rounded active:scale-95 transition-transform"><PenSquare className="w-4 h-4" /> 发帖</button>
                 </div>
                 
-                <div className="divide-y divide-zinc-100">
+                <div>
                   {isLoading ? (
                     <LoadingSpinner />
                   ) : filteredPosts.length > 0 ? (
                     filteredPosts.map(post => (
-                   <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3 transition-colors">
+                   <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3 transition-colors" style={{ borderBottom: '1px solid #f4f4f5' }}>
                    <Avatar url={usersMap[post.user_id]?.avatar} className="w-7 h-7 flex-shrink-0" />
                    <div className="flex-1 min-w-0">
                           <h3 className="font-medium break-words whitespace-normal text-[15px] leading-snug text-zinc-900">
