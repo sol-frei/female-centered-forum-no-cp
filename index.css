@@ -1,1 +1,75 @@
 @import "tailwindcss";
+
+/*
+  修复国产浏览器（夸克、荣耀等）无法正确解析 Tailwind CSS 变量导致的黑线/黑色背景问题。
+  通过硬编码覆盖 Tailwind v4 的 oklch 颜色变量为标准 hex 值，所有浏览器均可正确渲染。
+*/
+:root {
+  /* zinc 系列 */
+  --color-zinc-50:  #fafafa;
+  --color-zinc-100: #f4f4f5;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-500: #71717a;
+  --color-zinc-600: #52525b;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-800: #27272a;
+  --color-zinc-900: #18181b;
+
+  /* slate 系列 */
+  --color-slate-50:  #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-600: #475569;
+
+  /* red 系列 */
+  --color-red-50:  #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-200: #fecaca;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+
+  /* green 系列 */
+  --color-green-50:  #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+
+  /* yellow 系列 */
+  --color-yellow-50:  #fefce8;
+  --color-yellow-200: #fde68a;
+  --color-yellow-500: #eab308;
+  --color-yellow-600: #ca8a04;
+
+  /* amber 系列 */
+  --color-amber-50:  #fffbeb;
+  --color-amber-200: #fde68a;
+  --color-amber-700: #b45309;
+
+  /* orange 系列 */
+  --color-orange-50:  #fff7ed;
+  --color-orange-200: #fed7aa;
+  --color-orange-600: #ea580c;
+
+  /* blue 系列 */
+  --color-blue-50:  #eff6ff;
+  --color-blue-200: #bfdbfe;
+  --color-blue-600: #2563eb;
+
+  /* purple 系列 */
+  --color-purple-50:  #faf5ff;
+  --color-purple-200: #e9d5ff;
+  --color-purple-600: #9333ea;
+
+  /* pink 系列 */
+  --color-pink-50:  #fdf2f8;
+  --color-pink-200: #fbcfe8;
+  --color-pink-600: #db2777;
+
+  /* cyan 系列 */
+  --color-cyan-50:  #ecfeff;
+  --color-cyan-200: #a5f3fc;
+  --color-cyan-600: #0891b2;
+}
