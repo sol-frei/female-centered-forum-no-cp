@@ -103,7 +103,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       book_author: bookAuthor,
       book_platform: bookPlatform,
       book_category: bookCategory,
-      reviewer_name: reviewerName || '匿名发帖者',
+      reviewer_name: reviewerName ||user_name,
       impressed_score: Number(impressedScore),
       principle_scores: principleScores,
       principle_remarks: principleRemarks,
