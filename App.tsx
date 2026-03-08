@@ -44,7 +44,7 @@ function timeAgo(dateInput: string | Date): string {
 }
 
 const Avatar = ({ url, className = "w-8 h-8" }: { url?: string, className?: string }) => {
-  if (url) return <img src={url} alt="头像" className={`${className} rounded-full object-cover border border-zinc-100`} />;
+  if (url) return <img src={url} alt="头像" className={`${className} rounded-full object-cover`} style={{ border: '1px solid #f4f4f5' }} />;
   return <UserCircle className={`${className} text-zinc-300`} />;
 };
 
@@ -334,7 +334,8 @@ const getPostPreview = (content: any) => {
                 placeholder="搜索帖子..." 
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full bg-zinc-100 border-none rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-1 focus:ring-black transition-all"
+                className="w-full rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-1 focus:ring-black transition-all outline-none"
+                style={{ backgroundColor: '#f4f4f5', border: 'none' }}
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-zinc-200 rounded-full">
@@ -375,7 +376,7 @@ const getPostPreview = (content: any) => {
             user ? (
               <div className="p-4">
                 <div className="flex justify-between items-center mb-4 pb-2">
-                  <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'border border-zinc-200 hover:bg-zinc-50'}`}>蒂</button>
+                  <button onClick={() => setOnlyEssence(!onlyEssence)} className={`px-2 py-1 text-sm font-bold rounded ${onlyEssence ? 'bg-black text-white' : 'hover:bg-zinc-50'}`} style={onlyEssence ? {} : { border: '1px solid #e4e4e7' }}>蒂</button>
                   <button onClick={() => setIsCreatingPost(true)} className="bg-black text-white px-4 py-2 text-sm flex items-center gap-2 rounded active:scale-95 transition-transform"><PenSquare className="w-4 h-4" /> 发帖</button>
                 </div>
                 
