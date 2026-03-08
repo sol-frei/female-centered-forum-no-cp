@@ -672,6 +672,7 @@ export async function create_book_rating(ratingData: {
   book_name: string;
   book_author: string;
   book_platform: string;
+  book_category: string;
   impressed_score: number;
   principle_scores: { [key: string]: 'yes' | 'no' | null };
   principle_remarks: { [key: string]: string };
@@ -691,6 +692,7 @@ export async function create_book_rating(ratingData: {
         book_name: ratingData.book_name,
         book_author: ratingData.book_author,
         book_platform: ratingData.book_platform,
+        book_category: ratingData.book_category,
         impressed_score: ratingData.impressed_score,
         principle_scores: ratingData.principle_scores,
         principle_remarks: ratingData.principle_remarks,
