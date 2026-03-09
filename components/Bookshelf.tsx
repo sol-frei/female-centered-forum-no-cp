@@ -45,7 +45,7 @@ const PRINCIPLES_TEXT = [
 ];
 
 const BOOK_CATEGORIES = [
-  '热血竞技','西幻史诗','姼（shí）想奇幻', '科幻未来','恐怖灵异','无限快穿','性别战争','年代重制',
+  '热血竞技','西幻史诗','姼想奇幻', '科幻未来','恐怖灵异','无限快穿','性别战争','年代重制',
   '悬疑推理', '东方架空', '校园青春', '职场商战', '武侠仙侠','其他',
 ];
 
@@ -53,7 +53,7 @@ const BOOK_CATEGORIES = [
 const CATEGORY_STYLES: Record<string, React.CSSProperties> = {
   '热血竞技': { backgroundColor: '#fef2f2', color: '#ef4444', borderColor: '#fee2e2' }, // 充满激情的正红
   '西幻史诗': { backgroundColor: '#fdf2f8', color: '#db2777', borderColor: '#fbcfe8' },
-  '姼（shí）想奇幻': { backgroundColor: '#faf5ff', color: '#9333ea', borderColor: '#e9d5ff' },
+  '姼想奇幻': { backgroundColor: '#faf5ff', color: '#9333ea', borderColor: '#e9d5ff' },
   '科幻未来': { backgroundColor: '#ecfeff', color: '#0891b2', borderColor: '#a5f3fc' },
   '悬疑推理': { backgroundColor: '#fffbeb', color: '#b45309', borderColor: '#fde68a' },
   '东方架空': { backgroundColor: '#fff7ed', color: '#ea580c', borderColor: '#fed7aa' },
@@ -154,9 +154,19 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
             </span>
           </div>
 
-          {/* 搜索框 */}
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#a1a1aa' }} />
+          {/* 搜索框 —— 用 flexbox + position absolute 替代 translate-y，修复国产浏览器放大镜偏移 */}
+          <div className="relative mb-3" style={{ display: 'flex', alignItems: 'center' }}>
+            <Search
+              className="w-4 h-4"
+              style={{
+                color: '#a1a1aa',
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                pointerEvents: 'none',
+              }}
+            />
             <input
               type="text"
               value={searchQuery}
@@ -167,7 +177,7 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
             />
           </div>
 
-          {/* 筛选行 */}
+          {/* 筛选行 —— 分类框限制最大宽度，避免在手机上撑满 */}
           <div className="flex gap-2 overflow-x-auto pb-1">
             <select
               value={sortBy} onChange={(e) => setSortBy(e.target.value)}
@@ -188,10 +198,16 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
               <option value="medium">中等 5-8</option>
               <option value="low">低分 &lt;5</option>
             </select>
+            {/* 分类下拉：maxWidth 限制宽度，让它刚好容纳文字+原生箭头即可 */}
             <select
               value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
               className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs outline-none"
-              style={{ border: '1px solid #e4e4e7', backgroundColor: '#ffffff', color: '#3f3f46' }}
+              style={{
+                border: '1px solid #e4e4e7',
+                backgroundColor: '#ffffff',
+                color: '#3f3f46',
+                maxWidth: '7.5rem',   // 约等于"全部分类↓"所需宽度
+              }}
             >
               <option value="all">全部分类</option>
               {BOOK_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
