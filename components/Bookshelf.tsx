@@ -45,21 +45,25 @@ const PRINCIPLES_TEXT = [
 ];
 
 const BOOK_CATEGORIES = [
-  '现代都市', '玄幻奇幻', '科幻未来',
-  '悬疑推理', '历史架空', '校园青春', '职场商战', '武侠仙侠', '其他',
+  '热血竞技','西幻史诗','姼（shí）想奇幻', '科幻未来','恐怖灵异','无限快穿','性别战争','年代重制',
+  '悬疑推理', '东方架空', '校园青春', '职场商战', '武侠仙侠','其他',
 ];
 
 // 分类标签颜色 —— 全部改为内联 style 对象，彻底避免国产浏览器 Tailwind 变量解析失败
 const CATEGORY_STYLES: Record<string, React.CSSProperties> = {
-  '现代都市': { backgroundColor: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' },
-  '古代言情': { backgroundColor: '#fdf2f8', color: '#db2777', borderColor: '#fbcfe8' },
-  '玄幻奇幻': { backgroundColor: '#faf5ff', color: '#9333ea', borderColor: '#e9d5ff' },
+  '热血竞技': { backgroundColor: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' },
+  '西幻史诗': { backgroundColor: '#fdf2f8', color: '#db2777', borderColor: '#fbcfe8' },
+  '姼（shí）想奇幻': { backgroundColor: '#faf5ff', color: '#9333ea', borderColor: '#e9d5ff' },
   '科幻未来': { backgroundColor: '#ecfeff', color: '#0891b2', borderColor: '#a5f3fc' },
   '悬疑推理': { backgroundColor: '#fffbeb', color: '#b45309', borderColor: '#fde68a' },
-  '历史架空': { backgroundColor: '#fff7ed', color: '#ea580c', borderColor: '#fed7aa' },
+  '东方架空': { backgroundColor: '#fff7ed', color: '#ea580c', borderColor: '#fed7aa' },
   '校园青春': { backgroundColor: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' },
   '职场商战': { backgroundColor: '#f8fafc', color: '#475569', borderColor: '#cbd5e1' },
   '武侠仙侠': { backgroundColor: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' },
+  '恐怖灵异': { backgroundColor: '#f9fafb', color: '#111827', borderColor: '#374151' }, // 深沉冷峻色调
+  '无限快穿': { backgroundColor: '#f5f3ff', color: '#7c3aed', borderColor: '#ddd6fe' }, // 梦幻科技感紫色
+  '性别战争': { backgroundColor: '#fff1f2', color: '#e11d48', borderColor: '#fecdd3' }, // 鲜明冲突的玫瑰红
+  '年代重制': { backgroundColor: '#fefce8', color: '#854d0e', borderColor: '#fef08a' }, // 复古怀旧的琥珀色
   '其他':     { backgroundColor: '#fafafa', color: '#71717a', borderColor: '#e4e4e7' },
 };
 

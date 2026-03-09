@@ -25,8 +25,8 @@ export interface BookRatingData {
 }
 
 const BOOK_CATEGORIES = [
-  '现代都市', '玄幻奇幻', '科幻未来',
-  '悬疑推理', '历史架空', '校园青春', '职场商战', '武侠仙侠', '其他',
+  '热血竞技','西幻史诗', '姼（shí）想奇幻', '科幻未来','恐怖灵异','无限快穿','性别战争','年代重制',
+  '悬疑推理', '东方架空', '校园青春', '职场商战', '武侠仙侠', '其他',
 ];
 
 const PRINCIPLES = [
@@ -103,7 +103,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       book_author: bookAuthor,
       book_platform: bookPlatform,
       book_category: bookCategory,
-      reviewer_name: reviewerName ||user_name,
+      reviewer_name: reviewerName ||'匿名发帖者',
       impressed_score: Number(impressedScore),
       principle_scores: principleScores,
       principle_remarks: principleRemarks,
