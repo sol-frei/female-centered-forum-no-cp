@@ -51,7 +51,7 @@ const BOOK_CATEGORIES = [
 
 // 分类标签颜色 —— 全部改为内联 style 对象，彻底避免国产浏览器 Tailwind 变量解析失败
 const CATEGORY_STYLES: Record<string, React.CSSProperties> = {
-  '热血竞技': { backgroundColor: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' },
+  '热血竞技': { backgroundColor: '#fef2f2', color: '#ef4444', borderColor: '#fee2e2' }, // 充满激情的正红
   '西幻史诗': { backgroundColor: '#fdf2f8', color: '#db2777', borderColor: '#fbcfe8' },
   '姼（shí）想奇幻': { backgroundColor: '#faf5ff', color: '#9333ea', borderColor: '#e9d5ff' },
   '科幻未来': { backgroundColor: '#ecfeff', color: '#0891b2', borderColor: '#a5f3fc' },
