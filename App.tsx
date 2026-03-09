@@ -29,6 +29,18 @@ const LoadingSpinner = ({ fullScreen = false }: { fullScreen?: boolean }) => (
   </div>
 );
 
+// 取帖子的最后活跃时间：优先用 last_comment_at，没有则用 created_at
+function getPostActiveTime(post: Post): Date {
+  const t = (post as any).last_comment_at;
+  if (t) return new Date(t);
+  return new Date(post.created_at);
+}
+
+// 按最后活跃时间降序排序（顶帖逻辑）
+function sortByActivity(posts: Post[]): Post[] {
+  return [...posts].sort((a, b) => getPostActiveTime(b).getTime() - getPostActiveTime(a).getTime());
+}
+
 function timeAgo(dateInput: string | Date): string {
   const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
   const now = new Date();
@@ -158,7 +170,8 @@ function AppContent() {
     const loadPosts = async () => {
       setIsLoading(true);
       const data = await get_posts(currentCategory, onlyEssence ? 'essence' : 'new');
-      setDisplayPosts(data || []);
+      // 按最后活跃时间（last_comment_at 或 created_at）降序排列，实现顶帖效果
+      setDisplayPosts(sortByActivity(data || []));
       setIsLoading(false);
     };
     loadPosts();
@@ -179,7 +192,8 @@ function AppContent() {
           }
         } else if (payload.eventType === 'UPDATE') {
           const updatedPost = payload.new as Post;
-          setDisplayPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
+          // 更新帖子数据后重新按活跃时间排序（支持 last_comment_at 顶帖）
+          setDisplayPosts(prev => sortByActivity(prev.map(p => p.id === updatedPost.id ? updatedPost : p)));
         } else if (payload.eventType === 'DELETE') {
           setDisplayPosts(prev => prev.filter(p => p.id !== payload.old.id));
         }
@@ -397,7 +411,15 @@ const getPostPreview = (content: any) => {
                             <span className="bg-zinc-100 px-1.5 py-0.5 rounded text-zinc-600">{post.category}</span>
                             <span>{usersMap[post.user_id]?.user_name || '匿名'}</span>
                             <span>·</span>
-                            <span>{timeAgo(post.created_at)}</span>
+                            {(post as any).last_comment_at ? (
+                              <>
+                                <span title={`发帖：${timeAgo(post.created_at)}`}>
+                                  💬 {timeAgo((post as any).last_comment_at)}
+                                </span>
+                              </>
+                            ) : (
+                              <span>{timeAgo(post.created_at)}</span>
+                            )}
                           </div>
                         </div>
                       </div>
