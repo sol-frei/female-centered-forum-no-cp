@@ -10,14 +10,13 @@ import {
   UserPlus, Ban, Copy, ShieldAlert, Check, UserCircle, Crown, Loader2 
 } from 'lucide-react';
 import Toast from './Toast';
-import CompressLegacyImages from './admin/CompressLegacyImages';
 
 export default function AdminPanel() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newUser, setNewUser] = useState<any | null>(null);
   const [bannedWordsInput, setBannedWordsInput] = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'tools'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'settings'>('users');
   const [copiedId, setCopiedId] = useState(false);
   const [copiedPass, setCopiedPass] = useState(false);
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
@@ -159,12 +158,6 @@ export default function AdminPanel() {
         >
           发言设置
         </button>
-        <button
-          onClick={() => setActiveTab('tools')}
-          className={`pb-2 px-4 ${activeTab === 'tools' ? 'border-b-2 border-black font-bold' : 'text-zinc-500'}`}
-        >
-          维护工具
-        </button>
       </div>
 
       {activeTab === 'users' && (
@@ -270,13 +263,6 @@ export default function AdminPanel() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
-
-      {/* 维护工具 Tab */}
-      {activeTab === 'tools' && (
-        <div className="animate-in slide-in-from-right duration-300">
-          <CompressLegacyImages />
         </div>
       )}
 
