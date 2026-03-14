@@ -41,7 +41,7 @@ function compressToJpeg(file: File | Blob, name: string): Promise<File> {
 
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      resolve(new File([file], name)); // 压缩失败保留原文件
+      resolve(new File([file], name));
     };
 
     img.src = url;
@@ -64,8 +64,10 @@ interface FileRecord {
   originalSize?: number;
   compressedSize?: number;
   status: FileStatus;
-  reason?: string; // skipped / error 时的原因
+  reason?: string;
 }
+
+type RawFile = { name: string; path: string; size: number };
 
 // ─── 组件 ─────────────────────────────────────────────────────────────────────
 
@@ -84,35 +86,51 @@ export default function CompressLegacyImages() {
     setDone(false);
     setRecords([]);
 
-    // 1. 列出 bucket 里所有文件
-    const { data: fileList, error: listErr } = await supabase.storage
-      .from(BUCKET)
-      .list('', { limit: 1000 });
+    // 1. 递归扫描所有子文件夹，收集全部图片（含完整路径）
+    // 实际结构：forum_images / posts / {帖子ID} / 图片文件
+    const allFiles: RawFile[] = [];
 
-    if (listErr || !fileList) {
-      alert('读取文件列表失败：' + listErr?.message);
+    const scanFolder = async (folderPath: string) => {
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .list(folderPath, { limit: 1000 });
+      if (error || !data) return;
+
+      for (const item of data) {
+        const fullPath = folderPath ? `${folderPath}/${item.name}` : item.name;
+        if (item.metadata) {
+          // 有 metadata = 文件
+          allFiles.push({ name: item.name, path: fullPath, size: item.metadata.size ?? 0 });
+        } else {
+          // 没有 metadata = 文件夹，递归进去
+          await scanFolder(fullPath);
+        }
+      }
+    };
+
+    await scanFolder('');
+
+    const imageFiles = allFiles.filter((f) =>
+      /\.(jpe?g|png|webp|heic|heif|bmp|tiff?)$/i.test(f.name)
+    );
+
+    if (imageFiles.length === 0) {
+      alert('未找到任何图片文件');
       setRunning(false);
       return;
     }
 
-    // 只处理图片文件
-    const imageFiles = fileList.filter((f) =>
-      /\.(jpe?g|png|webp|heic|heif|bmp|tiff?)$/i.test(f.name)
-    );
-
     const initial: FileRecord[] = imageFiles.map((f) => ({
-      name: f.name,
-      path: f.name,
-      originalSize: f.metadata?.size,
+      name: f.path,
+      path: f.path,
+      originalSize: f.size,
       status: 'pending',
     }));
     setRecords(initial);
 
-    let savedTotal = 0;
-
     // 2. 逐个处理
     for (const f of imageFiles) {
-      const path = f.name;
+      const path = f.path;
 
       // gif 跳过（压缩会丢失动画）
       if (/\.gif$/i.test(f.name)) {
@@ -120,8 +138,8 @@ export default function CompressLegacyImages() {
         continue;
       }
 
-      // 已经是 .jpg 且体积 < 300 KB，也跳过（可能已经压缩过）
-      const originalSize = f.metadata?.size ?? 0;
+      // 已经是 jpg 且体积 < 300 KB，跳过
+      const originalSize = f.size;
       if (/\.jpe?g$/i.test(f.name) && originalSize > 0 && originalSize < 300 * 1024) {
         update(path, { status: 'skipped', reason: '体积已达标，跳过' });
         continue;
@@ -138,13 +156,13 @@ export default function CompressLegacyImages() {
         const compressed = await compressToJpeg(dlData, f.name);
         const compressedSize = compressed.size;
 
-        // 压缩后反而更大（极少数情况），跳过
+        // 压缩后反而更大，跳过
         if (originalSize > 0 && compressedSize >= originalSize) {
           update(path, { status: 'skipped', reason: '压缩无收益，跳过' });
           continue;
         }
 
-        // 2c. 覆盖上传（upsert: true）
+        // 2c. 覆盖上传，保持原路径（同一文件夹下）
         const newPath = path.replace(/\.[^.]+$/, '.jpg');
         const { error: upErr } = await supabase.storage
           .from(BUCKET)
@@ -155,12 +173,11 @@ export default function CompressLegacyImages() {
           });
         if (upErr) throw new Error('上传失败: ' + upErr.message);
 
-        // 如果原文件扩展名不是 jpg，删除旧文件
+        // 原扩展名不是 jpg 时，删除旧文件
         if (newPath !== path) {
           await supabase.storage.from(BUCKET).remove([path]);
         }
 
-        savedTotal += Math.max(0, originalSize - compressedSize);
         update(path, { status: 'done', compressedSize });
       } catch (err: any) {
         update(path, { status: 'error', reason: err.message });
@@ -214,7 +231,6 @@ export default function CompressLegacyImages() {
         {running ? '处理中…' : done ? '重新执行' : '开始压缩'}
       </button>
 
-      {/* 进度列表 */}
       {records.length > 0 && (
         <div className="space-y-3">
           <div className="text-sm text-zinc-500">
