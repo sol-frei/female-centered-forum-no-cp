@@ -294,7 +294,13 @@ const getPostPreview = (content: any) => {
 
   return (
     <div className="min-h-screen bg-white text-zinc-900">
-      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
+      <div className="fixed inset-0 z-[999] pointer-events-none">
+        {toast && (
+          <div className="pointer-events-auto">
+            <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} duration={2000} />
+          </div>
+        )}
+      </div>
 
       {/* 侧边栏 */}
       {showMobileMenu && (
