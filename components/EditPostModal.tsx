@@ -367,9 +367,11 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          multiple
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) { insertImage(file); e.target.value = ''; }
+            const files = Array.from(e.target.files || []);
+            files.forEach(file => insertImage(file));
+            e.target.value = '';
           }}
           className="hidden"
         />
