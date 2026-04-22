@@ -114,7 +114,6 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
   };
 
   const insertImage = (file: File) => {
-    if (imageMap.size >= 9) { showToast('最多只能插入9张图片', 'warning'); return; }
     if (!file.type.startsWith('image/')) { showToast('只能上传图片文件', 'error'); return; }
     if (file.size > 5 * 1024 * 1024) { showToast('图片不能超过5MB', 'error'); return; }
 
@@ -356,13 +355,13 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={isSubmitting || imageCount >= 9}
+          disabled={isSubmitting}
           title="插入图片"
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <ImageIcon className="w-4 h-4" />
           <span>图片</span>
-          {imageCount > 0 && <span className="text-xs text-zinc-400">{imageCount}/9</span>}
+          {imageCount > 0 && <span className="text-xs text-zinc-400">{imageCount}</span>}
         </button>
         <input
           ref={fileInputRef}
