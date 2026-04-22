@@ -337,25 +337,10 @@ const getPostPreview = (content: any) => {
         </div>
       )}
 
-      {user && !isLoginPage && !hideNavPages && (
-        <nav className="sticky top-0 bg-white z-40" style={{ borderBottom: '1px solid #e4e4e7' }}>
-          {/* PC端板块选择横栏 */}
-          <div className="hidden md:flex max-w-5xl mx-auto px-4 gap-1 pt-2 overflow-x-auto">
-            {CATEGORIES.map(c => (
-              <button
-                key={c}
-                onClick={() => { setCurrentCategory(c); navigate('/feed'); }}
-                className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors ${
-                  currentCategory === c
-                    ? 'bg-black text-white font-medium'
-                    : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-          <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-2 md:gap-4">
+{user && !isLoginPage && !hideNavPages && (
+        <>
+          <nav className="sticky top-0 bg-white z-40" style={{ borderBottom: '1px solid #e4e4e7' }}>
+            <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-2 md:gap-4">
             
             <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
               <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-1.5 hover:bg-zinc-100 rounded-full"><Menu className="w-5 h-5" /></button>
@@ -402,8 +387,26 @@ const getPostPreview = (content: any) => {
               <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full transition-colors"><LogOut className="w-5 h-5 text-zinc-500" /></button>
             </div>
           </div>
-        </nav>
-      )}
+          </nav>
+                    <div className="hidden md:flex sticky top-14 bg-white z-30 border-b border-zinc-100">
+                      <div className="max-w-5xl mx-auto px-4 w-full flex gap-1 py-2 overflow-x-auto">
+                        {CATEGORIES.map(c => (
+                          <button
+                            key={c}
+                            onClick={() => { setCurrentCategory(c); navigate('/feed'); }}
+                            className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors ${
+                              currentCategory === c
+                                ? 'bg-black text-white font-medium'
+                                : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
+                            }`}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
 
       <main className="max-w-5xl mx-auto">
         <Routes>
