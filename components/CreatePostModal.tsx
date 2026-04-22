@@ -136,9 +136,10 @@ export default function CreatePostModal({ user, onClose, onSuccess, showToast }:
 
   const handleImageButtonClick = () => { saveSelection(); fileInputRef.current?.click(); };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) { insertImageAtCursor(file); e.target.value = ''; }
+const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => insertImageAtCursor(file));
+    e.target.value = '';
   };
 
   const extractContentBlocks = (): ContentBlock[] => {
@@ -502,7 +503,7 @@ const handleSubmit = async () => {
           <span>图片</span>
           {imageCount > 0 && <span className="text-xs text-zinc-400">{imageCount}</span>}
         </button>
-        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
 
         {/* 图书评分 */}
         <button
