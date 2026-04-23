@@ -86,13 +86,11 @@ function AppContent() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // 🟢 新增:未读消息数量状态
   const [unreadCount, setUnreadCount] = useState(0);
 
   const touchStartX = useRef<number | null>(null);
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
 
-  // 🟢 新增:加载未读消息数量
   const loadUnreadCount = async () => {
     if (user) {
       const count = await getUnreadNotificationCount(user.id);
@@ -100,13 +98,11 @@ function AppContent() {
     }
   };
 
-  // 🟢 新增:监听通知表变化,实时更新红点
   useEffect(() => {
     if (!user) return;
 
-    loadUnreadCount(); // 初始加载
+    loadUnreadCount();
 
-    // 订阅通知表的实时更新
     const channel = supabase
       .channel(`notifications_badge_${user.id}`)
       .on('postgres_changes', {
@@ -115,7 +111,7 @@ function AppContent() {
         table: 'notifications',
         filter: `user_id=eq.${user.id}`
       }, () => {
-        loadUnreadCount(); // 有变化时重新加载数量
+        loadUnreadCount();
       })
       .subscribe();
 
@@ -124,7 +120,6 @@ function AppContent() {
     };
   }, [user]);
 
-  // 1. 处理返回逻辑:如果是搜索状态,后退操作先清空搜索
   useEffect(() => {
     const handlePopState = () => {
       if (searchQuery) setSearchQuery('');
@@ -141,7 +136,6 @@ function AppContent() {
     setSearchQuery(val);
   };
 
-  // 2. 身份初始化
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -164,20 +158,17 @@ function AppContent() {
     initAuth();
   }, []);
 
-  // 3. 初始加载帖子
   useEffect(() => {
     if (isAuthChecking) return; 
     const loadPosts = async () => {
       setIsLoading(true);
       const data = await get_posts(currentCategory, onlyEssence ? 'essence' : 'new');
-      // 按最后活跃时间（last_comment_at 或 created_at）降序排列，实现顶帖效果
       setDisplayPosts(sortByActivity(data || []));
       setIsLoading(false);
     };
     loadPosts();
   }, [currentCategory, onlyEssence, refreshKey, isAuthChecking]);
 
-  // 4. 🟢 实时自动刷新逻辑:监听数据库变化
   useEffect(() => {
     if (isAuthChecking) return;
 
@@ -186,13 +177,11 @@ function AppContent() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const newPost = payload.new as Post;
-          // 仅当新帖符合当前选中的分类或处于"全部"版块时,自动插入顶部
           if (currentCategory === '全部' || newPost.category === currentCategory) {
             setDisplayPosts(prev => [newPost, ...prev]);
           }
         } else if (payload.eventType === 'UPDATE') {
           const updatedPost = payload.new as Post;
-          // 更新帖子数据后重新按活跃时间排序（支持 last_comment_at 顶帖）
           setDisplayPosts(prev => sortByActivity(prev.map(p => p.id === updatedPost.id ? updatedPost : p)));
         } else if (payload.eventType === 'DELETE') {
           setDisplayPosts(prev => prev.filter(p => p.id !== payload.old.id));
@@ -205,7 +194,6 @@ function AppContent() {
     };
   }, [currentCategory, isAuthChecking]);
 
-  // 加载用户映射
   useEffect(() => {
     if (!user) return;
     get_all_users().then(list => {
@@ -219,7 +207,7 @@ function AppContent() {
     setShowMobileMenu(false);
     await supabase.auth.signOut();
     setUser(null);
-    setUnreadCount(0); // 清空未读数
+    setUnreadCount(0);
   };
 
   const filteredPosts = searchQuery
@@ -229,18 +217,14 @@ function AppContent() {
       )
     : displayPosts;
 
-const getPostPreview = (content: any) => {
+  const getPostPreview = (content: any) => {
     if (!content) return '';
-    
-    // 如果是对象类型（已经解析过），直接处理
     if (Array.isArray(content)) {
       return content
         .filter((b: any) => b.type === 'text')
         .map((b: any) => b.value)
         .join(' ');
     }
-
-    // 如果是字符串，尝试解析是否为 JSON 数组
     if (typeof content === 'string') {
       try {
         const blocks = JSON.parse(content);
@@ -250,16 +234,14 @@ const getPostPreview = (content: any) => {
             .map((b: any) => b.value)
             .join(' ');
         }
-        return content; // 如果是普通字符串，直接返回
+        return content;
       } catch {
-        return content; // 解析失败（说明不是JSON），按原样显示
+        return content;
       }
     }
-    
     return '';
   };
 
-  
   const handleTouchStart = (e: React.TouchEvent) => touchStartX.current = e.touches[0].clientX;
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!touchStartX.current) return;
@@ -273,7 +255,6 @@ const getPostPreview = (content: any) => {
     return <ChangePasswordModal user={user} onComplete={(u) => { setUser(u); navigate('/feed', { replace: true }); }} />;
   }
 
-  // 用户主页包装组件 - 从 URL 获取正确的 userId
   const UserProfileWrapper = () => {
     const { userId } = useParams<{ userId: string }>();
     if (!userId) return <Navigate to="/feed" replace />;
@@ -319,7 +300,7 @@ const getPostPreview = (content: any) => {
             <div className="flex flex-col gap-2">
               {CATEGORIES.map(c => (
                 <button key={c} onClick={() => { setCurrentCategory(c); setShowMobileMenu(false); navigate('/feed'); }}
-                  className={`px-4 py-3 text-left text-sm rounded-lg ${currentCategory === c ? 'bg-black text-white' : 'hover:bg-zinc-100'}`}>
+                  className={`px-4 py-3 text-left text-base rounded-lg ${currentCategory === c ? 'bg-black text-white' : 'hover:bg-zinc-100'}`}>
                   {c}
                 </button>
               ))}
@@ -337,7 +318,7 @@ const getPostPreview = (content: any) => {
         </div>
       )}
 
-{user && !isLoginPage && !hideNavPages && (
+      {user && !isLoginPage && !hideNavPages && (
         <>
           <nav className="sticky top-0 bg-white z-40" style={{ borderBottom: '1px solid #e4e4e7' }}>
             <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-2 md:gap-4">
@@ -367,17 +348,14 @@ const getPostPreview = (content: any) => {
             </div>
 
             <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-              {/* PC端:书架图标最左侧 */}
               <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
                 <BookOpen className="w-5 h-5 text-zinc-600" />
               </button>
-              {/* PC端:管理员图标紧邻头像 */}
               {user.role === 'admin' && (
                 <button onClick={() => navigate('/admin')} className="hidden md:flex p-2 hover:bg-zinc-100 rounded-full transition-colors" title="管理后台">
                   <Shield className="w-5 h-5 text-zinc-600" />
                 </button>
               )}
-              {/* 🟢 头像+红点提示 */}
               <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full transition-colors relative">
                 <Avatar url={user.avatar} className="w-6 h-6" />
                 {unreadCount > 0 && (
@@ -388,25 +366,25 @@ const getPostPreview = (content: any) => {
             </div>
           </div>
           </nav>
-                    <div className="hidden md:flex sticky top-14 bg-white z-30 border-b border-zinc-100">
-                      <div className="max-w-5xl mx-auto px-4 w-full flex gap-1 py-2 overflow-x-auto">
-                        {CATEGORIES.map(c => (
-                          <button
-                            key={c}
-                            onClick={() => { setCurrentCategory(c); navigate('/feed'); }}
-                            className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors ${
-                              currentCategory === c
-                                ? 'bg-black text-white font-medium'
-                                : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
-                            }`}
-                          >
-                            {c}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
+          <div className="hidden md:flex sticky top-14 bg-white z-30 border-b border-zinc-100">
+            <div className="max-w-5xl mx-auto px-4 w-full flex gap-1 py-2 overflow-x-auto">
+              {CATEGORIES.map(c => (
+                <button
+                  key={c}
+                  onClick={() => { setCurrentCategory(c); navigate('/feed'); }}
+                  className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors ${
+                    currentCategory === c
+                      ? 'bg-black text-white font-medium'
+                      : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       <main className="max-w-5xl mx-auto">
         <Routes>
@@ -425,24 +403,32 @@ const getPostPreview = (content: any) => {
                     <LoadingSpinner />
                   ) : filteredPosts.length > 0 ? (
                     filteredPosts.map(post => (
-                   <div key={post.id} onClick={() => navigate(`/post/${post.id}`)} className="py-4 cursor-pointer hover:bg-zinc-50 flex gap-3 transition-colors" style={{ borderBottom: '1px solid #f4f4f5' }}>
-                   <Avatar url={usersMap[post.user_id]?.avatar} className="w-7 h-7 flex-shrink-0" />
-                   <div className="flex-1 min-w-0">
-                          <h3 className="font-medium break-words whitespace-normal text-[15px] leading-snug text-zinc-900">
+                      <div
+                        key={post.id}
+                        onClick={() => navigate(`/post/${post.id}`)}
+                        className="py-5 md:py-4 cursor-pointer hover:bg-zinc-50 flex gap-3 transition-colors"
+                        style={{ borderBottom: '1px solid #f4f4f5' }}
+                      >
+                        <Avatar url={usersMap[post.user_id]?.avatar} className="w-8 h-8 md:w-7 md:h-7 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          {/* 标题：手机 text-base，PC 保持 text-[15px] */}
+                          <h3 className="font-medium break-words whitespace-normal text-base md:text-[15px] leading-snug text-zinc-900">
                             {post.is_essence && <span className="mr-1 bg-black text-white px-1 text-[10px] inline-block align-middle rounded-sm">蒂</span>}
                             {post.title}
                           </h3>
-                          <p className="text-sm text-zinc-500 line-clamp-2 mt-1">{getPostPreview(post.content)}</p>
-                          <div className="text-xs text-zinc-400 mt-2 flex items-center gap-2">
+                          {/* 预览文字：手机 text-base leading-relaxed，PC text-sm */}
+                          <p className="text-base md:text-sm leading-relaxed md:leading-normal text-zinc-500 line-clamp-2 mt-1.5 md:mt-1">
+                            {getPostPreview(post.content)}
+                          </p>
+                          {/* 元信息：手机 text-sm，PC text-xs */}
+                          <div className="text-sm md:text-xs text-zinc-400 mt-2.5 md:mt-2 flex items-center gap-2">
                             <span className="bg-zinc-100 px-1.5 py-0.5 rounded text-zinc-600">{post.category}</span>
                             <span>{usersMap[post.user_id]?.user_name || '匿名'}</span>
                             <span>·</span>
                             {(post as any).last_comment_at ? (
-                              <>
-                                <span title={`发帖：${timeAgo(post.created_at)}`}>
-                                  💬 {timeAgo((post as any).last_comment_at)}
-                                </span>
-                              </>
+                              <span title={`发帖：${timeAgo(post.created_at)}`}>
+                                💬 {timeAgo((post as any).last_comment_at)}
+                              </span>
                             ) : (
                               <span>{timeAgo(post.created_at)}</span>
                             )}
@@ -451,7 +437,6 @@ const getPostPreview = (content: any) => {
                       </div>
                     ))
                   ) : (
-                    /* 🟢 修复:暂无内容/搜索空状态提示 */
                     <div className="py-24 flex flex-col items-center justify-center text-zinc-400">
                       <div className="bg-zinc-50 p-4 rounded-full mb-3">
                         <Search className="w-8 h-8 text-zinc-200" />
