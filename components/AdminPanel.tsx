@@ -7,9 +7,39 @@ import {
   get_banned_words 
 } from '../services/storage';
 import { 
-  UserPlus, Ban, Copy, ShieldAlert, Check, UserCircle, Crown, Loader2 
+  UserPlus, Ban, Copy, ShieldAlert, Check, UserCircle, Crown, Loader2, Camera
 } from 'lucide-react';
 import Toast from './Toast';
+
+// 压缩图片为 webp，最大 400px
+async function compressImageFromUrl(url: string): Promise<Blob> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('下载失败');
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const maxSize = 400;
+      let { width, height } = img;
+      if (width > height) {
+        if (width > maxSize) { height = Math.round(height * maxSize / width); width = maxSize; }
+      } else {
+        if (height > maxSize) { width = Math.round(width * maxSize / height); height = maxSize; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        b => b ? resolve(b) : reject(new Error('压缩失败')),
+        'image/webp', 0.85
+      );
+    };
+    img.onerror = () => reject(new Error('图片加载失败'));
+    img.src = URL.createObjectURL(blob);
+  });
+}
 
 export default function AdminPanel() {
   const [users, setUsers] = useState<any[]>([]);
@@ -20,6 +50,8 @@ export default function AdminPanel() {
   const [copiedId, setCopiedId] = useState(false);
   const [copiedPass, setCopiedPass] = useState(false);
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
+  const [compressing, setCompressing] = useState(false);
+  const [compressProgress, setCompressProgress] = useState<{done: number, total: number, log: string[]}>({ done: 0, total: 0, log: [] });
 
   useEffect(() => {
     loadAdminData();
@@ -89,6 +121,54 @@ export default function AdminPanel() {
     } catch (err: any) {
       setToast({ msg: '更新失败', type: 'error' });
     }
+  };
+
+  const handleCompressAllAvatars = async () => {
+    const targets = users.filter(u => u.avatar && !u.avatar.includes('.webp'));
+    if (targets.length === 0) {
+      setToast({ msg: '没有需要压缩的头像', type: 'success' });
+      return;
+    }
+    setCompressing(true);
+    setCompressProgress({ done: 0, total: targets.length, log: [] });
+
+    for (let i = 0; i < targets.length; i++) {
+      const u = targets[i];
+      try {
+        const compressed = await compressImageFromUrl(u.avatar);
+        const file = new File([compressed], `${u.id}.webp`, { type: 'image/webp' });
+
+        const uploadPath = `avatars/${u.id}.webp`;
+        const { error: uploadError } = await supabase.storage
+          .from('user_images')
+          .upload(uploadPath, file, { upsert: true, contentType: 'image/webp' });
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage.from('user_images').getPublicUrl(uploadPath);
+
+        const { error: dbError } = await supabase
+          .from('users')
+          .update({ avatar: publicUrl })
+          .eq('id', u.id);
+        if (dbError) throw dbError;
+
+        setUsers(prev => prev.map(p => p.id === u.id ? { ...p, avatar: publicUrl } : p));
+        setCompressProgress(prev => ({
+          done: prev.done + 1,
+          total: prev.total,
+          log: [...prev.log, `✅ ${u.user_name}`]
+        }));
+      } catch (err: any) {
+        setCompressProgress(prev => ({
+          done: prev.done + 1,
+          total: prev.total,
+          log: [...prev.log, `❌ ${u.user_name}: ${err.message}`]
+        }));
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    setCompressing(false);
+    setToast({ msg: '批量压缩完成', type: 'success' });
   };
 
   const handleSaveWords = async () => {
@@ -197,6 +277,38 @@ export default function AdminPanel() {
             )}
           </div>
 
+          {/* 批量压缩头像 */}
+          <div className="bg-zinc-50 p-6 border border-zinc-200">
+            <h3 className="font-bold flex items-center gap-2 mb-2">
+              <Camera className="w-5 h-5" /> 批量压缩历史头像
+            </h3>
+            <p className="text-xs text-zinc-500 mb-4">
+              将已上传的原图压缩为 webp 格式（最大 400px），可大幅提升加载速度。已压缩的会自动跳过。
+            </p>
+            <button
+              onClick={handleCompressAllAvatars}
+              disabled={compressing}
+              className="bg-black text-white px-4 py-2 hover:bg-zinc-800 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {compressing
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> 压缩中 {compressProgress.done}/{compressProgress.total}</>
+                : '开始批量压缩'}
+            </button>
+            {compressProgress.log.length > 0 && (
+              <div className="mt-4 bg-white border border-zinc-200 p-3 max-h-48 overflow-y-auto font-mono text-xs space-y-1">
+                {compressProgress.log.map((line, i) => (
+                  <div key={i} className={line.startsWith('✅') ? 'text-green-700' : 'text-red-600'}>{line}</div>
+                ))}
+                {!compressing && (
+                  <div className="text-zinc-400 pt-1 border-t border-zinc-100">
+                    完成：{compressProgress.log.filter(l => l.startsWith('✅')).length} 成功，
+                    {compressProgress.log.filter(l => l.startsWith('❌')).length} 失败
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* 用户列表 */}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border border-zinc-200">
@@ -211,7 +323,6 @@ export default function AdminPanel() {
                 {users.map(u => (
                   <tr key={u.id} className={u.is_banned ? 'bg-red-50/50' : ''}>
                     <td className="p-3">
-                      {/* 移除点击事件和 cursor-pointer，像图片一样静态展示 */}
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-zinc-100 overflow-hidden border border-zinc-200">
                           {u.avatar ? (
