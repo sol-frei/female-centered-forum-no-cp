@@ -104,6 +104,7 @@ const PostDetailPage = ({
   const [commentImages, setCommentImages] = useState<File[]>([]);
   const [commentImagePreviews, setCommentImagePreviews] = useState<string[]>([]);
   const [uploadingComment, setUploadingComment] = useState(false);
+  const [isCommentExpanded, setIsCommentExpanded] = useState(false);
 
   // 收藏与编辑状态
   const [showCollectionModal, setShowCollectionModal] = useState(false);
@@ -257,7 +258,7 @@ const PostDetailPage = ({
 
   // 评论/图片处理逻辑
   const handleReply = (comment: any) => { setReplyToCommentId(comment.id); setReplyToComment(comment); commentInputRef.current?.focus(); };
-  const cancelReply = () => { setReplyToCommentId(null); setReplyToComment(null); setNewComment(''); setCommentImages([]); setCommentImagePreviews([]); };
+  const cancelReply = () => { setReplyToCommentId(null); setReplyToComment(null); setNewComment(''); setCommentImages([]); setCommentImagePreviews([]); setIsCommentExpanded(false); };
   const handleCommentImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + commentImages.length > 9) { showToast('最多上传9张图片', 'error'); return; }
@@ -575,8 +576,8 @@ const PostDetailPage = ({
 
       {/* 底部输入框：仅在点击「回复」后显示 */}
       {replyToComment && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-black/30" onClick={cancelReply}>
-          <div className="max-w-2xl mx-auto px-4 pb-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed bottom-0 left-0 right-0 z-40">
+          <div className="max-w-2xl mx-auto px-4 pb-4">
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-zinc-200">
               {/* 顶部：回复对象提示 + 关闭 */}
               <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-zinc-100">
@@ -612,24 +613,40 @@ const PostDetailPage = ({
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}
                 autoFocus
-                rows={3}
-                className="w-full px-4 pt-3 pb-2 text-sm outline-none resize-none bg-white placeholder-zinc-400"
+                className={`w-full px-4 pt-3 pb-2 text-sm outline-none resize-none bg-white placeholder-zinc-400 transition-all ${isCommentExpanded ? 'h-40' : 'h-20'}`}
                 placeholder="写下你的回复..."
               />
 
-              {/* 底部工具栏：图片 + 发送 */}
+              {/* 底部工具栏：图片 + 展开/收起 + 发送 */}
               <div className="flex items-center justify-between px-3 pb-3 pt-1">
                 <label className="cursor-pointer p-2 hover:bg-zinc-100 rounded-lg">
                   <ImageIcon className="w-5 h-5 text-zinc-400" />
                   <input type="file" accept="image/*" multiple onChange={handleCommentImageSelect} className="hidden" />
                 </label>
-                <button
-                  onClick={handleComment}
-                  disabled={uploadingComment || (!newComment.trim() && commentImages.length === 0)}
-                  className="bg-black text-white px-5 py-1.5 rounded-full text-sm font-bold disabled:bg-zinc-300 transition-colors"
-                >
-                  {uploadingComment ? '发送中…' : '发送'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsCommentExpanded(!isCommentExpanded)}
+                    className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400"
+                    title={isCommentExpanded ? "收起" : "展开"}
+                  >
+                    {isCommentExpanded ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleComment}
+                    disabled={uploadingComment || (!newComment.trim() && commentImages.length === 0)}
+                    className="bg-black text-white px-5 py-1.5 rounded-full text-sm font-bold disabled:bg-zinc-300 transition-colors"
+                  >
+                    {uploadingComment ? '发送中…' : '发送'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
