@@ -421,17 +421,19 @@ function AppContent() {
                             {getPostPreview(post.content)}
                           </p>
                           {/* 元信息：手机 text-sm，PC text-xs */}
-                          <div className="text-sm md:text-xs text-zinc-400 mt-2.5 md:mt-2 flex items-center gap-2">
-                            <span className="bg-zinc-100 px-1.5 py-0.5 rounded text-zinc-600">{post.category}</span>
-                            <span>{usersMap[post.user_id]?.user_name || '匿名'}</span>
-                            <span>·</span>
-                            {(post as any).last_comment_at ? (
-                              <span title={`发帖：${timeAgo(post.created_at)}`}>
-                                💬 {timeAgo((post as any).last_comment_at)}
-                              </span>
-                            ) : (
-                              <span>{timeAgo(post.created_at)}</span>
-                            )}
+                          <div className="text-sm md:text-xs text-zinc-400 mt-2.5 md:mt-2 flex items-center gap-2 flex-nowrap overflow-hidden">
+                            <span className="bg-zinc-100 px-1.5 py-0.5 rounded text-zinc-600 shrink-0 truncate max-w-[7rem]">{post.category}</span>
+                            <span className="truncate shrink-0 max-w-[6rem]">{usersMap[post.user_id]?.user_name || '匿名'}</span>
+                            <span className="shrink-0">·</span>
+                            <span className="shrink-0 whitespace-nowrap">
+                              {(post as any).last_comment_at ? (
+                                <span title={`发帖：${timeAgo(post.created_at)}`}>
+                                  💬 {timeAgo((post as any).last_comment_at)}
+                                </span>
+                              ) : (
+                                <span>{timeAgo(post.created_at)}</span>
+                              )}
+                            </span>
                           </div>
                         </div>
                       </div>
