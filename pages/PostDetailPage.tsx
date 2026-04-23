@@ -104,7 +104,6 @@ const PostDetailPage = ({
   const [commentImages, setCommentImages] = useState<File[]>([]);
   const [commentImagePreviews, setCommentImagePreviews] = useState<string[]>([]);
   const [uploadingComment, setUploadingComment] = useState(false);
-  const [isCommentExpanded, setIsCommentExpanded] = useState(false);
 
   // 收藏与编辑状态
   const [showCollectionModal, setShowCollectionModal] = useState(false);
@@ -258,7 +257,7 @@ const PostDetailPage = ({
 
   // 评论/图片处理逻辑
   const handleReply = (comment: any) => { setReplyToCommentId(comment.id); setReplyToComment(comment); commentInputRef.current?.focus(); };
-  const cancelReply = () => { setReplyToCommentId(null); setReplyToComment(null); };
+  const cancelReply = () => { setReplyToCommentId(null); setReplyToComment(null); setNewComment(''); setCommentImages([]); setCommentImagePreviews([]); };
   const handleCommentImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + commentImages.length > 9) { showToast('最多上传9张图片', 'error'); return; }
@@ -556,9 +555,9 @@ const PostDetailPage = ({
                       </div>
                     )}
                     <p className="text-zinc-800 text-base mb-2 break-words" style={{ whiteSpace: 'pre-wrap' }}>{(c.content || '').replace(/^@\S+\s*/, '')}</p>
-                    {/* [修复1] 评论图片缩小为原来的 1/2（max-w-[25%]） */}
+                    {/* [修复1] 评论图片缩小为原来的 1/2（max-w-[50%]） */}
                     {c.images?.map((img: string, idx: number) => (
-                      <img key={idx} src={img} className="max-w-[25%] h-auto rounded mt-2 cursor-pointer block" onClick={() => setPreviewImage(img)} alt="" />
+                      <img key={idx} src={img} className="max-w-[50%] h-auto rounded mt-2 cursor-pointer block" onClick={() => setPreviewImage(img)} alt="" />
                     ))}
                     <div className="flex items-center gap-4 mt-2">
                       <button onClick={() => handleLikeComment(c.id)} className={`text-xs flex items-center gap-1 ${isCommentLiked ? 'text-red-500' : 'text-zinc-500 hover:text-red-500'}`}>
@@ -574,61 +573,68 @@ const PostDetailPage = ({
         </div>
       </main>
 
-      {/* 底部输入框 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white p-4 shadow-lg">
-        <div className="max-w-2xl mx-auto">
-          {replyToComment && (
-            <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-2 mb-2 flex items-start justify-between">
-              <div className="flex-1 text-sm text-zinc-700 line-clamp-1">回复 @{usersMap[replyToComment.user_id]?.user_name}: {replyToComment.content}</div>
-              <button onClick={cancelReply} className="p-1 hover:bg-zinc-200 rounded"><X className="w-4 h-4" /></button>
-            </div>
-          )}
-          {/* 图片预览区域 */}
-          {commentImagePreviews.length > 0 && (
-            <div className="flex gap-2 mb-2 flex-wrap">
-              {commentImagePreviews.map((preview, idx) => (
-                <div key={idx} className="relative">
-                  <img src={preview} className="w-16 h-16 object-cover rounded" alt="" />
-                  <button 
-                    onClick={() => removeCommentImage(idx)}
-                    className="absolute -top-1 -right-1 bg-black text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-zinc-700"
-                  >
-                    ✕
-                  </button>
+      {/* 底部输入框：仅在点击「回复」后显示 */}
+      {replyToComment && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-black/30" onClick={cancelReply}>
+          <div className="max-w-2xl mx-auto px-4 pb-4" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-zinc-200">
+              {/* 顶部：回复对象提示 + 关闭 */}
+              <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-zinc-100">
+                <span className="text-sm text-zinc-500">
+                  回复 <span className="font-medium text-zinc-800">@{usersMap[replyToComment.user_id]?.user_name}</span>
+                  {replyToComment.content ? <>：{replyToComment.content.slice(0, 20)}{replyToComment.content.length > 20 ? '…' : ''}</> : null}
+                </span>
+                <button onClick={cancelReply} className="p-1 rounded hover:bg-zinc-100">
+                  <X className="w-4 h-4 text-zinc-400" />
+                </button>
+              </div>
+
+              {/* 图片预览区域 */}
+              {commentImagePreviews.length > 0 && (
+                <div className="flex gap-2 px-4 pt-3 flex-wrap">
+                  {commentImagePreviews.map((preview, idx) => (
+                    <div key={idx} className="relative">
+                      <img src={preview} className="w-16 h-16 object-cover rounded-lg" alt="" />
+                      <button
+                        onClick={() => removeCommentImage(idx)}
+                        className="absolute -top-1 -right-1 bg-black text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-zinc-700"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-          <div className="flex gap-2 items-start">
-            <label className="cursor-pointer p-2 hover:bg-zinc-100 rounded-lg flex-shrink-0">
-              <ImageIcon className="w-5 h-5 text-zinc-500" /><input type="file" accept="image/*" multiple onChange={handleCommentImageSelect} className="hidden" />
-            </label>
-            <textarea 
-              ref={commentInputRef} 
-              value={newComment} 
-              onChange={e => setNewComment(e.target.value)}
-              className={`flex-1 bg-zinc-100 rounded-lg p-2 text-sm outline-none resize-none transition-all ${isCommentExpanded ? 'h-48' : 'h-10'}`}
-              placeholder="写下你的评论..."
-            />
-            <button 
-              onClick={() => setIsCommentExpanded(!isCommentExpanded)}
-              className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-500 flex-shrink-0 h-10"
-              title={isCommentExpanded ? "收起" : "展开"}
-            >
-              {isCommentExpanded ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                </svg>
               )}
-            </button>
-            <button onClick={handleComment} disabled={uploadingComment || (!newComment.trim() && commentImages.length === 0)} className="bg-black text-white px-4 rounded-lg text-sm font-bold disabled:bg-zinc-300 flex-shrink-0 h-10">发送</button>
+
+              {/* 文字输入区 */}
+              <textarea
+                ref={commentInputRef}
+                value={newComment}
+                onChange={e => setNewComment(e.target.value)}
+                autoFocus
+                rows={3}
+                className="w-full px-4 pt-3 pb-2 text-sm outline-none resize-none bg-white placeholder-zinc-400"
+                placeholder="写下你的回复..."
+              />
+
+              {/* 底部工具栏：图片 + 发送 */}
+              <div className="flex items-center justify-between px-3 pb-3 pt-1">
+                <label className="cursor-pointer p-2 hover:bg-zinc-100 rounded-lg">
+                  <ImageIcon className="w-5 h-5 text-zinc-400" />
+                  <input type="file" accept="image/*" multiple onChange={handleCommentImageSelect} className="hidden" />
+                </label>
+                <button
+                  onClick={handleComment}
+                  disabled={uploadingComment || (!newComment.trim() && commentImages.length === 0)}
+                  className="bg-black text-white px-5 py-1.5 rounded-full text-sm font-bold disabled:bg-zinc-300 transition-colors"
+                >
+                  {uploadingComment ? '发送中…' : '发送'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 收藏 & 预览 Modal */}
       {showCollectionModal && (
