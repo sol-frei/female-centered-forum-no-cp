@@ -568,7 +568,7 @@ const PostDetailPage = ({
                     <p className="text-zinc-800 text-base mb-2 whitespace-pre-wrap">{(c.content || '').replace(/^@\S+\s*/, '')}</p>
                     {/* [修复1] 评论图片缩小为原来的 1/2（max-w-[50%]） */}
                     {c.images?.map((img: string, idx: number) => (
-                      <img key={idx} src={img} className="max-w-[50%] h-auto rounded mt-2 cursor-pointer block" onClick={() => setPreviewImage(img)} alt="" />
+                      <img key={idx} src={img} className="max-w-[25%] h-auto rounded mt-2 cursor-pointer block" onClick={() => setPreviewImage(img)} alt="" />
                     ))}
                     <div className="flex items-center gap-4 mt-2">
                       <button onClick={() => handleLikeComment(c.id)} className={`text-xs flex items-center gap-1 ${isCommentLiked ? 'text-red-500' : 'text-zinc-500 hover:text-red-500'}`}>
