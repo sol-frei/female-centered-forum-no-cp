@@ -292,15 +292,6 @@ const PostDetailPage = ({
     finally { setUploadingComment(false); }
   };
 
-  // [修复2] textarea 键盘事件：Enter 发送，Shift+Enter 换行
-  const handleCommentKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleComment();
-    }
-    // Shift+Enter 默认行为即为换行，无需额外处理
-  };
-
   const handleLikeComment = async (commentId: string) => {
     if (!user) return;
     setComments(prev => prev.map(c => {
@@ -564,9 +555,8 @@ const PostDetailPage = ({
                         )}
                       </div>
                     )}
-                    {/* [修复2] 评论正文：whitespace-pre-wrap 保留换行 */}
-                    <p className="text-zinc-800 text-base mb-2 whitespace-pre-wrap">{(c.content || '').replace(/^@\S+\s*/, '')}</p>
-                    {/* [修复1] 评论图片缩小为原来的 1/2（max-w-[50%]） */}
+                    <p className="text-zinc-800 text-base mb-2 break-words" style={{ whiteSpace: 'pre-wrap' }}>{(c.content || '').replace(/^@\S+\s*/, '')}</p>
+                    {/* [修复1] 评论图片缩小为原来的 1/2（max-w-[25%]） */}
                     {c.images?.map((img: string, idx: number) => (
                       <img key={idx} src={img} className="max-w-[25%] h-auto rounded mt-2 cursor-pointer block" onClick={() => setPreviewImage(img)} alt="" />
                     ))}
@@ -613,14 +603,12 @@ const PostDetailPage = ({
             <label className="cursor-pointer p-2 hover:bg-zinc-100 rounded-lg flex-shrink-0">
               <ImageIcon className="w-5 h-5 text-zinc-500" /><input type="file" accept="image/*" multiple onChange={handleCommentImageSelect} className="hidden" />
             </label>
-            {/* [修复2] 添加 onKeyDown 处理：Enter 发送，Shift+Enter 换行 */}
             <textarea 
               ref={commentInputRef} 
               value={newComment} 
               onChange={e => setNewComment(e.target.value)}
-              onKeyDown={handleCommentKeyDown}
               className={`flex-1 bg-zinc-100 rounded-lg p-2 text-sm outline-none resize-none transition-all ${isCommentExpanded ? 'h-48' : 'h-10'}`}
-              placeholder="写下你的评论… (Shift+Enter 换行，Enter 发送)"
+              placeholder="写下你的评论..."
             />
             <button 
               onClick={() => setIsCommentExpanded(!isCommentExpanded)}
