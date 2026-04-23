@@ -577,8 +577,8 @@ const PostDetailPage = ({
       {/* 底部输入框：仅在点击「回复」后显示 */}
       {replyToComment && (
         <div className="fixed bottom-0 left-0 right-0 z-40">
-          <div className="max-w-2xl mx-auto px-4 pb-4">
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-zinc-200">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white shadow-xl overflow-hidden border-t border-zinc-200">
               {/* 顶部：回复对象提示 + 关闭 */}
               <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-zinc-100">
                 <span className="text-sm text-zinc-500">
