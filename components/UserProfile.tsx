@@ -95,13 +95,43 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
     }
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  //压缩图片
+  const compressImage = (file: File, maxSize = 400, quality = 0.85): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > height) {
+        if (width > maxSize) { height = height * maxSize / width; width = maxSize; }
+      } else {
+        if (height > maxSize) { width = width * maxSize / height; height = maxSize; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error('压缩失败')),
+        'image/webp',
+        quality
+      );
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+};
+
+const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
     setUploading(true);
     try {
-      const url = await uploadImage(file, 'user_images','avatars');
+      const compressed = await compressImage(file, 400, 0.85);
+      const compressedFile = new File([compressed], 'avatar.webp', { type: 'image/webp' });
+      const url = await uploadImage(compressedFile, 'user_images', 'avatars');
       await updateUser(user.id, { avatar: url });
       setUser({ ...user, avatar: url });
     } catch (err) {
