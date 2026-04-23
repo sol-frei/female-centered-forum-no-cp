@@ -105,6 +105,7 @@ const PostDetailPage = ({
   const [commentImagePreviews, setCommentImagePreviews] = useState<string[]>([]);
   const [uploadingComment, setUploadingComment] = useState(false);
   const [isCommentExpanded, setIsCommentExpanded] = useState(false);
+  const [showCommentBox, setShowCommentBox] = useState(false);
 
   // 收藏与编辑状态
   const [showCollectionModal, setShowCollectionModal] = useState(false);
@@ -257,8 +258,8 @@ const PostDetailPage = ({
   };
 
   // 评论/图片处理逻辑
-  const handleReply = (comment: any) => { setReplyToCommentId(comment.id); setReplyToComment(comment); commentInputRef.current?.focus(); };
-  const cancelReply = () => { setReplyToCommentId(null); setReplyToComment(null); setNewComment(''); setCommentImages([]); setCommentImagePreviews([]); setIsCommentExpanded(false); };
+  const handleReply = (comment: any) => { setReplyToCommentId(comment.id); setReplyToComment(comment); setShowCommentBox(true); commentInputRef.current?.focus(); };
+  const cancelReply = () => { setReplyToCommentId(null); setReplyToComment(null); setNewComment(''); setCommentImages([]); setCommentImagePreviews([]); setIsCommentExpanded(false); setShowCommentBox(false); };
   const handleCommentImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + commentImages.length > 9) { showToast('最多上传9张图片', 'error'); return; }
@@ -286,7 +287,7 @@ const PostDetailPage = ({
             }
           }
       await add_comment({ post_id: postId!, user_id: user.id, user_name: user.user_name, content: newComment, reply_to_id: replyToCommentId || null, images: imageUrls.length > 0 ? imageUrls : null, likes: [] }, post.user_id, post.title);
-      setNewComment(''); setReplyToCommentId(null); setReplyToComment(null); setCommentImages([]); setCommentImagePreviews([]);
+      setNewComment(''); setReplyToCommentId(null); setReplyToComment(null); setCommentImages([]); setCommentImagePreviews([]); setShowCommentBox(false); setIsCommentExpanded(false);
       showToast("评论成功", "success");
     } catch (e: any) { showToast(`评论失败: ${e.message}`, 'error'); } 
     finally { setUploadingComment(false); }
@@ -555,7 +556,7 @@ const PostDetailPage = ({
                         )}
                       </div>
                     )}
-                    <p className="text-zinc-800 text-base mb-2 break-words" style={{ whiteSpace: 'pre-wrap' }}>{(c.content || '').replace(/^@\S+\s*/, '')}</p>
+                    <p className="text-zinc-800 text-base leading-relaxed mb-2 break-words" style={{ whiteSpace: 'pre-wrap' }}>{(c.content || '').replace(/^@\S+\s*/, '')}</p>
                     {/* [修复1] 评论图片缩小为原来的 1/2（max-w-[25%]） */}
                     {c.images?.map((img: string, idx: number) => (
                       <img key={idx} src={img} className="max-w-[25%] h-auto rounded mt-2 cursor-pointer block" onClick={() => setPreviewImage(img)} alt="" />
@@ -574,17 +575,21 @@ const PostDetailPage = ({
         </div>
       </main>
 
-      {/* 底部输入框：仅在点击「回复」后显示 */}
-      {replyToComment && (
+      {/* 底部输入框：点回复或点悬浮按钮后显示 */}
+      {showCommentBox && (
         <div className="fixed bottom-0 left-0 right-0 z-40">
           <div className="max-w-2xl mx-auto">
             <div className="bg-white shadow-xl overflow-hidden border-t border-zinc-200">
-              {/* 顶部：回复对象提示 + 关闭 */}
+              {/* 顶部：提示 + 关闭 */}
               <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-zinc-100">
-                <span className="text-sm text-zinc-500">
-                  回复 <span className="font-medium text-zinc-800">@{usersMap[replyToComment.user_id]?.user_name}</span>
-                  {replyToComment.content ? <>：{replyToComment.content.slice(0, 20)}{replyToComment.content.length > 20 ? '…' : ''}</> : null}
-                </span>
+                {replyToComment ? (
+                  <span className="text-sm text-zinc-500">
+                    回复 <span className="font-medium text-zinc-800">@{usersMap[replyToComment.user_id]?.user_name}</span>
+                    {replyToComment.content ? <>：{replyToComment.content.slice(0, 20)}{replyToComment.content.length > 20 ? '…' : ''}</> : null}
+                  </span>
+                ) : (
+                  <span className="text-sm text-zinc-500">写下你的评论</span>
+                )}
                 <button onClick={cancelReply} className="p-1 rounded hover:bg-zinc-100">
                   <X className="w-4 h-4 text-zinc-400" />
                 </button>
@@ -614,7 +619,7 @@ const PostDetailPage = ({
                 onChange={e => setNewComment(e.target.value)}
                 autoFocus
                 className={`w-full px-4 pt-3 pb-2 text-sm outline-none resize-none bg-white placeholder-zinc-400 transition-all ${isCommentExpanded ? 'h-40' : 'h-20'}`}
-                placeholder="写下你的回复..."
+                placeholder={replyToComment ? '写下你的回复...' : '写下你的评论...'}
               />
 
               {/* 底部工具栏：图片 + 展开/收起 + 发送 */}
@@ -651,6 +656,17 @@ const PostDetailPage = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 右下角悬浮评论按钮：输入框未显示时才显示 */}
+      {!showCommentBox && (
+        <button
+          onClick={() => { setReplyToComment(null); setReplyToCommentId(null); setShowCommentBox(true); }}
+          className="fixed bottom-6 right-6 z-40 bg-black text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:bg-zinc-800 active:scale-95 transition-all"
+          title="写评论"
+        >
+          <MessageCircle className="w-5 h-5" />
+        </button>
       )}
 
       {/* 收藏 & 预览 Modal */}
