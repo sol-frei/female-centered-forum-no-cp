@@ -31,6 +31,35 @@ const Avatar = ({ url, className = "w-8 h-8" }: { url?: string; className?: stri
   return <UserCircle className={`${className} text-zinc-300`} />;
 };
 
+
+// 评论图片压缩：最大 1200px，保留较高分辨率以便查看细节
+const compressCommentImage = (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const maxSize = 1200;
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        if (width > height) { height = Math.round(height * maxSize / width); width = maxSize; }
+        else { width = Math.round(width * maxSize / height); height = maxSize; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        blob => blob
+          ? resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }))
+          : reject(new Error('压缩失败')),
+        'image/webp', 0.85
+      );
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+};
 const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
 
 // 辅助函数：时间格式化
@@ -248,13 +277,14 @@ const PostDetailPage = ({
     if (!newComment.trim() && commentImages.length === 0) { showToast("评论内容或图片不能为空", 'error'); return; }
     try {
       setUploadingComment(true);
-      let imageUrls: string[] = [];
-      if (commentImages.length > 0) {
-        for (const file of commentImages) {
-          const url = await uploadImage(file, 'comment_images', `comments/${user.id}`);
-          imageUrls.push(url);
-        }
-      }
+    let imageUrls: string[] = [];
+          if (commentImages.length > 0) {
+            for (const file of commentImages) {
+              const compressed = await compressCommentImage(file);
+              const url = await uploadImage(compressed, 'comment_images', `comments/${user.id}`);
+              imageUrls.push(url);
+            }
+          }
       await add_comment({ post_id: postId!, user_id: user.id, user_name: user.user_name, content: newComment, reply_to_id: replyToCommentId || null, images: imageUrls.length > 0 ? imageUrls : null, likes: [] }, post.user_id, post.title);
       setNewComment(''); setReplyToCommentId(null); setReplyToComment(null); setCommentImages([]); setCommentImagePreviews([]);
       showToast("评论成功", "success");
