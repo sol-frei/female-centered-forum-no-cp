@@ -256,7 +256,7 @@ const PostDetailPage = ({
     }
   };
 
-  // 评论/图片处理逻辑 (handleComment, handleReply, handleLikeComment 等保持不变...)
+  // 评论/图片处理逻辑
   const handleReply = (comment: any) => { setReplyToCommentId(comment.id); setReplyToComment(comment); commentInputRef.current?.focus(); };
   const cancelReply = () => { setReplyToCommentId(null); setReplyToComment(null); };
   const handleCommentImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -291,6 +291,16 @@ const PostDetailPage = ({
     } catch (e: any) { showToast(`评论失败: ${e.message}`, 'error'); } 
     finally { setUploadingComment(false); }
   };
+
+  // [修复2] textarea 键盘事件：Enter 发送，Shift+Enter 换行
+  const handleCommentKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleComment();
+    }
+    // Shift+Enter 默认行为即为换行，无需额外处理
+  };
+
   const handleLikeComment = async (commentId: string) => {
     if (!user) return;
     setComments(prev => prev.map(c => {
@@ -403,7 +413,7 @@ const PostDetailPage = ({
               <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
               <PostContent content={post.content} className="prose prose-zinc max-w-none" />
               
-              {/* 图书评分展示 - 修复问题1和问题2：黑白灰配色、去掉边框、修复勾选显示逻辑 */}
+              {/* 图书评分展示 */}
               {bookRating && (
                 <div className="mt-6 bg-zinc-50 rounded-lg p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -457,7 +467,6 @@ const PostDetailPage = ({
                           '作者预收/写过/阅读男主文、bl、言情等非4B小说。', '连载中/断更/卡v/坑文等操作。', '文笔差 / 一般，剧情设定欠缺。', '评论区磕cp、吵架，作者关闭评论区等。', '作者现实其他骚操作（已婚、提男友、拒绝激女读者等）。', '描写氛围、语言、过于暧昧，女角色之间（非女主）关系有百合倾向。', '女男比例低于2：1。', '随父姓，默认任何角色随父姓，不单指主角，不指出也不批判也没改变。', '女性角色塑造不用心、刻板印象（取名随意、脸谱化、平面化）。', '服美役（白幼瘦、面部、高跟鞋、胸臀腿特写、衣服配饰等外貌方面的描写）。', '驴竞、拉踩其他女角色。', '忽略女性困难处境、物化女性。', '性别认知障碍，自称哥、爸、爷、弟等，女扮男装，女角色被称为先生等。', '扶持男性、接男儿，有男人分享女角色胜利果实/成果/遗产等。', '男性角色与女性角色存在单向/双向性缘。', '美化男性（母父对比、男性深情、男性友情、男性导师等）、偏爱男性。', '男性角色有高光、有成长线。', '掺腐（非批判）。', '存在厌女词、辱女词。', '存在男本位词。', '用性侵、造黄谣等方式惩罚女性。', '过度渲染女性苦楚，但反抗/觉醒占比少。', '是否有提到推广女权思想【没有扣分】。', '是否有明确反男权思想【没有扣分】。', '是否默认女性为第一性【没有扣分】。'
                         ];
                         const remark = bookRating.principle_remarks[key];
-                        // 修复问题4和5：后三项（p23-p25）选'yes'是好的，显示绿色；去掉✓✗只保留圆圈
                         const isLastThreePrinciples = principleIndex >= 22 && principleIndex <= 24;
                         const shouldShowGreen = isLastThreePrinciples ? (value === 'yes') : (value !== 'yes');
                         
@@ -525,24 +534,41 @@ const PostDetailPage = ({
                       </span>
                       <span className="text-xs text-zinc-400">{timeAgo(c.created_at)}</span>
                     </div>
-                    {/* 修复问题4：被回复评论完整显示 */}
+                    {/* [修复3] 被回复评论：同时显示文字和图片 */}
                     {repliedComment && (
                       <div className="bg-zinc-50 pl-3 py-2 mb-2 text-sm rounded">
                         <div className="text-zinc-600">
                           <span 
-                            className="cursor-pointer"
+                            className="cursor-pointer font-medium"
                             onClick={() => onViewProfile(repliedComment.user_id)}
                           >
                             @{usersMap[repliedComment.user_id]?.user_name}
                           </span>
-                          : {repliedComment.content}
+                          {repliedComment.content && (
+                            <span>: {repliedComment.content}</span>
+                          )}
                         </div>
+                        {/* 被引用评论的图片 */}
+                        {repliedComment.images?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {repliedComment.images.map((img: string, idx: number) => (
+                              <img
+                                key={idx}
+                                src={img}
+                                className="h-14 w-14 object-cover rounded cursor-pointer"
+                                onClick={() => setPreviewImage(img)}
+                                alt=""
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
-                    <p className="text-zinc-800 text-base mb-2">{(c.content || '').replace(/^@\S+\s*/, '')}</p>
-                    {/* 修复问题5：评论图片改为完整尺寸自适应显示 */}
+                    {/* [修复2] 评论正文：whitespace-pre-wrap 保留换行 */}
+                    <p className="text-zinc-800 text-base mb-2 whitespace-pre-wrap">{(c.content || '').replace(/^@\S+\s*/, '')}</p>
+                    {/* [修复1] 评论图片缩小为原来的 1/2（max-w-[50%]） */}
                     {c.images?.map((img: string, idx: number) => (
-                      <img key={idx} src={img} className="w-full max-w-md rounded mt-2 cursor-pointer" onClick={() => setPreviewImage(img)} alt="" />
+                      <img key={idx} src={img} className="max-w-[50%] h-auto rounded mt-2 cursor-pointer block" onClick={() => setPreviewImage(img)} alt="" />
                     ))}
                     <div className="flex items-center gap-4 mt-2">
                       <button onClick={() => handleLikeComment(c.id)} className={`text-xs flex items-center gap-1 ${isCommentLiked ? 'text-red-500' : 'text-zinc-500 hover:text-red-500'}`}>
@@ -558,7 +584,7 @@ const PostDetailPage = ({
         </div>
       </main>
 
-      {/* 修复问题3：底部输入框添加图片预览 */}
+      {/* 底部输入框 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white p-4 shadow-lg">
         <div className="max-w-2xl mx-auto">
           {replyToComment && (
@@ -567,7 +593,7 @@ const PostDetailPage = ({
               <button onClick={cancelReply} className="p-1 hover:bg-zinc-200 rounded"><X className="w-4 h-4" /></button>
             </div>
           )}
-          {/* 添加图片预览区域 */}
+          {/* 图片预览区域 */}
           {commentImagePreviews.length > 0 && (
             <div className="flex gap-2 mb-2 flex-wrap">
               {commentImagePreviews.map((preview, idx) => (
@@ -587,12 +613,14 @@ const PostDetailPage = ({
             <label className="cursor-pointer p-2 hover:bg-zinc-100 rounded-lg flex-shrink-0">
               <ImageIcon className="w-5 h-5 text-zinc-500" /><input type="file" accept="image/*" multiple onChange={handleCommentImageSelect} className="hidden" />
             </label>
+            {/* [修复2] 添加 onKeyDown 处理：Enter 发送，Shift+Enter 换行 */}
             <textarea 
               ref={commentInputRef} 
               value={newComment} 
-              onChange={e => setNewComment(e.target.value)} 
+              onChange={e => setNewComment(e.target.value)}
+              onKeyDown={handleCommentKeyDown}
               className={`flex-1 bg-zinc-100 rounded-lg p-2 text-sm outline-none resize-none transition-all ${isCommentExpanded ? 'h-48' : 'h-10'}`}
-              placeholder="写下你的评论..." 
+              placeholder="写下你的评论… (Shift+Enter 换行，Enter 发送)"
             />
             <button 
               onClick={() => setIsCommentExpanded(!isCommentExpanded)}
@@ -632,21 +660,22 @@ const PostDetailPage = ({
         </div>
       )}
 
-   {/* 编辑帖子弹窗 */}
-  {showEditModal && (
-  <EditPostModal
-    user={user}
-    post={post}
-    bookRating={bookRating}
-    onClose={() => setShowEditModal(false)}
-    onSuccess={() => {
-      setShowEditModal(false);
-      fetchPostAndComments();
-    }}
-    showToast={showToast}
-  />
-)} 
-      {/* 图片预览弹窗 - 黑色背景白色× */}
+      {/* 编辑帖子弹窗 */}
+      {showEditModal && (
+        <EditPostModal
+          user={user}
+          post={post}
+          bookRating={bookRating}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={() => {
+            setShowEditModal(false);
+            fetchPostAndComments();
+          }}
+          showToast={showToast}
+        />
+      )} 
+
+      {/* 图片预览弹窗 */}
       {previewImage && (
         <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
           <button 
@@ -658,12 +687,8 @@ const PostDetailPage = ({
           <img src={previewImage} className="max-w-full max-h-full" alt="" />
         </div>
       )}
-
-
-      
     </div>
   );
 };
-
 
 export default PostDetailPage;
