@@ -594,21 +594,13 @@ const PostDetailPage = ({
         <div className="fixed bottom-0 left-0 right-0 z-40">
           <div className="max-w-2xl mx-auto">
             <div className="bg-white shadow-xl overflow-hidden border-t border-zinc-200">
-              {/* 顶部：仅在回复时显示，普通评论完全不渲染顶部bar */}
+              {/* 顶部：仅在回复时显示被回复信息，普通评论完全不渲染 */}
               {replyToComment && (
                 <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-zinc-100">
                   <span className="text-sm text-zinc-500">
                     回复 <span className="font-medium text-zinc-800">@{usersMap[replyToComment.user_id]?.user_name}</span>
                     {replyToComment.content ? <>：{replyToComment.content.slice(0, 20)}{replyToComment.content.length > 20 ? '…' : ''}</> : null}
                   </span>
-                  <button onClick={cancelReply} className="p-1 rounded hover:bg-zinc-100">
-                    <X className="w-4 h-4 text-zinc-400" />
-                  </button>
-                </div>
-              )}
-              {/* 普通评论状态：关闭按钮单独一行，无边框无背景 */}
-              {!replyToComment && (
-                <div className="flex justify-end px-3 pt-2">
                   <button onClick={cancelReply} className="p-1 rounded hover:bg-zinc-100">
                     <X className="w-4 h-4 text-zinc-400" />
                   </button>
@@ -632,7 +624,16 @@ const PostDetailPage = ({
                 </div>
               )}
 
-              {/* [修复3] 文字输入区：展开/收起只改高度，不隐藏 textarea；展开后重新 focus 防止移动端键盘收起 */}
+              {/* 文字输入区：普通评论时关闭按钮绝对定位在右上角 */}
+              <div className="relative">
+                {!replyToComment && (
+                  <button
+                    onClick={cancelReply}
+                    className="absolute top-2 right-2 z-10 p-1 rounded hover:bg-zinc-100"
+                  >
+                    <X className="w-4 h-4 text-zinc-400" />
+                  </button>
+                )}
               <textarea
                 ref={commentInputRef}
                 value={newComment}
@@ -641,6 +642,7 @@ const PostDetailPage = ({
                 className={`w-full px-4 pt-3 pb-2 text-sm outline-none resize-none bg-white placeholder-zinc-400 transition-all duration-200 ${isCommentExpanded ? 'h-40' : 'h-20'}`}
                 placeholder={replyToComment ? '写下你的回复...' : '写下你的评论...'}
               />
+              </div>
 
               {/* 底部工具栏：图片 + 展开/收起 + 发送 */}
               <div className="flex items-center justify-between px-3 pb-3 pt-1">
@@ -649,7 +651,6 @@ const PostDetailPage = ({
                   <input type="file" accept="image/*" multiple onChange={handleCommentImageSelect} className="hidden" />
                 </label>
                 <div className="flex items-center gap-2">
-                  {/* [修复3] 展开后 setTimeout focus，防止移动端软键盘收起 */}
                   <button
                     onClick={() => {
                       const next = !isCommentExpanded;
