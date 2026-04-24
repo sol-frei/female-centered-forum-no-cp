@@ -379,7 +379,8 @@ const PostDetailPage = ({
         )}
       </div>
 
-      <main className="max-w-2xl mx-auto w-full px-4 py-6 pb-32">
+      {/* [修复1] main 加 relative，作为 PC 端悬浮按钮的定位父级 */}
+      <main className="relative max-w-2xl mx-auto w-full px-4 py-6 pb-32">
         {/* 帖子头部 */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -526,7 +527,6 @@ const PostDetailPage = ({
                       </span>
                       <span className="text-xs text-zinc-400">{timeAgo(c.created_at)}</span>
                     </div>
-                    {/* [修复3] 被回复评论：同时显示文字和图片 */}
                     {repliedComment && (
                       <div className="bg-zinc-50 pl-3 py-2 mb-2 text-sm rounded">
                         <div className="text-zinc-600">
@@ -540,7 +540,6 @@ const PostDetailPage = ({
                             <span>: {repliedComment.content}</span>
                           )}
                         </div>
-                        {/* 被引用评论的图片 */}
                         {repliedComment.images?.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {repliedComment.images.map((img: string, idx: number) => (
@@ -557,7 +556,6 @@ const PostDetailPage = ({
                       </div>
                     )}
                     <p className="text-zinc-800 text-base leading-relaxed mb-2 break-words" style={{ whiteSpace: 'pre-wrap' }}>{(c.content || '').replace(/^@\S+\s*/, '')}</p>
-                    {/* [修复1] 评论图片缩小为原来的 1/2（max-w-[25%]） */}
                     {c.images?.map((img: string, idx: number) => (
                       <img key={idx} src={img} className="max-w-[25%] h-auto rounded mt-2 cursor-pointer block" onClick={() => setPreviewImage(img)} alt="" />
                     ))}
@@ -573,24 +571,46 @@ const PostDetailPage = ({
             })
           )}
         </div>
+
+        {/* [修复1] PC端评论按钮：放在帖子内容区右下角，移动端保持fixed */}
+        {!showCommentBox && (
+          <button
+            onClick={() => { setReplyToComment(null); setReplyToCommentId(null); setShowCommentBox(true); }}
+            className="
+              fixed bottom-6 right-6 z-40
+              md:fixed md:bottom-auto md:right-auto
+              md:absolute md:bottom-[-3rem] md:right-0
+              bg-black text-white w-12 h-12 rounded-full shadow-lg
+              flex items-center justify-center
+              hover:bg-zinc-800 active:scale-95 transition-all
+            "
+            style={{
+              // PC端：相对于 main 的右下角
+            }}
+            title="写评论"
+          >
+            <MessageCircle className="w-5 h-5" />
+          </button>
+        )}
       </main>
 
-      {/* 底部输入框：点回复或点悬浮按钮后显示 */}
+      {/* [修复2+3] 底部评论框：去掉多余的"写下你的评论"标题，修复展开时键盘消失 */}
       {showCommentBox && (
         <div className="fixed bottom-0 left-0 right-0 z-40">
           <div className="max-w-2xl mx-auto">
             <div className="bg-white shadow-xl overflow-hidden border-t border-zinc-200">
-              {/* 顶部：提示 + 关闭 */}
+              {/* 顶部：仅在回复时显示被回复信息，始终显示关闭按钮 */}
               <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-zinc-100">
+                {/* [修复2] 去掉非回复状态下多余的"写下你的评论"文字 */}
                 {replyToComment ? (
                   <span className="text-sm text-zinc-500">
                     回复 <span className="font-medium text-zinc-800">@{usersMap[replyToComment.user_id]?.user_name}</span>
                     {replyToComment.content ? <>：{replyToComment.content.slice(0, 20)}{replyToComment.content.length > 20 ? '…' : ''}</> : null}
                   </span>
                 ) : (
-                  <span className="text-sm text-zinc-500">写下你的评论</span>
+                  <span /> // 占位，保持关闭按钮在右侧
                 )}
-                <button onClick={cancelReply} className="p-1 rounded hover:bg-zinc-100">
+                <button onClick={cancelReply} className="p-1 rounded hover:bg-zinc-100 ml-auto">
                   <X className="w-4 h-4 text-zinc-400" />
                 </button>
               </div>
@@ -612,13 +632,13 @@ const PostDetailPage = ({
                 </div>
               )}
 
-              {/* 文字输入区 */}
+              {/* [修复3] 文字输入区：展开/收起只改高度，不隐藏 textarea；展开后重新 focus 防止移动端键盘收起 */}
               <textarea
                 ref={commentInputRef}
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}
                 autoFocus
-                className={`w-full px-4 pt-3 pb-2 text-sm outline-none resize-none bg-white placeholder-zinc-400 transition-all ${isCommentExpanded ? 'h-40' : 'h-20'}`}
+                className={`w-full px-4 pt-3 pb-2 text-sm outline-none resize-none bg-white placeholder-zinc-400 transition-all duration-200 ${isCommentExpanded ? 'h-40' : 'h-20'}`}
                 placeholder={replyToComment ? '写下你的回复...' : '写下你的评论...'}
               />
 
@@ -629,8 +649,13 @@ const PostDetailPage = ({
                   <input type="file" accept="image/*" multiple onChange={handleCommentImageSelect} className="hidden" />
                 </label>
                 <div className="flex items-center gap-2">
+                  {/* [修复3] 展开后 setTimeout focus，防止移动端软键盘收起 */}
                   <button
-                    onClick={() => setIsCommentExpanded(!isCommentExpanded)}
+                    onClick={() => {
+                      const next = !isCommentExpanded;
+                      setIsCommentExpanded(next);
+                      setTimeout(() => commentInputRef.current?.focus(), 50);
+                    }}
                     className="p-2 hover:bg-zinc-100 rounded-lg text-zinc-400"
                     title={isCommentExpanded ? "收起" : "展开"}
                   >
@@ -656,17 +681,6 @@ const PostDetailPage = ({
             </div>
           </div>
         </div>
-      )}
-
-      {/* 右下角悬浮评论按钮：输入框未显示时才显示 */}
-      {!showCommentBox && (
-        <button
-          onClick={() => { setReplyToComment(null); setReplyToCommentId(null); setShowCommentBox(true); }}
-          className="fixed bottom-6 right-6 z-40 bg-black text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:bg-zinc-800 active:scale-95 transition-all"
-          title="写评论"
-        >
-          <MessageCircle className="w-5 h-5" />
-        </button>
       )}
 
       {/* 收藏 & 预览 Modal */}
