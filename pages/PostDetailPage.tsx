@@ -574,15 +574,19 @@ const PostDetailPage = ({
 
       </main>
 
-      {/* 评论按钮：固定在右下角 */}
+      {/* 评论按钮：跟随内容区，PC端在内容区右下角，移动端贴屏幕右下 */}
       {!showCommentBox && (
-        <button
-          onClick={() => { setReplyToComment(null); setReplyToCommentId(null); setShowCommentBox(true); }}
-          className="fixed bottom-6 right-6 z-40 bg-black text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:bg-zinc-800 active:scale-95 transition-all"
-          title="写评论"
-        >
-          <MessageCircle className="w-5 h-5" />
-        </button>
+        <div className="fixed bottom-6 left-0 right-0 z-40 pointer-events-none">
+          <div className="max-w-2xl mx-auto px-4 flex justify-end">
+            <button
+              onClick={() => { setReplyToComment(null); setReplyToCommentId(null); setShowCommentBox(true); }}
+              className="pointer-events-auto bg-black text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:bg-zinc-800 active:scale-95 transition-all"
+              title="写评论"
+            >
+              <MessageCircle className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
       )}
 
       {/* [修复2+3] 底部评论框：去掉多余的"写下你的评论"标题，修复展开时键盘消失 */}
@@ -590,8 +594,8 @@ const PostDetailPage = ({
         <div className="fixed bottom-0 left-0 right-0 z-40">
           <div className="max-w-2xl mx-auto">
             <div className="bg-white shadow-xl overflow-hidden border-t border-zinc-200">
-              {/* 顶部：回复时显示被回复信息+关闭；普通评论时只显示关闭按钮，无多余框 */}
-              {replyToComment ? (
+              {/* 顶部：仅在回复时显示，普通评论完全不渲染顶部bar */}
+              {replyToComment && (
                 <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-zinc-100">
                   <span className="text-sm text-zinc-500">
                     回复 <span className="font-medium text-zinc-800">@{usersMap[replyToComment.user_id]?.user_name}</span>
@@ -601,8 +605,10 @@ const PostDetailPage = ({
                     <X className="w-4 h-4 text-zinc-400" />
                   </button>
                 </div>
-              ) : (
-                <div className="flex justify-end px-4 pt-2">
+              )}
+              {/* 普通评论状态：关闭按钮单独一行，无边框无背景 */}
+              {!replyToComment && (
+                <div className="flex justify-end px-3 pt-2">
                   <button onClick={cancelReply} className="p-1 rounded hover:bg-zinc-100">
                     <X className="w-4 h-4 text-zinc-400" />
                   </button>
