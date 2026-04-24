@@ -20,7 +20,7 @@ export default function Landing({ onLoginClick }: LandingProps) {
         {/* 主标题 - 移除居中容器，使其自然上浮 */}
         <div className="text-center space-y-4">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tighter leading-tight">
-            女主无CP/无男主<br />小说交流中心
+            女主无cp/无男主<br />小说交流中心
           </h1>
         </div>
 
@@ -45,7 +45,7 @@ export default function Landing({ onLoginClick }: LandingProps) {
             女性为第一性，爱女永不停歇！
           </h3>
           <p className="text-zinc-500 text-xs">
-            只允许推荐女主无CP/无男主，请遵守组规。
+            只允许推荐女主无cp/无男主，请遵守组规。
           </p>
         </div>
       </div>
