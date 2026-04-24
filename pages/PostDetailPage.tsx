@@ -639,7 +639,7 @@ const PostDetailPage = ({
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}
                 autoFocus
-                className={`w-full px-4 pt-3 pb-2 text-sm outline-none resize-none bg-white placeholder-zinc-400 transition-all duration-200 ${isCommentExpanded ? 'h-40' : 'h-20'}`}
+                className={`w-full px-4 pt-3 pb-2 text-base outline-none resize-none bg-white placeholder-zinc-400 transition-all duration-200 ${isCommentExpanded ? 'h-40' : 'h-20'}`}
                 placeholder={replyToComment ? '写下你的回复...' : '写下你的评论...'}
               />
               </div>
