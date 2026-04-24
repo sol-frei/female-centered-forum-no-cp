@@ -572,48 +572,42 @@ const PostDetailPage = ({
           )}
         </div>
 
-        {/* [修复1] PC端评论按钮：放在帖子内容区右下角，移动端保持fixed */}
-        {!showCommentBox && (
-          <button
-            onClick={() => { setReplyToComment(null); setReplyToCommentId(null); setShowCommentBox(true); }}
-            className="
-              fixed bottom-6 right-6 z-40
-              md:fixed md:bottom-auto md:right-auto
-              md:absolute md:bottom-[-3rem] md:right-0
-              bg-black text-white w-12 h-12 rounded-full shadow-lg
-              flex items-center justify-center
-              hover:bg-zinc-800 active:scale-95 transition-all
-            "
-            style={{
-              // PC端：相对于 main 的右下角
-            }}
-            title="写评论"
-          >
-            <MessageCircle className="w-5 h-5" />
-          </button>
-        )}
       </main>
+
+      {/* 评论按钮：固定在右下角 */}
+      {!showCommentBox && (
+        <button
+          onClick={() => { setReplyToComment(null); setReplyToCommentId(null); setShowCommentBox(true); }}
+          className="fixed bottom-6 right-6 z-40 bg-black text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center hover:bg-zinc-800 active:scale-95 transition-all"
+          title="写评论"
+        >
+          <MessageCircle className="w-5 h-5" />
+        </button>
+      )}
 
       {/* [修复2+3] 底部评论框：去掉多余的"写下你的评论"标题，修复展开时键盘消失 */}
       {showCommentBox && (
         <div className="fixed bottom-0 left-0 right-0 z-40">
           <div className="max-w-2xl mx-auto">
             <div className="bg-white shadow-xl overflow-hidden border-t border-zinc-200">
-              {/* 顶部：仅在回复时显示被回复信息，始终显示关闭按钮 */}
-              <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-zinc-100">
-                {/* [修复2] 去掉非回复状态下多余的"写下你的评论"文字 */}
-                {replyToComment ? (
+              {/* 顶部：回复时显示被回复信息+关闭；普通评论时只显示关闭按钮，无多余框 */}
+              {replyToComment ? (
+                <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-zinc-100">
                   <span className="text-sm text-zinc-500">
                     回复 <span className="font-medium text-zinc-800">@{usersMap[replyToComment.user_id]?.user_name}</span>
                     {replyToComment.content ? <>：{replyToComment.content.slice(0, 20)}{replyToComment.content.length > 20 ? '…' : ''}</> : null}
                   </span>
-                ) : (
-                  <span /> // 占位，保持关闭按钮在右侧
-                )}
-                <button onClick={cancelReply} className="p-1 rounded hover:bg-zinc-100 ml-auto">
-                  <X className="w-4 h-4 text-zinc-400" />
-                </button>
-              </div>
+                  <button onClick={cancelReply} className="p-1 rounded hover:bg-zinc-100">
+                    <X className="w-4 h-4 text-zinc-400" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex justify-end px-4 pt-2">
+                  <button onClick={cancelReply} className="p-1 rounded hover:bg-zinc-100">
+                    <X className="w-4 h-4 text-zinc-400" />
+                  </button>
+                </div>
+              )}
 
               {/* 图片预览区域 */}
               {commentImagePreviews.length > 0 && (
