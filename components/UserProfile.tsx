@@ -283,11 +283,13 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
                   <div className="text-center py-16 text-zinc-400 text-base">尚未发布过帖子</div>
                 ) : (
                   posts.map(post => (
-                    <div key={post.id} onClick={() => onPostClick(post.id)} className="p-4 bg-white border border-zinc-200 rounded-xl cursor-pointer hover:border-zinc-400 transition-all">
-                      {/* ✅ 修复2：帖子标题和时间字体放大 */}
-                      <h3 className="font-bold mb-1 line-clamp-1 text-base">{post.title}</h3>
-                      <p className="text-sm text-zinc-400">{new Date(post.created_at).toLocaleString()}</p>
-                    </div>
+
+              // 修改后
+              <div key={post.id} onClick={() => onPostClick(post.id)} className="py-4 border-b border-zinc-100 cursor-pointer hover:bg-zinc-50 transition-all px-1">
+                <h3 className="font-bold mb-1 line-clamp-1 text-base">{post.title}</h3>
+                <p className="text-sm text-zinc-400">{new Date(post.created_at).toLocaleString()}</p>
+              </div>
+                    
                   ))
                 )}
               </div>
