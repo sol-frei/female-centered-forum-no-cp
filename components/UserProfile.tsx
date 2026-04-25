@@ -25,16 +25,16 @@ interface UserProfileProps {
   userId: string;
   onNavigateBack: () => void;
   onPostClick: (postId: string) => void;
+  onRead?: () => void; // 新增：通知父组件清除红点
 }
 
-// 统一的旋转圆圈组件
 const LoadingSpinner = () => (
   <div className="py-20 flex items-center justify-center bg-white">
     <div className="w-6 h-6 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin"></div>
   </div>
 );
 
-export default function UserProfile({ userId, onNavigateBack, onPostClick }: UserProfileProps) {
+export default function UserProfile({ userId, onNavigateBack, onPostClick, onRead }: UserProfileProps) {
   const [user, setUser] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -50,7 +50,6 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
   useEffect(() => {
     console.log('UserProfile: userId changed to:', userId);
     
-    // 当userId变化时,先清空旧数据,避免显示上一个用户的信息
     setUser(null);
     setPosts([]);
     setUnreadCount(0);
@@ -58,7 +57,7 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
     setIsEditingName(false);
     
     loadProfile();
-  }, [userId]); // userId变化时重新执行
+  }, [userId]);
 
   const loadProfile = async () => {
     setLoading(true);
@@ -74,11 +73,12 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
           const count = await getUnreadNotificationCount(userId);
           setUnreadCount(count);
           
-          // 🟢 新增:进入自己的主页时自动标记所有消息为已读
           if (count > 0) {
+            setActiveTab('messages'); // ✅ 有未读时自动跳到消息 tab
             try {
               await markAllNotificationsAsRead(userId);
-              setUnreadCount(0); // 立即更新UI
+              setUnreadCount(0);
+              onRead?.(); // ✅ 通知父组件清除头像红点
             } catch (err) {
               console.error('批量标记已读失败:', err);
             }
@@ -95,35 +95,34 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick }: Use
     }
   };
 
-  //压缩图片
   const compressImage = (file: File, maxSize = 400, quality = 0.85): Promise<Blob> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      let { width, height } = img;
-      if (width > height) {
-        if (width > maxSize) { height = height * maxSize / width; width = maxSize; }
-      } else {
-        if (height > maxSize) { width = width * maxSize / height; height = maxSize; }
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => blob ? resolve(blob) : reject(new Error('压缩失败')),
-        'image/webp',
-        quality
-      );
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
-};
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        if (width > height) {
+          if (width > maxSize) { height = height * maxSize / width; width = maxSize; }
+        } else {
+          if (height > maxSize) { width = width * maxSize / height; height = maxSize; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error('压缩失败')),
+          'image/webp',
+          quality
+        );
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  };
 
-const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
@@ -169,10 +168,8 @@ const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         <ArrowLeft className="w-5 h-5" />
       </button>
 
-      {/* 🟢 优化后的用户信息卡片 - 更紧凑的布局 */}
       <div className="flex flex-col md:flex-row items-center gap-6 bg-white border border-zinc-200 p-6 rounded-2xl">
         <div className="relative group">
-          {/* 🟢 优化头像尺寸 - 从w-32 h-32改为w-20 h-20 */}
           <div className="w-20 h-20 rounded-full overflow-hidden bg-zinc-100 border-2 border-white shadow-sm">
             {user.avatar ? (
               <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
@@ -212,7 +209,6 @@ const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
               </div>
             ) : (
               <>
-                {/* 🟢 优化昵称字号 - 从text-3xl改为text-xl */}
                 <h1 className="text-xl font-bold">{user.user_name}</h1>
                 {isOwnProfile && (
                   <button onClick={() => setIsEditingName(true)} className="text-zinc-400 hover:text-black">
@@ -233,7 +229,6 @@ const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       </div>
 
       <div className="mt-6">
-        {/* 🟢 标签页顺序调整:消息tab提前到第一位(仅自己可见) */}
         <div className="flex border-b border-zinc-200">
           {isOwnProfile && (
             <button 
@@ -242,6 +237,12 @@ const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
             >
               <Bell className="w-4 h-4" />
               消息
+              {/* ✅ 未读角标 */}
+              {unreadCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none">
+                  {unreadCount}
+                </span>
+              )}
             </button>
           )}
           <button 
