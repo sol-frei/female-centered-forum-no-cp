@@ -277,11 +277,11 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
                   <div className="text-center py-16 text-zinc-400 text-base">尚未发布过帖子</div>
                 ) : (
                   posts.map(post => (
-                    // ✅ 去掉边框和圆角，改为底部分隔线风格
-                    <div key={post.id} onClick={() => onPostClick(post.id)} className="py-4 px-1 border-b border-zinc-100 cursor-pointer hover:bg-zinc-50 transition-all">
-                      <h3 className="font-bold mb-1 line-clamp-1 text-base">{post.title}</h3>
-                      <p className="text-sm text-zinc-400">{new Date(post.created_at).toLocaleString()}</p>
-                    </div>
+                    // ✅ 边框和圆角
+                  <div key={post.id} onClick={() => onPostClick(post.id)} className="p-4 bg-white border border-zinc-200 rounded-xl cursor-pointer hover:border-zinc-400 transition-all">
+                    <h3 className="font-bold mb-1 line-clamp-1 text-base">{post.title}</h3>
+                    <p className="text-sm text-zinc-400">{new Date(post.created_at).toLocaleString()}</p>
+                  </div>
                   ))
                 )}
               </div>
