@@ -42,16 +42,31 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'messages' | 'collections'>('posts');
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [savingName, setSavingName] = useState(false);
 
+  // ✅ 退出主页时标记已读 + 清红点
+  useEffect(() => {
+    return () => {
+      // 组件卸载时执行（即用户离开主页）
+      // 用函数形式读取最新 userId，避免闭包问题
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session && session.user.id === userId) {
+          markAllNotificationsAsRead(userId).catch(() => {});
+          onRead?.();
+        }
+      });
+    };
+  }, [userId]);
+
   useEffect(() => {
     setUser(null);
     setPosts([]);
     setUnreadCount(0);
-    // ✅ 不在这里重置 tab，由 loadProfile 的结果决定落在哪个 tab
+    setIsOwnProfile(false);
     setIsEditingName(false);
     loadProfile();
   }, [userId]);
@@ -67,28 +82,15 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
 
       if (session) {
         setCurrentUser(session.user);
+        const ownProfile = session.user.id === userId;
+        setIsOwnProfile(ownProfile);
 
-        if (session.user.id === userId) {
+        if (ownProfile) {
           const count = await getUnreadNotificationCount(userId);
           setUnreadCount(count);
-
-          if (count > 0) {
-            // ✅ 有未读：跳到消息 tab，标记已读，延迟清零让角标可见
-            setActiveTab('messages');
-            try {
-              await markAllNotificationsAsRead(userId);
-              onRead?.();
-              setTimeout(() => setUnreadCount(0), 600);
-            } catch (err) {
-              console.error('标记已读失败:', err);
-              setUnreadCount(0);
-            }
-          } else {
-            // ✅ 无未读：落在发布 tab
-            setActiveTab('posts');
-          }
+          // ✅ 有未读就跳到消息 tab，没有就留在发布 tab
+          setActiveTab(count > 0 ? 'messages' : 'posts');
         } else {
-          // 看别人的主页，默认发布 tab
           setActiveTab('posts');
         }
       }
@@ -162,8 +164,6 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
       setSavingName(false);
     }
   };
-
-  const isOwnProfile = currentUser?.id === userId;
 
   if (loading) return <LoadingSpinner />;
   if (!user) return <div className="p-20 text-center text-zinc-400">用户不存在</div>;
