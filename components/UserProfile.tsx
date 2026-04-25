@@ -48,7 +48,6 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
   const [newUserName, setNewUserName] = useState('');
   const [savingName, setSavingName] = useState(false);
 
-  // ✅ 退出主页时标记已读 + 清红点
   useEffect(() => {
     return () => {
       supabase.auth.getSession().then(({ data: { session } }) => {
@@ -72,11 +71,16 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
   const loadProfile = async () => {
     setLoading(true);
     try {
-      const userData = await get_user(userId);
+      // ✅ 修复1：getSession 只调一次，user数据、session、帖子全部并行请求
+      const [userData, { data: { session } }, userPosts] = await Promise.all([
+        get_user(userId),
+        supabase.auth.getSession(),
+        get_posts_by_user(userId),
+      ]);
+
       setUser(userData);
       setNewUserName(userData?.user_name || '');
-      
-      const { data: { session } } = await supabase.auth.getSession();
+      setPosts(userPosts);
 
       if (session) {
         setCurrentUser(session.user);
@@ -84,6 +88,7 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
         setIsOwnProfile(ownProfile);
 
         if (ownProfile) {
+          // ✅ 修复1：未读数在确认是自己主页后才单独请求，不阻塞主流程
           const count = await getUnreadNotificationCount(userId);
           setUnreadCount(count);
           setActiveTab(count > 0 ? 'messages' : 'posts');
@@ -91,9 +96,6 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
           setActiveTab('posts');
         }
       }
-
-      const userPosts = await get_posts_by_user(userId);
-      setPosts(userPosts);
     } catch (err) {
       console.error('loadProfile 出错:', err);
     } finally {
@@ -168,10 +170,10 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
   return (
     <div className="max-w-4xl mx-auto pb-20">
 
-      {/* ✅ 统一风格的顶部返回栏 */}
       <div className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-zinc-100 px-4 py-3 flex items-center justify-between">
         <button onClick={onNavigateBack} className="text-zinc-600 hover:text-black font-medium flex items-center gap-2">
-          <ArrowLeft className="w-5 h-5" /> 返回
+          {/* ✅ 修复2：返回按钮文字放大 */}
+          <ArrowLeft className="w-5 h-5" /> <span className="text-base">返回</span>
         </button>
       </div>
 
@@ -229,24 +231,26 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
                 <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded">管理员</span>
               )}
             </div>
-            <div className="text-zinc-500 flex items-center justify-center md:justify-start gap-2 text-xs">
-              <Calendar className="w-3.5 h-3.5" />
+            {/* ✅ 修复2：加入日期字体放大 */}
+            <div className="text-zinc-500 flex items-center justify-center md:justify-start gap-2 text-sm">
+              <Calendar className="w-4 h-4" />
               <span>{new Date(user.created_at).toLocaleDateString()} 加入</span>
             </div>
           </div>
         </div>
 
         <div className="mt-6">
+          {/* ✅ 修复2：Tab 标签字体统一放大为 text-base，图标和红点也相应放大 */}
           <div className="flex border-b border-zinc-200">
             {isOwnProfile && (
               <button
                 onClick={() => setActiveTab('messages')}
-                className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'messages' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
+                className={`px-6 py-3 text-base font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'messages' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
               >
-                <Bell className="w-4 h-4" />
+                <Bell className="w-5 h-5" />
                 消息
                 {unreadCount > 0 && (
-                  <span className="bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none">
+                  <span className="bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 leading-none">
                     {unreadCount}
                   </span>
                 )}
@@ -254,14 +258,14 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
             )}
             <button
               onClick={() => setActiveTab('posts')}
-              className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'posts' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
+              className={`px-6 py-3 text-base font-medium transition-colors border-b-2 ${activeTab === 'posts' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
             >
               发布 ({posts.length})
             </button>
             {isOwnProfile && (
               <button
                 onClick={() => setActiveTab('collections')}
-                className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'collections' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
+                className={`px-6 py-3 text-base font-medium transition-colors border-b-2 ${activeTab === 'collections' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
               >
                 收藏
               </button>
@@ -275,12 +279,14 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
             {activeTab === 'posts' && (
               <div className="grid gap-3">
                 {posts.length === 0 ? (
-                  <div className="text-center py-16 text-zinc-400 text-sm">尚未发布过帖子</div>
+                  // ✅ 修复2：空状态提示字体放大
+                  <div className="text-center py-16 text-zinc-400 text-base">尚未发布过帖子</div>
                 ) : (
                   posts.map(post => (
                     <div key={post.id} onClick={() => onPostClick(post.id)} className="p-4 bg-white border border-zinc-200 rounded-xl cursor-pointer hover:border-zinc-400 transition-all">
-                      <h3 className="font-bold mb-1 line-clamp-1 text-sm">{post.title}</h3>
-                      <p className="text-xs text-zinc-400">{new Date(post.created_at).toLocaleString()}</p>
+                      {/* ✅ 修复2：帖子标题和时间字体放大 */}
+                      <h3 className="font-bold mb-1 line-clamp-1 text-base">{post.title}</h3>
+                      <p className="text-sm text-zinc-400">{new Date(post.created_at).toLocaleString()}</p>
                     </div>
                   ))
                 )}
