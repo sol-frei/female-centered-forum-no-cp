@@ -71,7 +71,6 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
   const loadProfile = async () => {
     setLoading(true);
     try {
-      // ✅ 修复1：getSession 只调一次，user数据、session、帖子全部并行请求
       const [userData, { data: { session } }, userPosts] = await Promise.all([
         get_user(userId),
         supabase.auth.getSession(),
@@ -88,7 +87,6 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
         setIsOwnProfile(ownProfile);
 
         if (ownProfile) {
-          // ✅ 修复1：未读数在确认是自己主页后才单独请求，不阻塞主流程
           const count = await getUnreadNotificationCount(userId);
           setUnreadCount(count);
           setActiveTab(count > 0 ? 'messages' : 'posts');
@@ -172,7 +170,6 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
 
       <div className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-zinc-100 px-4 py-3 flex items-center justify-between">
         <button onClick={onNavigateBack} className="text-zinc-600 hover:text-black font-medium flex items-center gap-2">
-          {/* ✅ 修复2：返回按钮文字放大 */}
           <ArrowLeft className="w-5 h-5" /> <span className="text-base">返回</span>
         </button>
       </div>
@@ -231,7 +228,6 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
                 <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded">管理员</span>
               )}
             </div>
-            {/* ✅ 修复2：加入日期字体放大 */}
             <div className="text-zinc-500 flex items-center justify-center md:justify-start gap-2 text-sm">
               <Calendar className="w-4 h-4" />
               <span>{new Date(user.created_at).toLocaleDateString()} 加入</span>
@@ -240,7 +236,6 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
         </div>
 
         <div className="mt-6">
-          {/* ✅ 修复2：Tab 标签字体统一放大为 text-base，图标和红点也相应放大 */}
           <div className="flex border-b border-zinc-200">
             {isOwnProfile && (
               <button
@@ -277,19 +272,16 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
               <MessagesTab userId={userId} onPostClick={onPostClick} />
             )}
             {activeTab === 'posts' && (
-              <div className="grid gap-3">
+              <div>
                 {posts.length === 0 ? (
-                  // ✅ 修复2：空状态提示字体放大
                   <div className="text-center py-16 text-zinc-400 text-base">尚未发布过帖子</div>
                 ) : (
                   posts.map(post => (
-
-              // 修改后
-              <div key={post.id} onClick={() => onPostClick(post.id)} className="py-4 border-b border-zinc-100 cursor-pointer hover:bg-zinc-50 transition-all px-1">
-                <h3 className="font-bold mb-1 line-clamp-1 text-base">{post.title}</h3>
-                <p className="text-sm text-zinc-400">{new Date(post.created_at).toLocaleString()}</p>
-              </div>
-                    
+                    // ✅ 去掉边框和圆角，改为底部分隔线风格
+                    <div key={post.id} onClick={() => onPostClick(post.id)} className="py-4 px-1 border-b border-zinc-100 cursor-pointer hover:bg-zinc-50 transition-all">
+                      <h3 className="font-bold mb-1 line-clamp-1 text-base">{post.title}</h3>
+                      <p className="text-sm text-zinc-400">{new Date(post.created_at).toLocaleString()}</p>
+                    </div>
                   ))
                 )}
               </div>
