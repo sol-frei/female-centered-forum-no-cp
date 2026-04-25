@@ -25,7 +25,7 @@ interface UserProfileProps {
   userId: string;
   onNavigateBack: () => void;
   onPostClick: (postId: string) => void;
-  onRead?: () => void; // 新增：通知父组件清除红点
+  onRead?: () => void;
 }
 
 const LoadingSpinner = () => (
@@ -48,14 +48,11 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
   const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
-    console.log('UserProfile: userId changed to:', userId);
-    
     setUser(null);
     setPosts([]);
     setUnreadCount(0);
     setActiveTab('posts');
     setIsEditingName(false);
-    
     loadProfile();
   }, [userId]);
 
@@ -67,29 +64,39 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
       setNewUserName(userData?.user_name || '');
       
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('[UserProfile] session:', session?.user?.id, '| userId:', userId);
+
       if (session) {
         setCurrentUser(session.user);
+
         if (session.user.id === userId) {
           const count = await getUnreadNotificationCount(userId);
+          console.log('[UserProfile] 未读数:', count);
           setUnreadCount(count);
-          
+
           if (count > 0) {
-            setActiveTab('messages'); // ✅ 有未读时自动跳到消息 tab
+            console.log('[UserProfile] 有未读，跳转到消息 tab');
+            setActiveTab('messages');
+
             try {
               await markAllNotificationsAsRead(userId);
-              setUnreadCount(0);
-              onRead?.(); // ✅ 通知父组件清除头像红点
+              onRead?.();
+              // 延迟 600ms 清零，让角标能被用户看到
+              setTimeout(() => setUnreadCount(0), 600);
             } catch (err) {
-              console.error('批量标记已读失败:', err);
+              console.error('[UserProfile] 标记已读失败:', err);
+              setUnreadCount(0);
             }
           }
+        } else {
+          console.log('[UserProfile] 不是自己的主页，跳过未读逻辑');
         }
       }
 
       const userPosts = await get_posts_by_user(userId);
       setPosts(userPosts);
     } catch (err) {
-      console.error(err);
+      console.error('[UserProfile] loadProfile 出错:', err);
     } finally {
       setLoading(false);
     }
@@ -125,7 +132,6 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-
     setUploading(true);
     try {
       const compressed = await compressImage(file, 400, 0.85);
@@ -231,13 +237,12 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
       <div className="mt-6">
         <div className="flex border-b border-zinc-200">
           {isOwnProfile && (
-            <button 
+            <button
               onClick={() => setActiveTab('messages')}
               className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'messages' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
             >
               <Bell className="w-4 h-4" />
               消息
-              {/* ✅ 未读角标 */}
               {unreadCount > 0 && (
                 <span className="bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none">
                   {unreadCount}
@@ -245,14 +250,14 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
               )}
             </button>
           )}
-          <button 
+          <button
             onClick={() => setActiveTab('posts')}
             className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'posts' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
           >
             发布 ({posts.length})
           </button>
           {isOwnProfile && (
-            <button 
+            <button
               onClick={() => setActiveTab('collections')}
               className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'collections' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'}`}
             >
@@ -265,7 +270,6 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
           {activeTab === 'messages' && isOwnProfile && (
             <MessagesTab userId={userId} onPostClick={onPostClick} />
           )}
-
           {activeTab === 'posts' && (
             <div className="grid gap-3">
               {posts.length === 0 ? (
@@ -280,7 +284,6 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
               )}
             </div>
           )}
-
           {activeTab === 'collections' && isOwnProfile && (
             <CollectionsTab userId={userId} onPostClick={onPostClick} />
           )}
