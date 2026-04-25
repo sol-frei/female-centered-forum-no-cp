@@ -29,14 +29,12 @@ const LoadingSpinner = ({ fullScreen = false }: { fullScreen?: boolean }) => (
   </div>
 );
 
-// 取帖子的最后活跃时间：优先用 last_comment_at，没有则用 created_at
 function getPostActiveTime(post: Post): Date {
   const t = (post as any).last_comment_at;
   if (t) return new Date(t);
   return new Date(post.created_at);
 }
 
-// 按最后活跃时间降序排序（顶帖逻辑）
 function sortByActivity(posts: Post[]): Post[] {
   return [...posts].sort((a, b) => getPostActiveTime(b).getTime() - getPostActiveTime(a).getTime());
 }
@@ -262,7 +260,8 @@ function AppContent() {
       <UserProfile 
         userId={userId}
         onNavigateBack={() => navigate(-1)} 
-        onPostClick={(id: string) => navigate(`/post/${id}`)} 
+        onPostClick={(id: string) => navigate(`/post/${id}`)}
+        onRead={() => setUnreadCount(0)} // ✅ 新增：UserProfile 标记已读后清除头像红点
       />
     );
   };
@@ -411,16 +410,13 @@ function AppContent() {
                       >
                         <Avatar url={usersMap[post.user_id]?.avatar} className="w-8 h-8 md:w-7 md:h-7 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          {/* 标题：手机 text-base，PC 保持 text-[15px] */}
                           <h3 className="font-medium break-words whitespace-normal text-base md:text-[15px] leading-snug text-zinc-900">
                             {post.is_essence && <span className="mr-1 bg-black text-white px-1 text-[10px] inline-block align-middle rounded-sm">蒂</span>}
                             {post.title}
                           </h3>
-                          {/* 预览文字：手机 text-base leading-relaxed，PC text-sm */}
                           <p className="text-base md:text-sm leading-relaxed md:leading-normal text-zinc-500 line-clamp-2 mt-1.5 md:mt-1">
                             {getPostPreview(post.content)}
                           </p>
-                          {/* 元信息：手机 text-sm，PC text-xs */}
                           <div className="text-sm md:text-xs text-zinc-400 mt-2.5 md:mt-2 flex items-center gap-2 flex-nowrap overflow-hidden">
                             <span className="bg-zinc-100 px-1.5 py-0.5 rounded text-zinc-600 shrink-0 truncate max-w-[7rem]">{post.category}</span>
                             <span className="truncate shrink-0 max-w-[6rem]">{usersMap[post.user_id]?.user_name || '匿名'}</span>
