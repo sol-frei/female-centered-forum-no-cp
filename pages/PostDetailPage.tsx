@@ -379,7 +379,7 @@ const PostDetailPage = ({
         )}
       </div>
 
-      {/* [修复1] main 加 relative，作为 PC 端悬浮按钮的定位父级 */}
+      {/* [修复1] main 加 relative，作为 PC 端悬浮按钮的定位母级 */}
       <main className="relative max-w-2xl mx-auto w-full px-4 py-6 pb-32">
         {/* 帖子头部 */}
         <div className="mb-6">
