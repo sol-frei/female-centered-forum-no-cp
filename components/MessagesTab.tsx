@@ -25,10 +25,11 @@ export function MessagesTab({
 
       const list = data || [];
 
-      // ✅ 首次加载时快照未读 ID，之后 realtime 触发重载时不覆盖快照
+      // ✅ 首次加载时快照未读 ID，之后 realtime 触发重载时保持快照不变
       setUnreadIds(prev => {
         if (prev.size === 0) {
-          return new Set(list.filter((n: any) => !n.is_read).map((n: any) => n.id));
+          const ids = new Set(list.filter((n: any) => !n.is_read).map((n: any) => n.id as string));
+          return ids;
         }
         return prev;
       });
@@ -42,7 +43,6 @@ export function MessagesTab({
   };
 
   useEffect(() => {
-    // userId 变化时重置快照
     setUnreadIds(new Set());
     loadNotifications();
 
