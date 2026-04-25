@@ -51,7 +51,7 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
     setUser(null);
     setPosts([]);
     setUnreadCount(0);
-    setActiveTab('posts');
+    // ✅ 不在这里重置 tab，由 loadProfile 的结果决定落在哪个 tab
     setIsEditingName(false);
     loadProfile();
   }, [userId]);
@@ -64,39 +64,39 @@ export default function UserProfile({ userId, onNavigateBack, onPostClick, onRea
       setNewUserName(userData?.user_name || '');
       
       const { data: { session } } = await supabase.auth.getSession();
-      console.log('[UserProfile] session:', session?.user?.id, '| userId:', userId);
 
       if (session) {
         setCurrentUser(session.user);
 
         if (session.user.id === userId) {
           const count = await getUnreadNotificationCount(userId);
-          console.log('[UserProfile] 未读数:', count);
           setUnreadCount(count);
 
           if (count > 0) {
-            console.log('[UserProfile] 有未读，跳转到消息 tab');
+            // ✅ 有未读：跳到消息 tab，标记已读，延迟清零让角标可见
             setActiveTab('messages');
-
             try {
               await markAllNotificationsAsRead(userId);
               onRead?.();
-              // 延迟 600ms 清零，让角标能被用户看到
               setTimeout(() => setUnreadCount(0), 600);
             } catch (err) {
-              console.error('[UserProfile] 标记已读失败:', err);
+              console.error('标记已读失败:', err);
               setUnreadCount(0);
             }
+          } else {
+            // ✅ 无未读：落在发布 tab
+            setActiveTab('posts');
           }
         } else {
-          console.log('[UserProfile] 不是自己的主页，跳过未读逻辑');
+          // 看别人的主页，默认发布 tab
+          setActiveTab('posts');
         }
       }
 
       const userPosts = await get_posts_by_user(userId);
       setPosts(userPosts);
     } catch (err) {
-      console.error('[UserProfile] loadProfile 出错:', err);
+      console.error('loadProfile 出错:', err);
     } finally {
       setLoading(false);
     }
