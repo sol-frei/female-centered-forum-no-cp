@@ -139,10 +139,9 @@ function CollectionItem({
                     className="flex-1 min-w-0 cursor-pointer"
                     onClick={() => onPostClick(p.id)}
                   >
-                    {/* ✅ 修复：标题改为 text-base，与正文 text-sm 形成层次 */}
                     <h4 className="font-semibold text-zinc-900 text-base line-clamp-1">{p.title}</h4>
-                    <div className="text-sm text-zinc-400 line-clamp-1 mt-0.5">
-                      <PostContent content={p.content} />
+                    <div className="text-zinc-400 line-clamp-1 mt-0.5">
+                      <PostContent content={p.content} className="text-sm" />
                     </div>
                   </div>
                   <button
