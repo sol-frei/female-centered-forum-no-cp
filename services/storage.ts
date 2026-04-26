@@ -515,7 +515,6 @@ export const create_collection = async (userId: string, name: string) => {
     .insert([{
       user_id: userId,
       name: name,
-      post_ids: []
     }])
     .select()
     .single();
