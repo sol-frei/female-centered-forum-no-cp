@@ -11,7 +11,6 @@ type ContentBlock = TextBlock | ImageBlock;
 interface PostContentProps {
   content: string;
   className?: string;
-  previewMode?: boolean; // 新增：预览模式，用小字体，不显示图片
 }
 /** 单张图片：加载前显示骨架占位，加载完成后渐入 */
 function PostImage({ url }: { url: string }) {
@@ -50,14 +49,8 @@ function PostImage({ url }: { url: string }) {
  */
 export default function PostContent({
   content,
-  className = '',
-  previewMode = false,
+  className = ''
 }: PostContentProps) {
-  // 预览模式下的文字样式：统一小字，颜色浅
-  const textClass = previewMode
-    ? 'text-xs text-zinc-400 leading-snug'
-    : 'whitespace-pre-wrap break-words text-zinc-800 text-lg md:text-base leading-loose md:leading-relaxed';
-
   let blocks: ContentBlock[] = [];
   /** 尝试解析JSON格式(新数据) */
   try {
@@ -70,8 +63,8 @@ export default function PostContent({
   } catch {
     /** 兜底旧数据(纯文本) */
     return (
-      <div className={`${previewMode ? '' : 'space-y-5'} ${className}`}>
-        <p className={textClass}>
+      <div className={`space-y-5 ${className}`}>
+        <p className="whitespace-pre-wrap break-words text-zinc-800 text-lg md:text-base leading-loose md:leading-relaxed">
           {content}
         </p>
       </div>
@@ -79,20 +72,19 @@ export default function PostContent({
   }
   /** 渲染图文混排内容 */
   return (
-    <div className={`${previewMode ? '' : 'space-y-5'} ${className}`}>
+    <div className={`space-y-5 ${className}`}>
       {blocks.map((block, index) => {
         if (block.type === 'text') {
-          // 预览模式只取第一个文字块，截断显示
-          if (previewMode && index > 0) return null;
           return (
-            <p key={index} className={textClass}>
+            <p
+              key={index}
+              className="whitespace-pre-wrap break-words text-zinc-800 text-lg md:text-base leading-loose md:leading-relaxed"
+            >
               {block.value}
             </p>
           );
         }
-        // 预览模式不显示图片
         if (block.type === 'image') {
-          if (previewMode) return null;
           return <PostImage key={index} url={block.url} />;
         }
         return null;
