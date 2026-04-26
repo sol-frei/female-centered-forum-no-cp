@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import PostContent from './PostContent';
 
+
+
 function CollectionItem({
   collection,
   onDelete,
@@ -133,15 +135,11 @@ function CollectionItem({
             <div className="divide-y divide-zinc-100">
               {posts.map((p: any) => (
                 <div key={p.id} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-zinc-50 transition-colors">
-                  <div
-                    className="flex-1 min-w-0 cursor-pointer"
-                    onClick={() => onPostClick(p.id)}
-                  >
-                    {/* 标题：正常大小加粗 */}
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onPostClick(p.id)}>
+                    {/* 标题正常大小加粗 */}
                     <h4 className="font-semibold text-zinc-900 text-base line-clamp-1">{p.title}</h4>
-                    {/* 正文：强制用 12px，防止 PostContent 内部样式撑大 */}
-                    <div className="line-clamp-1 mt-0.5" style={{ fontSize: '12px', color: '#a1a1aa' }}>
-                      <PostContent content={p.content} />
+                    <div className="line-clamp-1 mt-0.5">
+                      <PostContent content={p.content} previewMode />
                     </div>
                   </div>
                   <button
@@ -169,7 +167,6 @@ export function CollectionsTab({
 }) {
   const [collections, setCollections] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [showCreateInput, setShowCreateInput] = useState(false);
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
@@ -216,55 +213,56 @@ export function CollectionsTab({
 
   return (
     <div className="flex flex-col gap-3">
-      {collections.length === 0 && !showCreateInput ? (
-        <div className="text-center py-16 text-zinc-400">
-          <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <p className="text-sm">还没有收藏夹</p>
-        </div>
-      ) : (
-        collections.map(c => (
-          <CollectionItem
-            key={c.id}
-            collection={c}
-            onDelete={handleDelete}
-            onRename={handleRename}
-            onPostClick={onPostClick}
-          />
-        ))
-      )}
+        {collections.length === 0 && !showCreateInput ? (
+          <div className="text-center py-16 text-zinc-400">
+            <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-20" />
+            <p className="text-sm">还没有收藏夹</p>
+          </div>
+        ) : (
+          collections.map(c => (
+            <CollectionItem
+              key={c.id}
+              collection={c}
+              onDelete={handleDelete}
+              onRename={handleRename}
+              onPostClick={onPostClick}
+            />
+          ))
+        )}
 
-      {showCreateInput ? (
-        <div className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-zinc-300 rounded-2xl">
-          <input
-            autoFocus
-            value={newName}
-            onChange={e => setNewName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setShowCreateInput(false); setNewName(''); } }}
-            placeholder="输入收藏夹名称"
-            className="flex-1 text-base bg-transparent outline-none placeholder-zinc-300"
-          />
+        {showCreateInput ? (
+          <div className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-zinc-300 rounded-2xl">
+            <input
+              autoFocus
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setShowCreateInput(false); setNewName(''); } }}
+              placeholder="输入收藏夹名称"
+              className="flex-1 text-base bg-transparent outline-none placeholder-zinc-300"
+            />
+            <button
+              onClick={handleCreate}
+              disabled={creating || !newName.trim()}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-black text-white disabled:opacity-40 active:bg-zinc-700 flex-shrink-0"
+            >
+              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={() => { setShowCreateInput(false); setNewName(''); }}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-zinc-100 text-zinc-500 active:bg-zinc-200 flex-shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        ) : (
           <button
-            onClick={handleCreate}
-            disabled={creating || !newName.trim()}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-black text-white disabled:opacity-40 active:bg-zinc-700 flex-shrink-0"
+            onClick={() => setShowCreateInput(true)}
+            className="flex items-center justify-center gap-2 w-full py-3 border border-dashed border-zinc-300 rounded-2xl text-zinc-400 text-sm hover:border-zinc-400 hover:text-zinc-600 active:bg-zinc-50 transition-colors"
           >
-            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-5 h-5" />}
+            <Plus className="w-4 h-4" /> 新建收藏夹
           </button>
-          <button
-            onClick={() => { setShowCreateInput(false); setNewName(''); }}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-zinc-100 text-zinc-500 active:bg-zinc-200 flex-shrink-0"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setShowCreateInput(true)}
-          className="flex items-center justify-center gap-2 w-full py-3 border border-dashed border-zinc-300 rounded-2xl text-zinc-400 text-sm hover:border-zinc-400 hover:text-zinc-600 active:bg-zinc-50 transition-colors"
-        >
-          <Plus className="w-4 h-4" /> 新建收藏夹
-        </button>
-      )}
+        )}
+      </div>
     </div>
   );
 }
