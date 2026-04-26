@@ -69,7 +69,6 @@ function CollectionItem({
 
   return (
     <div className="border border-zinc-200 rounded-2xl overflow-hidden">
-      {/* 收藏夹标题行 */}
       <div className="flex items-center gap-2 px-4 py-3.5 bg-white">
         <button onClick={handleToggle} className="text-zinc-400 flex-shrink-0">
           {open
@@ -124,7 +123,6 @@ function CollectionItem({
         )}
       </div>
 
-      {/* 折叠内容 */}
       {open && (
         <div className="border-t border-zinc-100">
           {postsLoading ? (
@@ -141,8 +139,8 @@ function CollectionItem({
                     className="flex-1 min-w-0 cursor-pointer"
                     onClick={() => onPostClick(p.id)}
                   >
-                    {/* 标题和正文统一用 text-sm，标题加粗区分 */}
-                    <h4 className="font-semibold text-zinc-900 text-sm line-clamp-1">{p.title}</h4>
+                    {/* ✅ 修复：标题改为 text-base，与正文 text-sm 形成层次 */}
+                    <h4 className="font-semibold text-zinc-900 text-base line-clamp-1">{p.title}</h4>
                     <div className="text-sm text-zinc-400 line-clamp-1 mt-0.5">
                       <PostContent content={p.content} />
                     </div>
@@ -219,8 +217,6 @@ export function CollectionsTab({
 
   return (
     <div className="flex flex-col gap-3">
-
-      {/* 收藏夹列表 */}
       {collections.length === 0 && !showCreateInput ? (
         <div className="text-center py-16 text-zinc-400">
           <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-20" />
@@ -238,7 +234,6 @@ export function CollectionsTab({
         ))
       )}
 
-      {/* 新建收藏夹 —— 放在列表下方 */}
       {showCreateInput ? (
         <div className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-zinc-300 rounded-2xl">
           <input
@@ -264,7 +259,6 @@ export function CollectionsTab({
           </button>
         </div>
       ) : (
-        /* 居中的新建按钮 */
         <button
           onClick={() => setShowCreateInput(true)}
           className="flex items-center justify-center gap-2 w-full py-3 border border-dashed border-zinc-300 rounded-2xl text-zinc-400 text-sm hover:border-zinc-400 hover:text-zinc-600 active:bg-zinc-50 transition-colors"
