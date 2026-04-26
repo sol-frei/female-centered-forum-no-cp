@@ -36,9 +36,9 @@ function PostImage({ url }: { url: string }) {
         onLoad={() => setLoaded(true)}
         onError={() => setError(true)}
         onClick={handlePreview}
-        className={max-w-full rounded-lg border border-zinc-200 mx-auto cursor-pointer hover:opacity-90 transition-opacity duration-300 ${
+        className={`max-w-full rounded-lg border border-zinc-200 mx-auto cursor-pointer hover:opacity-90 transition-opacity duration-300 ${
           loaded ? 'opacity-100' : 'opacity-0 absolute inset-0'
-        }}
+        }`}
       />
     </div>
   );
@@ -63,7 +63,7 @@ export default function PostContent({
   } catch {
     /** 兜底旧数据(纯文本) */
     return (
-      <div className={space-y-5 ${className}}>
+      <div className={`space-y-5 ${className}`}>
         <p className="whitespace-pre-wrap break-words text-zinc-800 text-lg md:text-base leading-loose md:leading-relaxed">
           {content}
         </p>
@@ -72,8 +72,8 @@ export default function PostContent({
   }
   /** 渲染图文混排内容 */
   return (
-    <div className={space-y-5 ${className}}>
-      {[blocks.map](http://blocks.map)((block, index) => {
+    <div className={`space-y-5 ${className}`}>
+      {blocks.map((block, index) => {
         if (block.type === 'text') {
           return (
             <p
