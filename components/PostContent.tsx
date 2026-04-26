@@ -50,7 +50,7 @@ function PostImage({ url }: { url: string }) {
 
 export default function PostContent({
   content,
-  className = 'text-lg md:text-base'
+  className = ''
 }: PostContentProps) {
   let blocks: ContentBlock[] = [];
 
@@ -63,8 +63,8 @@ export default function PostContent({
     }
   } catch {
     return (
-      <div>
-        <p className={`whitespace-pre-wrap break-words text-zinc-800 leading-loose md:leading-relaxed ${className}`}>
+      <div className={`space-y-5 ${className}`}>
+        <p className="whitespace-pre-wrap break-words text-zinc-800 text-lg md:text-base leading-loose md:leading-relaxed">
           {content}
         </p>
       </div>
@@ -72,13 +72,13 @@ export default function PostContent({
   }
 
   return (
-    <div className="space-y-5">
+    <div className={`space-y-5 ${className}`}>
       {blocks.map((block, index) => {
         if (block.type === 'text') {
           return (
             <p
               key={index}
-              className={`whitespace-pre-wrap break-words text-zinc-800 leading-loose md:leading-relaxed ${className}`}
+              className="whitespace-pre-wrap break-words text-zinc-800 text-lg md:text-base leading-loose md:leading-relaxed"
             >
               {block.value}
             </p>
