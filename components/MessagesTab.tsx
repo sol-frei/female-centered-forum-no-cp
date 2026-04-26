@@ -25,7 +25,6 @@ export function MessagesTab({
 
       const list = data || [];
 
-      // ✅ 首次加载时快照未读 ID，之后 realtime 触发重载时保持快照不变
       setUnreadIds(prev => {
         if (prev.size === 0) {
           const ids = new Set(list.filter((n: any) => !n.is_read).map((n: any) => n.id as string));
@@ -111,25 +110,25 @@ export function MessagesTab({
                 <div className="flex gap-3">
                   <div className="pt-0.5 relative">
                     {n.type === 'like' ? (
-                      <Heart className="w-4 h-4 text-red-500" />
+                      <Heart className="w-5 h-5 text-red-500" />
                     ) : (
-                      <MessageCircle className="w-4 h-4 text-blue-500" />
+                      <MessageCircle className="w-5 h-5 text-blue-500" />
                     )}
                     {isNew && (
                       <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm text-zinc-800 ${isNew ? 'font-semibold' : ''}`}>
+                    <p className={`text-base text-zinc-800 ${isNew ? 'font-semibold' : ''}`}>
                       <span className="font-semibold">{n.from_user_name}</span>
                       {n.type === 'comment' ? ' 评论了你的帖子' : n.type === 'reply' ? ' 回复了你的评论' : ' 赞了你'}
                     </p>
                     {n.content && (
-                      <p className="mt-1.5 text-xs text-zinc-600 bg-zinc-50 p-2 rounded-lg line-clamp-2">
+                      <p className="mt-1.5 text-sm text-zinc-600 bg-zinc-50 p-2 rounded-lg line-clamp-2">
                         {n.content}
                       </p>
                     )}
-                    <p className="mt-1.5 text-[10px] text-zinc-400">{timeAgo(n.created_at)}</p>
+                    <p className="mt-1.5 text-xs text-zinc-400">{timeAgo(n.created_at)}</p>
                   </div>
                 </div>
               </div>
