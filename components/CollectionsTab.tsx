@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import PostContent from './PostContent';
 
-// 单个收藏夹（含折叠）
 function CollectionItem({
   collection,
   onDelete,
@@ -72,18 +71,13 @@ function CollectionItem({
     <div className="border border-zinc-200 rounded-2xl overflow-hidden">
       {/* 收藏夹标题行 */}
       <div className="flex items-center gap-2 px-4 py-3.5 bg-white">
-        {/* 展开箭头 */}
-        <button
-          onClick={handleToggle}
-          className="text-zinc-400 flex-shrink-0"
-        >
+        <button onClick={handleToggle} className="text-zinc-400 flex-shrink-0">
           {open
             ? <ChevronDown className="w-5 h-5" />
             : <ChevronRight className="w-5 h-5" />}
         </button>
 
         {isRenaming ? (
-          /* 重命名输入框 */
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <input
               autoFocus
@@ -107,7 +101,6 @@ function CollectionItem({
             </button>
           </div>
         ) : (
-          /* 正常展示 */
           <>
             <span
               className="flex-1 text-base font-semibold text-zinc-900 cursor-pointer truncate"
@@ -115,19 +108,15 @@ function CollectionItem({
             >
               {collection.name}
             </span>
-            {/* 重命名按钮 */}
             <button
               onClick={() => { setIsRenaming(true); setRenameValue(collection.name); }}
               className="w-9 h-9 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 active:bg-zinc-200 flex-shrink-0"
-              title="重命名"
             >
               <Pencil className="w-4 h-4" />
             </button>
-            {/* 删除按钮 */}
             <button
               onClick={() => onDelete(collection.id)}
               className="w-9 h-9 flex items-center justify-center rounded-full text-zinc-400 hover:text-red-500 hover:bg-red-50 active:bg-red-100 flex-shrink-0"
-              title="删除收藏夹"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -137,7 +126,7 @@ function CollectionItem({
 
       {/* 折叠内容 */}
       {open && (
-        <div className="border-t border-zinc-100 bg-zinc-50">
+        <div className="border-t border-zinc-100">
           {postsLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="w-5 h-5 animate-spin text-zinc-300" />
@@ -147,20 +136,20 @@ function CollectionItem({
           ) : (
             <div className="divide-y divide-zinc-100">
               {posts.map((p: any) => (
-                <div key={p.id} className="flex items-start gap-3 px-4 py-3.5 bg-white hover:bg-zinc-50 transition-colors">
+                <div key={p.id} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-zinc-50 transition-colors">
                   <div
                     className="flex-1 min-w-0 cursor-pointer"
                     onClick={() => onPostClick(p.id)}
                   >
-                    <h4 className="font-semibold text-zinc-900 text-base line-clamp-1 mb-0.5">{p.title}</h4>
-                    <div className="text-sm text-zinc-400 line-clamp-1">
+                    {/* 标题和正文统一用 text-sm，标题加粗区分 */}
+                    <h4 className="font-semibold text-zinc-900 text-sm line-clamp-1">{p.title}</h4>
+                    <div className="text-sm text-zinc-400 line-clamp-1 mt-0.5">
                       <PostContent content={p.content} />
                     </div>
                   </div>
                   <button
                     onClick={() => handleRemovePost(p.id)}
                     className="w-10 h-10 flex items-center justify-center rounded-xl text-zinc-300 hover:text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors flex-shrink-0"
-                    title="取消收藏"
                   >
                     <BookmarkX className="w-5 h-5" />
                   </button>
@@ -174,7 +163,6 @@ function CollectionItem({
   );
 }
 
-// 主组件
 export function CollectionsTab({
   userId,
   onPostClick
@@ -232,7 +220,25 @@ export function CollectionsTab({
   return (
     <div className="flex flex-col gap-3">
 
-      {/* 新建收藏夹 */}
+      {/* 收藏夹列表 */}
+      {collections.length === 0 && !showCreateInput ? (
+        <div className="text-center py-16 text-zinc-400">
+          <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-20" />
+          <p className="text-sm">还没有收藏夹</p>
+        </div>
+      ) : (
+        collections.map(c => (
+          <CollectionItem
+            key={c.id}
+            collection={c}
+            onDelete={handleDelete}
+            onRename={handleRename}
+            onPostClick={onPostClick}
+          />
+        ))
+      )}
+
+      {/* 新建收藏夹 —— 放在列表下方 */}
       {showCreateInput ? (
         <div className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-zinc-300 rounded-2xl">
           <input
@@ -258,30 +264,13 @@ export function CollectionsTab({
           </button>
         </div>
       ) : (
+        /* 居中的新建按钮 */
         <button
           onClick={() => setShowCreateInput(true)}
-          className="flex items-center gap-2 px-4 py-3 border border-dashed border-zinc-300 rounded-2xl text-zinc-500 text-base hover:border-zinc-500 hover:text-zinc-700 active:bg-zinc-50 transition-colors"
+          className="flex items-center justify-center gap-2 w-full py-3 border border-dashed border-zinc-300 rounded-2xl text-zinc-400 text-sm hover:border-zinc-400 hover:text-zinc-600 active:bg-zinc-50 transition-colors"
         >
-          <Plus className="w-5 h-5" /> 新建收藏夹
+          <Plus className="w-4 h-4" /> 新建收藏夹
         </button>
-      )}
-
-      {/* 收藏夹列表 */}
-      {collections.length === 0 ? (
-        <div className="text-center py-16 text-zinc-400">
-          <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <p className="text-sm">还没有收藏夹</p>
-        </div>
-      ) : (
-        collections.map(c => (
-          <CollectionItem
-            key={c.id}
-            collection={c}
-            onDelete={handleDelete}
-            onRename={handleRename}
-            onPostClick={onPostClick}
-          />
-        ))
       )}
     </div>
   );
