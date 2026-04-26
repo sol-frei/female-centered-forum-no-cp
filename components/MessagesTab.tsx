@@ -124,7 +124,7 @@ export function MessagesTab({
                       {n.type === 'comment' ? ' 评论了你的帖子' : n.type === 'reply' ? ' 回复了你的评论' : ' 赞了你'}
                     </p>
                     {n.content && (
-                      <p className="mt-1.5 text-base text-zinc-600 bg-zinc-50 p-2.5 rounded-lg line-clamp-2">
+                      <p className="mt-1.5 text-base text-zinc-600 bg-zinc-50 p-2.5 rounded-lg">
                         {n.content}
                       </p>
                     )}
