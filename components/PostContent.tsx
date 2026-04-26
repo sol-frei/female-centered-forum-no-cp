@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+
 type TextBlock = {
   type: 'text';
   value: string;
@@ -8,17 +9,20 @@ type ImageBlock = {
   url: string;
 };
 type ContentBlock = TextBlock | ImageBlock;
+
 interface PostContentProps {
   content: string;
   className?: string;
 }
-/** 单张图片：加载前显示骨架占位，加载完成后渐入 */
+
 function PostImage({ url }: { url: string }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+
   const handlePreview = () => {
     window.dispatchEvent(new CustomEvent('preview-image', { detail: { url } }));
   };
+
   return (
     <div className="w-full relative">
       {!loaded && !error && (
@@ -43,16 +47,13 @@ function PostImage({ url }: { url: string }) {
     </div>
   );
 }
-/**
- * PostContent - 显示图文混排内容
- * 自动兼容新旧数据格式
- */
+
 export default function PostContent({
   content,
   className = ''
 }: PostContentProps) {
   let blocks: ContentBlock[] = [];
-  /** 尝试解析JSON格式(新数据) */
+
   try {
     const parsed = JSON.parse(content);
     if (Array.isArray(parsed)) {
@@ -61,7 +62,6 @@ export default function PostContent({
       throw new Error('not array');
     }
   } catch {
-    /** 兜底旧数据(纯文本) */
     return (
       <div className={`space-y-5 ${className}`}>
         <p className="whitespace-pre-wrap break-words text-zinc-800 text-lg md:text-base leading-loose md:leading-relaxed">
@@ -70,7 +70,7 @@ export default function PostContent({
       </div>
     );
   }
-  /** 渲染图文混排内容 */
+
   return (
     <div className={`space-y-5 ${className}`}>
       {blocks.map((block, index) => {
