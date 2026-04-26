@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   create_collection,
   delete_collection,
@@ -7,9 +7,174 @@ import {
   toggle_collection,
   rename_collection
 } from '../services/storage';
-import { Loader2, FolderOpen, Plus, Trash2, X, BookmarkX, MoreHorizontal, Pencil, Check } from 'lucide-react';
+import {
+  Loader2, FolderOpen, Plus, Trash2, X,
+  BookmarkX, Pencil, Check, ChevronDown, ChevronRight
+} from 'lucide-react';
 import PostContent from './PostContent';
 
+// 单个收藏夹（含折叠）
+function CollectionItem({
+  collection,
+  onDelete,
+  onRename,
+  onPostClick,
+}: {
+  collection: any;
+  onDelete: (id: string) => void;
+  onRename: (id: string, name: string) => void;
+  onPostClick: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsLoaded, setPostsLoaded] = useState(false);
+
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState(collection.name);
+  const [renaming, setRenaming] = useState(false);
+
+  const handleToggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (next && !postsLoaded) {
+      setPostsLoading(true);
+      const data = await get_collected_posts(collection.id);
+      setPosts(data as any[]);
+      setPostsLoaded(true);
+      setPostsLoading(false);
+    }
+  };
+
+  const handleRenameConfirm = async () => {
+    if (!renameValue.trim() || renameValue === collection.name) {
+      setIsRenaming(false);
+      return;
+    }
+    setRenaming(true);
+    try {
+      await rename_collection(collection.id, renameValue.trim());
+      onRename(collection.id, renameValue.trim());
+      setIsRenaming(false);
+    } catch { alert('重命名失败'); }
+    finally { setRenaming(false); }
+  };
+
+  const handleRemovePost = async (postId: string) => {
+    if (!confirm('取消收藏这篇帖子吗？')) return;
+    try {
+      await toggle_collection(collection.id, postId);
+      setPosts(prev => prev.filter((p: any) => p.id !== postId));
+    } catch { alert('取消收藏失败'); }
+  };
+
+  return (
+    <div className="border border-zinc-200 rounded-2xl overflow-hidden">
+      {/* 收藏夹标题行 */}
+      <div className="flex items-center gap-2 px-4 py-3.5 bg-white">
+        {/* 展开箭头 */}
+        <button
+          onClick={handleToggle}
+          className="text-zinc-400 flex-shrink-0"
+        >
+          {open
+            ? <ChevronDown className="w-5 h-5" />
+            : <ChevronRight className="w-5 h-5" />}
+        </button>
+
+        {isRenaming ? (
+          /* 重命名输入框 */
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <input
+              autoFocus
+              value={renameValue}
+              onChange={e => setRenameValue(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleRenameConfirm(); if (e.key === 'Escape') setIsRenaming(false); }}
+              className="flex-1 min-w-0 text-base font-medium outline-none border-b-2 border-black bg-transparent py-0.5"
+            />
+            <button
+              onClick={handleRenameConfirm}
+              disabled={renaming}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-green-500 text-white active:bg-green-600 flex-shrink-0"
+            >
+              {renaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={() => { setIsRenaming(false); setRenameValue(collection.name); }}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-zinc-100 text-zinc-500 active:bg-zinc-200 flex-shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        ) : (
+          /* 正常展示 */
+          <>
+            <span
+              className="flex-1 text-base font-semibold text-zinc-900 cursor-pointer truncate"
+              onClick={handleToggle}
+            >
+              {collection.name}
+            </span>
+            {/* 重命名按钮 */}
+            <button
+              onClick={() => { setIsRenaming(true); setRenameValue(collection.name); }}
+              className="w-9 h-9 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 active:bg-zinc-200 flex-shrink-0"
+              title="重命名"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+            {/* 删除按钮 */}
+            <button
+              onClick={() => onDelete(collection.id)}
+              className="w-9 h-9 flex items-center justify-center rounded-full text-zinc-400 hover:text-red-500 hover:bg-red-50 active:bg-red-100 flex-shrink-0"
+              title="删除收藏夹"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* 折叠内容 */}
+      {open && (
+        <div className="border-t border-zinc-100 bg-zinc-50">
+          {postsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-zinc-300" />
+            </div>
+          ) : posts.length === 0 ? (
+            <p className="text-center py-8 text-zinc-300 text-sm italic">这个收藏夹是空的</p>
+          ) : (
+            <div className="divide-y divide-zinc-100">
+              {posts.map((p: any) => (
+                <div key={p.id} className="flex items-start gap-3 px-4 py-3.5 bg-white hover:bg-zinc-50 transition-colors">
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => onPostClick(p.id)}
+                  >
+                    <h4 className="font-semibold text-zinc-900 text-base line-clamp-1 mb-0.5">{p.title}</h4>
+                    <div className="text-sm text-zinc-400 line-clamp-1">
+                      <PostContent content={p.content} />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRemovePost(p.id)}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl text-zinc-300 hover:text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors flex-shrink-0"
+                    title="取消收藏"
+                  >
+                    <BookmarkX className="w-5 h-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 主组件
 export function CollectionsTab({
   userId,
   onPostClick
@@ -18,55 +183,21 @@ export function CollectionsTab({
   onPostClick: (id: string) => void
 }) {
   const [collections, setCollections] = useState<any[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [postsLoading, setPostsLoading] = useState(false);
 
   const [showCreateInput, setShowCreateInput] = useState(false);
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
 
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
-  const [renaming, setRenaming] = useState(false);
-
-  // 点击任意位置关闭菜单（不用 ref，直接监听 document）
   useEffect(() => {
-    if (!menuOpenId) return;
-    const handler = (e: MouseEvent) => {
-      // 如果点击的元素带有 data-menu 属性，说明是菜单内部，不关闭
-      const target = e.target as HTMLElement;
-      if (!target.closest('[data-menu]')) {
-        setMenuOpenId(null);
-      }
+    const fetch = async () => {
+      setLoading(true);
+      const data = await get_collections(userId);
+      setCollections(data);
+      setLoading(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [menuOpenId]);
-
-  const fetchCollections = async () => {
-    setLoading(true);
-    const data = await get_collections(userId);
-    setCollections(data);
-    if (data.length) setSelectedId(prev => prev ?? data[0].id);
-    setLoading(false);
-  };
-
-  useEffect(() => { fetchCollections(); }, [userId]);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    const fetchPosts = async () => {
-      setPostsLoading(true);
-      const data = await get_collected_posts(selectedId);
-      setPosts(data as any[]);
-      setPostsLoading(false);
-    };
-    fetchPosts();
-  }, [selectedId]);
+    fetch();
+  }, [userId]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -74,51 +205,22 @@ export function CollectionsTab({
     try {
       const created = await create_collection(userId, newName.trim());
       setCollections(prev => [created, ...prev]);
-      setSelectedId(created.id);
       setNewName('');
       setShowCreateInput(false);
     } catch { alert('创建失败'); }
     finally { setCreating(false); }
   };
 
-  const handleDelete = async (collectionId: string) => {
-    setMenuOpenId(null);
+  const handleDelete = async (id: string) => {
     if (!confirm('确定删除这个收藏夹吗？')) return;
     try {
-      await delete_collection(collectionId);
-      const remaining = collections.filter(c => c.id !== collectionId);
-      setCollections(remaining);
-      if (selectedId === collectionId) {
-        setSelectedId(remaining[0]?.id ?? null);
-        setPosts([]);
-      }
+      await delete_collection(id);
+      setCollections(prev => prev.filter(c => c.id !== id));
     } catch { alert('删除失败'); }
   };
 
-  const startRename = (c: any) => {
-    setMenuOpenId(null);
-    setRenamingId(c.id);
-    setRenameValue(c.name);
-  };
-
-  const handleRename = async () => {
-    if (!renamingId || !renameValue.trim()) { setRenamingId(null); return; }
-    setRenaming(true);
-    try {
-      await rename_collection(renamingId, renameValue.trim());
-      setCollections(prev => prev.map(c => c.id === renamingId ? { ...c, name: renameValue.trim() } : c));
-      setRenamingId(null);
-    } catch { alert('重命名失败'); }
-    finally { setRenaming(false); }
-  };
-
-  const handleRemovePost = async (postId: string) => {
-    if (!selectedId) return;
-    if (!confirm('取消收藏这篇帖子吗？')) return;
-    try {
-      await toggle_collection(selectedId, postId);
-      setPosts(prev => prev.filter((p: any) => p.id !== postId));
-    } catch { alert('取消收藏失败'); }
+  const handleRename = (id: string, name: string) => {
+    setCollections(prev => prev.map(c => c.id === id ? { ...c, name } : c));
   };
 
   if (loading) return (
@@ -128,161 +230,58 @@ export function CollectionsTab({
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
 
-      {/* 顶部横向标签栏 */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-
-        {collections.map(c => (
-          <div key={c.id} className="relative flex-shrink-0">
-            {renamingId === c.id ? (
-              <div className="flex items-center gap-1.5 px-3 py-2 border-2 border-black rounded-full bg-white">
-                <input
-                  autoFocus
-                  value={renameValue}
-                  onChange={e => setRenameValue(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') setRenamingId(null); }}
-                  className="text-sm bg-transparent outline-none w-24"
-                />
-                <button
-                  onClick={handleRename}
-                  disabled={renaming}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-green-500 text-white active:bg-green-600 flex-shrink-0"
-                >
-                  {renaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                </button>
-                <button
-                  onClick={() => setRenamingId(null)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-zinc-200 text-zinc-600 active:bg-zinc-300 flex-shrink-0"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <div
-                className={`flex items-center gap-0.5 pl-4 pr-1.5 py-2 rounded-full text-sm font-medium cursor-pointer transition-colors whitespace-nowrap select-none ${
-                  selectedId === c.id
-                    ? 'bg-zinc-900 text-white'
-                    : 'bg-zinc-100 text-zinc-600 active:bg-zinc-200'
-                }`}
-              >
-                <span onClick={() => setSelectedId(c.id)} className="pr-1">{c.name}</span>
-
-                {/* ⋯ 按钮，用 data-menu 标记 */}
-                <button
-                  data-menu="trigger"
-                  onClick={e => {
-                    e.stopPropagation();
-                    setMenuOpenId(menuOpenId === c.id ? null : c.id);
-                  }}
-                  className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${
-                    selectedId === c.id
-                      ? 'hover:bg-zinc-700 active:bg-zinc-600'
-                      : 'hover:bg-zinc-200 active:bg-zinc-300'
-                  }`}
-                >
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
-
-                {/* 下拉菜单 */}
-                {menuOpenId === c.id && (
-                  <div
-                    data-menu="panel"
-                    className="absolute left-0 top-full mt-2 z-50 bg-white border border-zinc-200 rounded-2xl shadow-xl py-1.5 w-36 overflow-hidden"
-                  >
-                    <button
-                      data-menu="item"
-                      onClick={e => { e.stopPropagation(); startRename(c); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100"
-                    >
-                      <Pencil className="w-4 h-4" /> 重命名
-                    </button>
-                    <div className="h-px bg-zinc-100 mx-2" />
-                    <button
-                      data-menu="item"
-                      onClick={e => { e.stopPropagation(); handleDelete(c.id); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-red-500 hover:bg-red-50 active:bg-red-100"
-                    >
-                      <Trash2 className="w-4 h-4" /> 删除
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-
-        {/* 新建按钮 */}
-        {showCreateInput ? (
-          <div className="flex items-center gap-1.5 px-3 py-2 border-2 border-dashed border-zinc-300 rounded-full flex-shrink-0">
-            <input
-              autoFocus
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setShowCreateInput(false); setNewName(''); } }}
-              placeholder="收藏夹名称"
-              className="text-sm bg-transparent outline-none w-24 placeholder-zinc-400"
-            />
-            <button
-              onClick={handleCreate}
-              disabled={creating || !newName.trim()}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-black text-white disabled:opacity-40 active:bg-zinc-700 flex-shrink-0"
-            >
-              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            </button>
-            <button
-              onClick={() => { setShowCreateInput(false); setNewName(''); }}
-              className="w-8 h-8 flex items-center justify-center rounded-full bg-zinc-200 text-zinc-600 active:bg-zinc-300 flex-shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ) : (
+      {/* 新建收藏夹 */}
+      {showCreateInput ? (
+        <div className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-zinc-300 rounded-2xl">
+          <input
+            autoFocus
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setShowCreateInput(false); setNewName(''); } }}
+            placeholder="输入收藏夹名称"
+            className="flex-1 text-base bg-transparent outline-none placeholder-zinc-300"
+          />
           <button
-            onClick={() => setShowCreateInput(true)}
-            className="flex items-center gap-1 px-4 py-2 rounded-full text-sm text-zinc-500 bg-zinc-100 hover:bg-zinc-200 active:bg-zinc-300 transition-colors flex-shrink-0 whitespace-nowrap"
+            onClick={handleCreate}
+            disabled={creating || !newName.trim()}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-black text-white disabled:opacity-40 active:bg-zinc-700 flex-shrink-0"
           >
-            <Plus className="w-4 h-4" /> 新建
+            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-5 h-5" />}
           </button>
-        )}
-      </div>
+          <button
+            onClick={() => { setShowCreateInput(false); setNewName(''); }}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-zinc-100 text-zinc-500 active:bg-zinc-200 flex-shrink-0"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowCreateInput(true)}
+          className="flex items-center gap-2 px-4 py-3 border border-dashed border-zinc-300 rounded-2xl text-zinc-500 text-base hover:border-zinc-500 hover:text-zinc-700 active:bg-zinc-50 transition-colors"
+        >
+          <Plus className="w-5 h-5" /> 新建收藏夹
+        </button>
+      )}
 
-      {/* 帖子列表 */}
+      {/* 收藏夹列表 */}
       {collections.length === 0 ? (
         <div className="text-center py-16 text-zinc-400">
           <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <p className="text-sm">还没有收藏夹，点击上方新建一个吧</p>
+          <p className="text-sm">还没有收藏夹</p>
         </div>
-      ) : postsLoading ? (
-        <div className="flex justify-center py-10">
-          <Loader2 className="w-5 h-5 animate-spin text-zinc-300" />
-        </div>
-      ) : posts.length === 0 ? (
-        <p className="text-center py-16 text-zinc-300 text-sm italic">这个收藏夹是空的</p>
       ) : (
-        <div className="space-y-2">
-          {posts.map((p: any) => (
-            <div
-              key={p.id}
-              className="flex items-start gap-3 p-4 border border-zinc-200 rounded-xl hover:border-zinc-300 transition-all"
-            >
-              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onPostClick(p.id)}>
-                {/* 标题字体调大 */}
-                <h4 className="font-bold text-zinc-900 mb-1 text-base line-clamp-1">{p.title}</h4>
-                <div className="text-sm text-zinc-400 line-clamp-2">
-                  <PostContent content={p.content} />
-                </div>
-              </div>
-              <button
-                onClick={() => handleRemovePost(p.id)}
-                className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl text-zinc-300 hover:text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors"
-                title="取消收藏"
-              >
-                <BookmarkX className="w-5 h-5" />
-              </button>
-            </div>
-          ))}
-        </div>
+        collections.map(c => (
+          <CollectionItem
+            key={c.id}
+            collection={c}
+            onDelete={handleDelete}
+            onRename={handleRename}
+            onPostClick={onPostClick}
+          />
+        ))
       )}
     </div>
   );
