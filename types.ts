@@ -124,24 +124,43 @@ export interface AppState {
 }
 
 
-// 在 types.ts 中添加
+// 书籍打分信息
 export interface BookRating {
   id: string;
   post_id: string;
   user_id: string;
   user_name: string;
+  
+  // 书籍基础信息
   book_name: string;
   book_author: string;
   book_platform: string;
+  book_category: string;
+  book_status: string;      // 新增：如 '连载中', '已完结'
+  
+  // 详情页内容 (对应截图详情页)
+  book_link?: string;       // 新增：推荐/排雷帖的原始链接
+  book_intro?: string;      // 新增：书籍简介
+  book_characters?: Character[]; // 新增：主要人物数组
+  
+  // 评分核心数据
   impressed_score: number;
   principle_scores: { [key: string]: 'yes' | 'no' | null };
   principle_remarks: { [key: string]: string };
   extra_deduction: number;
   extra_remark: string;
   final_score: number;
-  reviewer_comment: string;
+  
+  // 其他元数据
+  reviewer_name: string;
+  reviewer_comment?: string; // 对应“打分人短评”
   created_at: string;
   updated_at?: string;
-  reviewer_name:string;
-  book_category:string;
+}
+
+// 新增：人物介绍接口
+export interface Character {
+  name: string;
+  role: string; // 如 '女主', '女配'
+  avatar?: string;
 }
