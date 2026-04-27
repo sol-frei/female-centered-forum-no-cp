@@ -1,14 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, ExternalLink, Edit2, Check, X } from 'lucide-react';
+import { ArrowLeft, Edit2 } from 'lucide-react';
 import { BookRating, ReaderReview, Character } from '../types';
 import {
   upload_book_cover,
   upload_character_illustration,
   update_book_intro,
-  update_book_link,
   submit_reader_review,
   toggle_review_like,
-  update_book_rating,
 } from '../services/storage';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -90,16 +88,6 @@ function HeartIcon({ filled }: { filled: boolean }) {
   );
 }
 
-function LinkIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
-      style={{ width: 14, height: 14, flexShrink: 0, opacity: 0.5 }}>
-      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
-      <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
-    </svg>
-  );
-}
-
 export default function BookDetail({
   book: initialBook,
   currentUserId,
@@ -111,8 +99,6 @@ export default function BookDetail({
   const [book, setBook] = useState<BookRating>(initialBook);
   const [editingIntro, setEditingIntro] = useState(false);
   const [introText, setIntroText] = useState(initialBook.book_intro || '');
-  const [editingLink, setEditingLink] = useState(false);
-  const [linkText, setLinkText] = useState(initialBook.book_link || '');
   const [starRating, setStarRating] = useState(0);
   const [hoverStar, setHoverStar] = useState(0);
   const [reviewText, setReviewText] = useState('');
@@ -126,7 +112,6 @@ export default function BookDetail({
   const reviews: ReaderReview[] = book.reader_reviews || [];
   const myReview = reviews.find(r => r.user_id === currentUserId);
 
-  // 已存在我的评分则初始化星星
   React.useEffect(() => {
     if (myReview) {
       setStarRating(myReview.impression_score);
@@ -182,19 +167,6 @@ export default function BookDetail({
       setBook(prev => ({ ...prev, book_intro: introText }));
       setEditingIntro(false);
       showToast('简介已保存', 'success');
-    } catch {
-      showToast('保存失败', 'error');
-    }
-  };
-
-  // ── 链接保存 ──
-  const handleSaveLink = async () => {
-    if (!book.id) return;
-    try {
-      await update_book_link(book.id, linkText);
-      setBook(prev => ({ ...prev, book_link: linkText }));
-      setEditingLink(false);
-      showToast('链接已保存', 'success');
     } catch {
       showToast('保存失败', 'error');
     }
@@ -305,7 +277,6 @@ export default function BookDetail({
             ) : (
               <BookIcon />
             )}
-            {/* hover 提示 */}
             <div
               className="absolute inset-0 flex items-end justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               style={{ background: 'rgba(0,0,0,0.35)', borderRadius: 6 }}
@@ -355,71 +326,6 @@ export default function BookDetail({
               {reviews.length} 人评分
             </div>
           </div>
-        </div>
-
-        {/* ── 推荐/排雷帖链接 ── */}
-        <div>
-          <div style={secTitle}>推荐/排雷帖</div>
-          {editingLink ? (
-            <div>
-              <input
-                type="text"
-                value={linkText}
-                onChange={e => setLinkText(e.target.value)}
-                placeholder="粘贴链接…"
-                className="w-full text-sm outline-none"
-                style={{
-                  padding: '7px 10px',
-                  border: '0.5px solid #e4e4e7',
-                  borderRadius: 8,
-                  marginBottom: 6,
-                  color: '#18181b',
-                }}
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSaveLink}
-                  className="text-xs px-3 py-1.5 rounded"
-                  style={{ backgroundColor: '#18181b', color: '#fff' }}
-                >
-                  保存
-                </button>
-                <button
-                  onClick={() => { setEditingLink(false); setLinkText(book.book_link || ''); }}
-                  className="text-xs px-3 py-1.5 rounded"
-                  style={{ border: '0.5px solid #e4e4e7', color: '#71717a' }}
-                >
-                  取消
-                </button>
-              </div>
-            </div>
-          ) : (
-          <button
-            onClick={() => setEditingLink(true)}
-            className="w-full text-left flex items-center gap-2 text-sm transition-colors hover:bg-zinc-50"
-            style={{
-              padding: '8px 10px',
-              border: '0.5px solid #e4e4e7',
-              borderRadius: 8,
-              color: '#18181b',
-            }}
-          >
-            <LinkIcon />
-            <span style={{ flex: 1, color: book.book_link ? '#18181b' : '#a1a1aa', fontSize: 13, wordBreak: 'break-all' }}>
-              {book.book_link || '添加推荐/排雷帖链接'}
-            </span>
-            {book.book_link && (
-              
-                href={book.book_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-              >
-                <ExternalLink className="w-3.5 h-3.5" style={{ color: '#a1a1aa' }} />
-              </a>
-            )}
-          </button>
-          )}
         </div>
 
         {/* ── 简介 ── */}
@@ -499,7 +405,6 @@ export default function BookDetail({
                     charInputRef.current?.click();
                   }}
                 >
-                  {/* 插图区域 */}
                   <div
                     className="flex items-center justify-center overflow-hidden mb-2 relative"
                     style={{
@@ -593,7 +498,6 @@ export default function BookDetail({
                     className="flex gap-3 py-3"
                     style={{ borderBottom: '0.5px solid #f4f4f5' }}
                   >
-                    {/* 头像 */}
                     <div
                       className="flex-shrink-0 flex items-center justify-center rounded-full text-xs font-medium"
                       style={{
@@ -650,7 +554,6 @@ export default function BookDetail({
             {myReview ? '修改我的印象分' : '打印象分（1–10）'}
           </div>
 
-          {/* 星星 */}
           <div className="flex items-center gap-1 mb-3">
             {Array.from({ length: 10 }, (_, i) => {
               const n = i + 1;
@@ -678,7 +581,6 @@ export default function BookDetail({
             </span>
           </div>
 
-          {/* 书评输入 */}
           <textarea
             value={reviewText}
             onChange={e => setReviewText(e.target.value)}
