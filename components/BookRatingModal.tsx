@@ -90,7 +90,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
   const [bookIntro, setBookIntro] = useState(initialData?.book_intro || '');
   const [bookLink, setBookLink] = useState(initialData?.book_link || '');
   const [bookCharacters, setBookCharacters] = useState<{ name: string; role: string }[]>(
-    initialData?.book_characters || [{ name: '', role: '女主' }]
+    initialData?.book_characters || [{ name: '', role: '主角' }]
   );
 
   const calculateFinalScore = () => {
