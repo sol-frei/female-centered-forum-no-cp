@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, Zap, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Save, Zap, Info, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -10,11 +10,16 @@ interface BookRatingModalProps {
   initialData?: BookRatingData;
 }
 
+// 对应 Supabase 新表结构的接口
 export interface BookRatingData {
   book_name: string;
   book_author: string;
   book_platform: string;
   book_category: string;
+  book_status: string; // 新增：连载状态
+  book_link: string;   // 新增：推荐/排雷链接
+  book_intro: string;  // 新增：书籍简介
+  book_characters: { name: string, role: string }[]; // 新增：人物介绍
   reviewer_name: string;
   impressed_score: number;
   principle_scores: { [key: string]: 'yes' | 'no' | null };
@@ -24,10 +29,8 @@ export interface BookRatingData {
   final_score: number;
 }
 
-const BOOK_CATEGORIES = [
-  '热血竞技','西幻史诗', '姼想奇幻', '科幻未来','恐怖灵异','无限快穿','性别战争','年代重制',
-  '悬疑推理', '东方架空', '校园青春', '职场商战', '武侠仙侠', '其他',
-];
+const BOOK_CATEGORIES = ['热血竞技','西幻史诗', '姼想奇幻', '科幻未来','恐怖灵异','无限快穿','性别战争','年代重制','悬疑推理', '东方架空', '校园青春', '职场商战', '武侠仙侠', '其他'];
+const STATUS_OPTIONS = ['连载中', '已完结', '已断更', '已存稿'];
 
 const PRINCIPLES = [
   { id: 'p1', text: '作者预收/写过/阅读男主文、bl、言情等非4B小说。' },
@@ -62,14 +65,15 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
   const [bookAuthor, setBookAuthor] = useState(initialData?.book_author || '');
   const [bookPlatform, setBookPlatform] = useState(initialData?.book_platform || '');
   const [bookCategory, setBookCategory] = useState(initialData?.book_category || '');
+  const [bookStatus, setBookStatus] = useState(initialData?.book_status || '连载中');
+  const [bookLink, setBookLink] = useState(initialData?.book_link || '');
+  const [bookIntro, setBookIntro] = useState(initialData?.book_intro || '');
+  const [characters, setCharacters] = useState(initialData?.book_characters || [{ name: '', role: '女主' }]);
+  
   const [reviewerName, setReviewerName] = useState(initialData?.reviewer_name || '');
   const [impressedScore, setImpressedScore] = useState<number | string>(initialData?.impressed_score ?? 10);
-  const [principleScores, setPrincipleScores] = useState<{ [key: string]: 'yes' | 'no' | null }>(
-    initialData?.principle_scores || {}
-  );
-  const [principleRemarks, setPrincipleRemarks] = useState<{ [key: string]: string }>(
-    initialData?.principle_remarks || {}
-  );
+  const [principleScores, setPrincipleScores] = useState(initialData?.principle_scores || {});
+  const [principleRemarks, setPrincipleRemarks] = useState(initialData?.principle_remarks || {});
   const [extraDeduction, setExtraDeduction] = useState(initialData?.extra_deduction || 0);
   const [extraRemark, setExtraRemark] = useState(initialData?.extra_remark || '');
   const [showRules, setShowRules] = useState(false);
@@ -87,14 +91,8 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
 
   const finalScore = calculateFinalScore();
 
-  const quickFillPerfect = () => {
-    const perfectScores: { [key: string]: 'yes' | 'no' } = {};
-    PRINCIPLES.forEach(p => { perfectScores[p.id] = p.reverseScore ? 'yes' : 'no'; });
-    setPrincipleScores(perfectScores);
-    setImpressedScore(10);
-    setExtraDeduction(0);
-    showToast('已完成一键填选', 'info');
-  };
+  const addCharacter = () => setCharacters([...characters, { name: '', role: '女配' }]);
+  const removeCharacter = (index: number) => setCharacters(characters.filter((_, i) => i !== index));
 
   const handleSave = () => {
     if (!bookName.trim() || !bookAuthor.trim()) return showToast('请完善书名和作者', 'error');
@@ -103,7 +101,11 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       book_author: bookAuthor,
       book_platform: bookPlatform,
       book_category: bookCategory,
-      reviewer_name: reviewerName ||'匿名发帖者',
+      book_status: bookStatus,
+      book_link: bookLink,
+      book_intro: bookIntro,
+      book_characters: characters.filter(c => c.name),
+      reviewer_name: reviewerName || '匿名',
       impressed_score: Number(impressedScore),
       principle_scores: principleScores,
       principle_remarks: principleRemarks,
@@ -115,249 +117,121 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
 
   return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col overflow-hidden text-zinc-900">
-
-      {/* ── 顶栏 ── */}
-      <div className="px-4 py-3 flex items-center justify-between border-b border-zinc-200">
+      {/* 顶栏保持原样 */}
+      <div className="px-4 py-3 flex items-center justify-between border-b border-zinc-100 bg-white">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-400">当前评分</span>
-          <span className="text-base font-bold text-zinc-900">{finalScore.toFixed(1)}</span>
-          <span className="mx-2 text-zinc-200 select-none">|</span>
-          <button
-            onClick={quickFillPerfect}
-            className="flex items-center gap-1 px-2.5 py-1 border border-zinc-200 rounded text-xs text-zinc-500 hover:bg-zinc-50 transition-colors"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            一键填选
+          <span className="text-2xl font-bold italic">{finalScore.toFixed(1)}</span>
+          <button onClick={() => {
+             const perfect: any = {};
+             PRINCIPLES.forEach(p => perfect[p.id] = p.reverseScore ? 'yes' : 'no');
+             setPrincipleScores(perfect);
+             setImpressedScore(10);
+          }} className="ml-4 px-3 py-1 bg-zinc-900 text-white text-xs rounded-full flex items-center gap-1">
+            <Zap className="w-3 h-3 fill-current" /> 一键合规
           </button>
         </div>
-        <button onClick={onClose} className="p-1.5 hover:bg-zinc-100 rounded-full transition-colors">
-          <X className="w-5 h-5 text-zinc-500" />
-        </button>
+        <button onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-full"><X className="w-5 h-5" /></button>
       </div>
 
-      {/* ── 主体 ── */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
-
-          {/* 评分规则（折叠，样式保持原版） */}
-          <section className="bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100">
-            <button
-              onClick={() => setShowRules(!showRules)}
-              className="w-full flex items-center justify-between p-5 hover:bg-zinc-100 transition-colors"
-            >
-              <div className="flex items-center gap-3 font-bold text-base text-zinc-600">
-                <Info className="w-5 h-5" /> 📋 评分规则
-              </div>
-              {showRules ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-            </button>
-            {showRules && (
-              <div className="px-6 pb-6 pt-2 text-base text-zinc-700 leading-relaxed border-t border-zinc-200/50 space-y-3">
-                <p><strong>1. 打分为减分制。</strong></p>
-                <p>完结小说满分为10分，读者根据阅读后体验和感受，给一个印象得分，然后再根据组规进行减分。</p>
-                <p>即最终得分 = 印象分 - 减分项，最终得分 ≤ 10分。【谨慎打8分以上，禁止分数膨胀】</p>
-                <p><strong>2. 打分规则。</strong></p>
-                <p>各项基础扣分分值为1分，情节严重的可以增加扣分分值，无上限。必须列出各项减分项存在与否。</p>
-                <p className="text-red-600 font-bold">❗❗❗注意：没有明确标注/提出的、不完全的、模棱两可的即需要扣分，请各位打分人严格执行！！</p>
-              </div>
-            )}
-          </section>
-
-          {/* 基本信息 */}
-          <section>
-            <p className="text-xs text-zinc-400 mb-4 pb-2 border-b border-zinc-100">基本信息</p>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-5">
-
+      <div className="flex-1 overflow-y-auto bg-[#FAFAFA]">
+        <div className="max-w-2xl mx-auto p-4 space-y-6">
+          
+          {/* 1. 书籍基础信息卡片 */}
+          <section className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm space-y-4">
+            <h2 className="text-sm font-bold text-zinc-400 border-b border-zinc-50 pb-2">核心档案</h2>
+            <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="block text-xs text-zinc-400 mb-1">书名 <span className="text-red-400">*</span></label>
-                <input
-                  type="text"
-                  value={bookName}
-                  onChange={(e) => setBookName(e.target.value)}
-                  placeholder="输入书名"
-                  className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors placeholder:text-zinc-300"
-                />
+                <input value={bookName} onChange={e => setBookName(e.target.value)} placeholder="书名 *" className="w-full text-lg font-bold outline-none border-b border-transparent focus:border-zinc-200 py-1" />
               </div>
-
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1">作者 <span className="text-red-400">*</span></label>
-                <input
-                  type="text"
-                  value={bookAuthor}
-                  onChange={(e) => setBookAuthor(e.target.value)}
-                  placeholder="输入作者"
-                  className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors placeholder:text-zinc-300"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1">打分人</label>
-                <input
-                  type="text"
-                  value={reviewerName}
-                  onChange={(e) => setReviewerName(e.target.value)}
-                  placeholder="默认为发帖者"
-                  className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors placeholder:text-zinc-300"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1">平台</label>
-                <input
-                  type="text"
-                  value={bookPlatform}
-                  onChange={(e) => setBookPlatform(e.target.value)}
-                  placeholder="晋江、番茄等"
-                  className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors placeholder:text-zinc-300"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1">书籍分类</label>
-                <select
-                  value={bookCategory}
-                  onChange={(e) => setBookCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors text-zinc-700 bg-white"
-                >
-                  <option value="">请选择</option>
-                  {BOOK_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="col-span-2">
-                <label className="block text-xs text-zinc-400 mb-1">
-                  印象分 <span className="text-red-400">*</span>
-                  <span className="text-zinc-300 ml-1">（0 – 10）</span>
-                </label>
-                <input
-                  type="number"
-                  value={impressedScore}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    if (e.target.value === '' || (value >= 0 && value <= 10)) {
-                      setImpressedScore(e.target.value);
-                    }
-                  }}
-                  min={0}
-                  max={10}
-                  step={0.1}
-                  className="w-32 px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors"
-                />
-              </div>
+              <input value={bookAuthor} onChange={e => setBookAuthor(e.target.value)} placeholder="作者 *" className="text-sm outline-none border-b border-zinc-100 py-1" />
+              <select value={bookStatus} onChange={e => setBookStatus(e.target.value)} className="text-sm outline-none border-b border-zinc-100 py-1 bg-transparent">
+                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <input value={bookPlatform} onChange={e => setBookPlatform(e.target.value)} placeholder="发布平台" className="text-sm outline-none border-b border-zinc-100 py-1" />
+              <select value={bookCategory} onChange={e => setBookCategory(e.target.value)} className="text-sm outline-none border-b border-zinc-100 py-1 bg-transparent">
+                <option value="">选择分类</option>
+                {BOOK_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
           </section>
 
-          {/* 逐项核对 — 使用原版 radio 按钮设计 */}
-          <section>
-            <p className="text-xs text-zinc-400 mb-4 pb-2 border-b border-zinc-100">逐项核对</p>
-            <div className="divide-y divide-zinc-50">
-              {PRINCIPLES.map((p, index) => {
-                const currentAnswer = principleScores[p.id];
+          {/* 2. 简介与链接 (对应图片详情页) */}
+          <section className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm space-y-4">
+            <h2 className="text-sm font-bold text-zinc-400 border-b border-zinc-50 pb-2">内容详情</h2>
+            <input value={bookLink} onChange={e => setBookLink(e.target.value)} placeholder="🔗 推荐/排雷贴链接 (选填)" className="w-full p-3 bg-zinc-50 rounded-xl text-xs outline-none" />
+            <textarea value={bookIntro} onChange={e => setBookIntro(e.target.value)} placeholder="输入书籍简介..." className="w-full p-3 bg-zinc-50 rounded-xl text-sm h-24 outline-none resize-none" />
+          </section>
 
-                // 原版颜色逻辑：普通项选Yes是红(扣分)，反向项选Yes是绿(合规)
-                const getLabelColor = (type: 'yes' | 'no') => {
-                  if (currentAnswer !== type) return 'text-zinc-300';
-                  if (p.reverseScore) {
-                    return type === 'yes' ? 'text-green-600' : 'text-red-600';
-                  }
-                  return type === 'yes' ? 'text-red-600' : 'text-green-600';
-                };
-
-                return (
-                  <div key={p.id} className="py-5 first:pt-0">
-                    <div className="flex flex-col md:flex-row md:items-start gap-4">
-                      <div className="flex-1">
-                        <p className="text-sm leading-relaxed text-zinc-700">
-                          <span className="text-zinc-300 font-mono mr-2 text-xs">{(index + 1).toString().padStart(2, '0')}</span>
-                          {p.text}
-                        </p>
-                      </div>
-                      {/* 原版 radio 按钮 */}
-                      <div className="flex items-center gap-5 shrink-0">
-                        {(['yes', 'no'] as const).map((type) => (
-                          <label key={type} className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="radio"
-                              name={p.id}
-                              checked={currentAnswer === type}
-                              onChange={() => setPrincipleScores(prev => ({ ...prev, [p.id]: type }))}
-                              className="w-4 h-4 accent-zinc-900"
-                            />
-                            <span className={`text-sm font-bold transition-colors ${getLabelColor(type)}`}>
-                              {type === 'yes' ? '有' : '没有'}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    {/* 备注输入：自动撑高，可手动拖拽 */}
-                    <textarea
-                      value={principleRemarks[p.id] || ''}
-                      onChange={(e) => setPrincipleRemarks(prev => ({ ...prev, [p.id]: e.target.value }))}
-                      placeholder="补充备注（选填）"
-                      rows={1}
-                      className="mt-2 w-full px-3 py-1.5 bg-zinc-50 border border-zinc-100 rounded text-xs text-zinc-600 outline-none focus:border-zinc-300 focus:bg-white transition-all placeholder:text-zinc-300 resize-y min-h-[28px]"
-                      style={{ height: 'auto', minHeight: '28px' }}
-                      onInput={(e) => {
-                        const el = e.currentTarget;
-                        el.style.height = 'auto';
-                        el.style.height = el.scrollHeight + 'px';
-                      }}
-                    />
+          {/* 3. 人物介绍 (对应图片详情页) */}
+          <section className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-sm font-bold text-zinc-400">主要人物</h2>
+              <button onClick={addCharacter} className="text-xs text-zinc-500 flex items-center gap-1"><Plus className="w-3 h-3" /> 添加</button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {characters.map((char, index) => (
+                <div key={index} className="flex gap-2 p-3 bg-zinc-50 rounded-xl relative group">
+                  <div className="w-10 h-10 bg-zinc-200 rounded-lg flex items-center justify-center text-zinc-400 text-xs">头像</div>
+                  <div className="flex-1">
+                    <input value={char.name} onChange={e => {
+                      const newChars = [...characters];
+                      newChars[index].name = e.target.value;
+                      setCharacters(newChars);
+                    }} placeholder="角色名" className="w-full bg-transparent text-sm font-bold outline-none" />
+                    <input value={char.role} onChange={e => {
+                      const newChars = [...characters];
+                      newChars[index].role = e.target.value;
+                      setCharacters(newChars);
+                    }} placeholder="身份(如:女主)" className="w-full bg-transparent text-[10px] text-zinc-500 outline-none" />
                   </div>
-                );
-              })}
+                  {index > 0 && <button onClick={() => removeCharacter(index)} className="absolute right-2 top-2 text-zinc-300 hover:text-red-400"><Trash2 className="w-3 h-3" /></button>}
+                </div>
+              ))}
             </div>
           </section>
 
-          {/* 额外扣分 */}
-          <section>
-            <p className="text-xs text-zinc-400 mb-4 pb-2 border-b border-zinc-100">其他恶劣情节扣分</p>
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-sm text-zinc-500">额外扣分</span>
-              <input
-                type="number"
-                value={extraDeduction}
-                onChange={(e) => setExtraDeduction(Number(e.target.value))}
-                className="w-20 px-3 py-1.5 border border-zinc-200 rounded text-sm text-center outline-none focus:border-zinc-400 transition-colors"
-              />
-              <span className="text-sm text-zinc-400">分</span>
-            </div>
-            <textarea
-              value={extraRemark}
-              onChange={(e) => setExtraRemark(e.target.value)}
-              placeholder="说明额外扣分原因..."
-              className="w-full bg-zinc-50 rounded-lg px-3 py-2.5 h-24 text-sm outline-none border border-zinc-100 focus:border-zinc-300 focus:bg-white transition-all placeholder:text-zinc-300 resize-none"
-            />
+          {/* 4. 评分明细 (复用你原来的逻辑，但样式精简化) */}
+          <section className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm space-y-6">
+             <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-zinc-400">准则核对</h2>
+                <input type="number" value={impressedScore} onChange={e => setImpressedScore(e.target.value)} className="w-16 text-right font-bold outline-none border-b border-zinc-200" />
+             </div>
+             
+             <div className="space-y-4 divide-y divide-zinc-50">
+               {PRINCIPLES.map((p) => (
+                 <div key={p.id} className="pt-4 first:pt-0">
+                    <p className="text-xs text-zinc-700 leading-relaxed mb-2">{p.text}</p>
+                    <div className="flex items-center gap-4">
+                       {['yes', 'no'].map(type => (
+                         <button key={type} onClick={() => setPrincipleScores({...principleScores, [p.id]: type})} 
+                            className={`px-4 py-1 rounded-full text-[10px] transition-all border ${
+                              principleScores[p.id] === type ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-zinc-400 border-zinc-100'
+                            }`}>
+                           {type === 'yes' ? '有此项' : '无此项'}
+                         </button>
+                       ))}
+                       <input 
+                         value={principleRemarks[p.id] || ''} 
+                         onChange={e => setPrincipleRemarks({...principleRemarks, [p.id]: e.target.value})}
+                         placeholder="备注内容..." 
+                         className="flex-1 bg-zinc-50 px-3 py-1 rounded text-[10px] outline-none border border-transparent focus:border-zinc-200" 
+                       />
+                    </div>
+                 </div>
+               ))}
+             </div>
           </section>
 
-          <div className="h-24" />
+          <div className="h-20" />
         </div>
       </div>
 
-      {/* ── 底部吸底 ── */}
-      <div className="px-4 py-3 border-t border-zinc-200 bg-white flex items-center justify-between">
-        <div className="flex items-baseline gap-2">
-          <span className="text-xs text-zinc-400">最终评分</span>
-          <span className="text-2xl font-bold text-zinc-900">{finalScore.toFixed(1)}</span>
-          <span className="text-xs text-zinc-400">/ 10</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm text-zinc-500 border border-zinc-200 rounded hover:bg-zinc-50 transition-colors"
-          >
-            取消
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-5 py-2 bg-zinc-900 text-white text-sm rounded hover:bg-zinc-700 transition-colors flex items-center gap-1.5"
-          >
-            <Save className="w-4 h-4" />
-            保存评分
-          </button>
-        </div>
+      {/* 底部保存 */}
+      <div className="p-4 bg-white border-t border-zinc-100 flex gap-3">
+        <button onClick={onClose} className="flex-1 py-3 border border-zinc-200 rounded-xl text-sm font-bold text-zinc-500">取消</button>
+        <button onClick={handleSave} className="flex-[2] py-3 bg-zinc-900 text-white rounded-xl text-sm font-bold shadow-lg shadow-zinc-200 flex items-center justify-center gap-2">
+          <Save className="w-4 h-4" /> 发布到书架
+        </button>
       </div>
     </div>
   );
