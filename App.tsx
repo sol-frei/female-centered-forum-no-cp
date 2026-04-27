@@ -454,7 +454,7 @@ function AppContent() {
           <Route path="/post/:postId" element={user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" replace />} />
           <Route path="/profile/:userId" element={user ? <UserProfileWrapper /> : <Navigate to="/login" replace />} />
 
-          {/* 书架路由：有选中书籍则显示详情，否则显示列表 */}
+          {/* 书架路由：有选中书籍则显示详情，否则显示列表 ！*/}
           <Route path="/bookshelf" element={
             user ? (
               selectedBook ? (
