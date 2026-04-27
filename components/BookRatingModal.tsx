@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, Zap, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Save, Zap, Info, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -22,6 +22,12 @@ export interface BookRatingData {
   extra_deduction: number;
   extra_remark: string;
   final_score: number;
+  // 新增
+  serial_status: 'finished' | 'ongoing' | 'hiatus';
+  recommendation_tag: 'recommend' | 'warn';
+  book_intro: string;
+  book_link: string;
+  book_characters: { name: string; role: string; avatar?: string; illustration_url?: string }[];
 }
 
 const BOOK_CATEGORIES = [
@@ -74,6 +80,19 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
   const [extraRemark, setExtraRemark] = useState(initialData?.extra_remark || '');
   const [showRules, setShowRules] = useState(false);
 
+  // 新增字段 state
+  const [serialStatus, setSerialStatus] = useState<'finished' | 'ongoing' | 'hiatus'>(
+    initialData?.serial_status || 'ongoing'
+  );
+  const [recommendationTag, setRecommendationTag] = useState<'recommend' | 'warn'>(
+    initialData?.recommendation_tag || 'recommend'
+  );
+  const [bookIntro, setBookIntro] = useState(initialData?.book_intro || '');
+  const [bookLink, setBookLink] = useState(initialData?.book_link || '');
+  const [bookCharacters, setBookCharacters] = useState<{ name: string; role: string }[]>(
+    initialData?.book_characters || [{ name: '', role: '女主' }]
+  );
+
   const calculateFinalScore = () => {
     let deductions = 0;
     const baseScore = Number(impressedScore) || 0;
@@ -96,6 +115,17 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
     showToast('已完成一键填选', 'info');
   };
 
+  // 人物增删改
+  const addCharacter = () => {
+    setBookCharacters(prev => [...prev, { name: '', role: '女配' }]);
+  };
+  const removeCharacter = (idx: number) => {
+    setBookCharacters(prev => prev.filter((_, i) => i !== idx));
+  };
+  const updateCharacter = (idx: number, field: 'name' | 'role', value: string) => {
+    setBookCharacters(prev => prev.map((c, i) => i === idx ? { ...c, [field]: value } : c));
+  };
+
   const handleSave = () => {
     if (!bookName.trim() || !bookAuthor.trim()) return showToast('请完善书名和作者', 'error');
     onSave({
@@ -103,13 +133,19 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       book_author: bookAuthor,
       book_platform: bookPlatform,
       book_category: bookCategory,
-      reviewer_name: reviewerName ||'匿名发帖者',
+      reviewer_name: reviewerName || '匿名发帖者',
       impressed_score: Number(impressedScore),
       principle_scores: principleScores,
       principle_remarks: principleRemarks,
       extra_deduction: extraDeduction,
       extra_remark: extraRemark,
       final_score: finalScore,
+      // 新增
+      serial_status: serialStatus,
+      recommendation_tag: recommendationTag,
+      book_intro: bookIntro,
+      book_link: bookLink,
+      book_characters: bookCharacters.filter(c => c.name.trim()),
     });
   };
 
@@ -139,7 +175,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
 
-          {/* 评分规则（折叠，样式保持原版） */}
+          {/* 评分规则（折叠） */}
           <section className="bg-zinc-50 rounded-xl overflow-hidden border border-zinc-100">
             <button
               onClick={() => setShowRules(!showRules)}
@@ -170,8 +206,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
               <div className="col-span-2">
                 <label className="block text-xs text-zinc-400 mb-1">书名 <span className="text-red-400">*</span></label>
                 <input
-                  type="text"
-                  value={bookName}
+                  type="text" value={bookName}
                   onChange={(e) => setBookName(e.target.value)}
                   placeholder="输入书名"
                   className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors placeholder:text-zinc-300"
@@ -181,8 +216,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
               <div>
                 <label className="block text-xs text-zinc-400 mb-1">作者 <span className="text-red-400">*</span></label>
                 <input
-                  type="text"
-                  value={bookAuthor}
+                  type="text" value={bookAuthor}
                   onChange={(e) => setBookAuthor(e.target.value)}
                   placeholder="输入作者"
                   className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors placeholder:text-zinc-300"
@@ -192,8 +226,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
               <div>
                 <label className="block text-xs text-zinc-400 mb-1">打分人</label>
                 <input
-                  type="text"
-                  value={reviewerName}
+                  type="text" value={reviewerName}
                   onChange={(e) => setReviewerName(e.target.value)}
                   placeholder="默认为发帖者"
                   className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors placeholder:text-zinc-300"
@@ -203,8 +236,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
               <div>
                 <label className="block text-xs text-zinc-400 mb-1">平台</label>
                 <input
-                  type="text"
-                  value={bookPlatform}
+                  type="text" value={bookPlatform}
                   onChange={(e) => setBookPlatform(e.target.value)}
                   placeholder="晋江、番茄等"
                   className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors placeholder:text-zinc-300"
@@ -214,8 +246,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
               <div>
                 <label className="block text-xs text-zinc-400 mb-1">书籍分类</label>
                 <select
-                  value={bookCategory}
-                  onChange={(e) => setBookCategory(e.target.value)}
+                  value={bookCategory} onChange={(e) => setBookCategory(e.target.value)}
                   className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors text-zinc-700 bg-white"
                 >
                   <option value="">请选择</option>
@@ -225,37 +256,144 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
                 </select>
               </div>
 
+              {/* 新增：连载状态 */}
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">连载状态</label>
+                <div className="flex gap-2">
+                  {(['ongoing', 'finished', 'hiatus'] as const).map(s => {
+                    const label = { ongoing: '连载中', finished: '完结', hiatus: '断更' }[s];
+                    return (
+                      <button
+                        key={s} type="button"
+                        onClick={() => setSerialStatus(s)}
+                        className={`flex-1 py-1.5 text-xs rounded border transition-colors ${
+                          serialStatus === s
+                            ? 'bg-zinc-900 text-white border-zinc-900'
+                            : 'border-zinc-200 text-zinc-500 hover:bg-zinc-50'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 新增：推荐/排雷 */}
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">推荐/排雷</label>
+                <div className="flex gap-2">
+                  {(['recommend', 'warn'] as const).map(t => {
+                    const label = { recommend: '推荐', warn: '排雷' }[t];
+                    return (
+                      <button
+                        key={t} type="button"
+                        onClick={() => setRecommendationTag(t)}
+                        className={`flex-1 py-1.5 text-xs rounded border transition-colors ${
+                          recommendationTag === t
+                            ? 'bg-zinc-900 text-white border-zinc-900'
+                            : 'border-zinc-200 text-zinc-500 hover:bg-zinc-50'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 新增：简介 */}
+              <div className="col-span-2">
+                <label className="block text-xs text-zinc-400 mb-1">书籍简介</label>
+                <textarea
+                  value={bookIntro}
+                  onChange={(e) => setBookIntro(e.target.value)}
+                  placeholder="简短介绍书的内容..."
+                  className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors placeholder:text-zinc-300 resize-none h-20"
+                />
+              </div>
+
+              {/* 新增：推荐/排雷帖链接 */}
+              <div className="col-span-2">
+                <label className="block text-xs text-zinc-400 mb-1">推荐/排雷帖链接</label>
+                <input
+                  type="text" value={bookLink}
+                  onChange={(e) => setBookLink(e.target.value)}
+                  placeholder="粘贴原帖链接（选填）"
+                  className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors placeholder:text-zinc-300"
+                />
+              </div>
+
+              {/* 新增：主要人物 */}
+              <div className="col-span-2">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-zinc-400">主要人物</label>
+                  <button
+                    type="button" onClick={addCharacter}
+                    className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> 添加人物
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {bookCharacters.map((char, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <input
+                        type="text" value={char.name}
+                        onChange={(e) => updateCharacter(idx, 'name', e.target.value)}
+                        placeholder="人物名"
+                        className="flex-1 px-3 py-1.5 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 placeholder:text-zinc-300"
+                      />
+                      <select
+                        value={char.role}
+                        onChange={(e) => updateCharacter(idx, 'role', e.target.value)}
+                        className="w-20 px-2 py-1.5 border border-zinc-200 rounded text-sm outline-none text-zinc-700 bg-white"
+                      >
+                        <option value="女主">女主</option>
+                        <option value="女配">女配</option>
+                        <option value="反派">反派</option>
+                        <option value="其他">其他</option>
+                      </select>
+                      {bookCharacters.length > 1 && (
+                        <button
+                          type="button" onClick={() => removeCharacter(idx)}
+                          className="p-1 text-zinc-300 hover:text-zinc-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 印象分 */}
               <div className="col-span-2">
                 <label className="block text-xs text-zinc-400 mb-1">
                   印象分 <span className="text-red-400">*</span>
                   <span className="text-zinc-300 ml-1">（0 – 10）</span>
                 </label>
                 <input
-                  type="number"
-                  value={impressedScore}
+                  type="number" value={impressedScore}
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (e.target.value === '' || (value >= 0 && value <= 10)) {
                       setImpressedScore(e.target.value);
                     }
                   }}
-                  min={0}
-                  max={10}
-                  step={0.1}
+                  min={0} max={10} step={0.1}
                   className="w-32 px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors"
                 />
               </div>
             </div>
           </section>
 
-          {/* 逐项核对 — 使用原版 radio 按钮设计 */}
+          {/* 逐项核对 — 保持原版不变 */}
           <section>
             <p className="text-xs text-zinc-400 mb-4 pb-2 border-b border-zinc-100">逐项核对</p>
             <div className="divide-y divide-zinc-50">
               {PRINCIPLES.map((p, index) => {
                 const currentAnswer = principleScores[p.id];
-
-                // 原版颜色逻辑：普通项选Yes是红(扣分)，反向项选Yes是绿(合规)
                 const getLabelColor = (type: 'yes' | 'no') => {
                   if (currentAnswer !== type) return 'text-zinc-300';
                   if (p.reverseScore) {
@@ -263,7 +401,6 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
                   }
                   return type === 'yes' ? 'text-red-600' : 'text-green-600';
                 };
-
                 return (
                   <div key={p.id} className="py-5 first:pt-0">
                     <div className="flex flex-col md:flex-row md:items-start gap-4">
@@ -273,13 +410,11 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
                           {p.text}
                         </p>
                       </div>
-                      {/* 原版 radio 按钮 */}
                       <div className="flex items-center gap-5 shrink-0">
                         {(['yes', 'no'] as const).map((type) => (
                           <label key={type} className="flex items-center gap-1.5 cursor-pointer">
                             <input
-                              type="radio"
-                              name={p.id}
+                              type="radio" name={p.id}
                               checked={currentAnswer === type}
                               onChange={() => setPrincipleScores(prev => ({ ...prev, [p.id]: type }))}
                               className="w-4 h-4 accent-zinc-900"
@@ -291,7 +426,6 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
                         ))}
                       </div>
                     </div>
-                    {/* 备注输入：自动撑高，可手动拖拽 */}
                     <textarea
                       value={principleRemarks[p.id] || ''}
                       onChange={(e) => setPrincipleRemarks(prev => ({ ...prev, [p.id]: e.target.value }))}
@@ -317,8 +451,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
             <div className="flex items-center gap-3 mb-3">
               <span className="text-sm text-zinc-500">额外扣分</span>
               <input
-                type="number"
-                value={extraDeduction}
+                type="number" value={extraDeduction}
                 onChange={(e) => setExtraDeduction(Number(e.target.value))}
                 className="w-20 px-3 py-1.5 border border-zinc-200 rounded text-sm text-center outline-none focus:border-zinc-400 transition-colors"
               />
