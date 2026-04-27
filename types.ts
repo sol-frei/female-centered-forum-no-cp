@@ -2,34 +2,31 @@ export type Role = 'admin' | 'user' | 'i女er';
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 // 用户信息
-
 export interface User {
-  id: string; // Used as login ID
-  user_name: string; // Display name
+  id: string;
+  user_name: string;
   password: string;
-  avatar?: string; // 存储来自 Storage user_images 桶的图片网址
+  avatar?: string;
   role: Role;
   is_first_login: boolean;
   is_banned: boolean;
   created_at: string;
 }
 
-
 // 论坛帖子信息
-
 export interface Post {
   id: string;
   user_id: string;
   user_name: string;
   title: string;
   content: string;
-  images?: string[]; // 存储来自 Storage forum_images 桶的图片网址
+  images?: string[];
   category: Category;
   created_at: string;
   updated_at: string;
-  is_essence: boolean; // "蒂" tag
-  is_locked: boolean; // Admin locked
-  likes: string[]; // user IDs
+  is_essence: boolean;
+  is_locked: boolean;
+  likes: string[];
   poll?: Poll;
   view_count: number;
 }
@@ -45,7 +42,7 @@ export type Category =
 export interface PollOption {
   id: string;
   text: string;
-  votes: string[]; // user IDs
+  votes: string[];
 }
 
 export interface Poll {
@@ -56,30 +53,28 @@ export interface Poll {
 }
 
 // 评论信息
-
 export interface Comment {
   id: string;
   post_id: string;
   user_id: string;
   user_name: string;
   content: string;
-  comment_images?: string[]; // 存储来自 Storage comment_images 桶的图片网址
+  comment_images?: string[];
   created_at: string;
-  reply_to_id?: string|null; // For nested replies
-  likes: string[]; // user IDs
+  reply_to_id?: string | null;
+  likes: string[];
 }
 
 // 通知信息
-
 export interface Notification {
   id: string;
-  user_id: string; // Recipient
+  user_id: string;
   type: 'reply' | 'comment';
   from_user_id: string;
   from_user_name: string;
   post_id: string;
   post_title: string;
-  content: string; // The comment content
+  content: string;
   created_at: string;
   is_read: boolean;
 }
@@ -95,13 +90,12 @@ export interface Collection {
 // 收藏夹中的帖子关联信息
 export interface CollectionPost {
   id: string;
-  collection_id: string; // 指向 collections 表
-  post_id: string;       // 指向 posts 表
+  collection_id: string;
+  post_id: string;
   created_at: string;
 }
 
 // 敏感词信息
-
 export interface SensitiveWords {
   id: string;
   word: string;
@@ -112,7 +106,6 @@ export interface SensitiveWords {
 }
 
 // 应用程序状态
-
 export interface AppState {
   users: User[];
   posts: Post[];
@@ -123,6 +116,24 @@ export interface AppState {
   sensitive_words: SensitiveWords[];
 }
 
+// 人物介绍接口
+export interface Character {
+  name: string;
+  role: string;          // 如 '主角', '配角'
+  avatar?: string;
+  illustration_url?: string; // 新增：人物插图
+}
+
+// 读者书评接口（新增）
+export interface ReaderReview {
+  user_id: string;
+  user_name: string;
+  impression_score: number;  // 读者印象分 1-10
+  review_text: string;
+  likes: number;
+  liked_by: string[];        // 点赞用户的 user_id 列表
+  created_at: string;
+}
 
 // 书籍打分信息
 export interface BookRating {
@@ -130,19 +141,22 @@ export interface BookRating {
   post_id: string;
   user_id: string;
   user_name: string;
-  
+
   // 书籍基础信息
   book_name: string;
   book_author: string;
   book_platform: string;
   book_category: string;
-  book_status: string;      // 新增：如 '连载中', '已完结'
-  
-  // 详情页内容 (对应截图详情页)
-  book_link?: string;       // 新增：推荐/排雷帖的原始链接
-  book_intro?: string;      // 新增：书籍简介
-  book_characters?: Character[]; // 新增：主要人物数组
-  
+  serial_status?: 'finished' | 'ongoing' | 'hiatus'; // 替换原 book_status
+  recommendation_tag?: 'recommend' | 'warn';          // 新增：推荐/排雷
+
+  // 详情页内容
+  cover_url?: string;              // 新增：封面图片URL
+  book_link?: string;              // 推荐/排雷帖链接
+  book_intro?: string;             // 书籍简介
+  book_characters?: Character[];   // 主要人物数组
+  reader_reviews?: ReaderReview[]; // 新增：读者书评列表
+
   // 评分核心数据
   impressed_score: number;
   principle_scores: { [key: string]: 'yes' | 'no' | null };
@@ -150,17 +164,10 @@ export interface BookRating {
   extra_deduction: number;
   extra_remark: string;
   final_score: number;
-  
-  // 其他元数据
+
+  // 元数据
   reviewer_name: string;
-  reviewer_comment?: string; // 对应“打分人短评”
+  reviewer_comment?: string;
   created_at: string;
   updated_at?: string;
-}
-
-// 新增：人物介绍接口
-export interface Character {
-  name: string;
-  role: string; // 如 '女主', '女配'
-  avatar?: string;
 }
