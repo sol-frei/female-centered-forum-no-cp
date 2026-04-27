@@ -442,46 +442,6 @@ export default function BookDetail({
           </div>
         )}
 
-        {/* ── 准则评分详情 ── */}
-        <div>
-          <div style={secTitle}>准则评分详情</div>
-          <div>
-            {Object.entries(book.principle_scores).map(([key, value]) => {
-              if (!value) return null;
-              const idx = parseInt(key.replace('p', '')) - 1;
-              const isLastThree = idx >= 22;
-              const isGood = isLastThree ? value === 'yes' : value === 'no';
-              const remark = book.principle_remarks?.[key];
-              return (
-                <div
-                  key={key}
-                  className="flex gap-2 items-start py-2"
-                  style={{ borderBottom: '0.5px solid #f4f4f5' }}
-                >
-                  <div
-                    style={{
-                      width: 6, height: 6,
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                      marginTop: 5,
-                      backgroundColor: isGood ? '#18181b' : '#d4d4d8',
-                    }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs leading-relaxed" style={{ color: '#3f3f46' }}>
-                      {PRINCIPLES_TEXT[idx]}
-                    </p>
-                    {remark && (
-                      <p className="text-xs mt-0.5" style={{ color: '#a1a1aa' }}>
-                        备注：{remark}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
         {/* ── 读者书评 ── */}
         <div>
