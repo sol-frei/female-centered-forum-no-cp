@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useSearc
 
 // 导入组件
 import Bookshelf from './components/Bookshelf';
+import BookDetail from './components/BookDetail';
 import Landing from './components/Landing';
 import PostDetailPage from './pages/PostDetailPage';
 import LoginPage from './pages/LoginPage';
@@ -14,7 +15,7 @@ import CreatePostModal from './components/CreatePostModal';
 import ChangePasswordModal from './components/ChangePasswordModal';
 
 // 导入类型与工具
-import { User, Post, Category } from './types';
+import { User, Post, Category, BookRating } from './types';
 import { get_all_users, get_user, get_posts, getUnreadNotificationCount } from './services/storage';
 import { 
   Search, LogOut, Menu, UserCircle, 
@@ -83,8 +84,8 @@ function AppContent() {
   const [toast, setToast] = useState<{ msg: string, type: ToastType } | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
   const [unreadCount, setUnreadCount] = useState(0);
+  const [selectedBook, setSelectedBook] = useState<BookRating | null>(null); // 新增
 
   const touchStartX = useRef<number | null>(null);
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
@@ -261,7 +262,7 @@ function AppContent() {
         userId={userId}
         onNavigateBack={() => navigate(-1)} 
         onPostClick={(id: string) => navigate(`/post/${id}`)}
-        onRead={() => setUnreadCount(0)} // ✅ 新增：UserProfile 标记已读后清除头像红点
+        onRead={() => setUnreadCount(0)}
       />
     );
   };
@@ -322,48 +323,51 @@ function AppContent() {
           <nav className="sticky top-0 bg-white z-40" style={{ borderBottom: '1px solid #e4e4e7' }}>
             <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-2 md:gap-4">
             
-            <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
-              <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-1.5 hover:bg-zinc-100 rounded-full"><Menu className="w-5 h-5" /></button>
-              <h1 className="font-bold text-base md:text-lg cursor-pointer truncate hidden sm:block" onClick={() => navigate('/feed')}>
-                女主无cp/无男主小说交流中心
-              </h1>
-            </div>
+              <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
+                <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-1.5 hover:bg-zinc-100 rounded-full"><Menu className="w-5 h-5" /></button>
+                <h1 className="font-bold text-base md:text-lg cursor-pointer truncate hidden sm:block" onClick={() => navigate('/feed')}>
+                  女主无cp/无男主小说交流中心
+                </h1>
+              </div>
 
-            <div className="flex-1 max-w-xs relative group mx-2 sm:mx-0">
-              <Search className="absolute left-3 w-4 h-4 text-zinc-400 group-focus-within:text-black" style={{ top: '50%', transform: 'translateY(-50%)', marginTop: '0' }} />
-              <input 
-                type="text" 
-                placeholder="搜索帖子..." 
-                value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-1 focus:ring-black transition-all outline-none"
-                style={{ backgroundColor: '#f4f4f5', border: 'none' }}
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-zinc-200 rounded-full">
-                  <X className="w-3 h-3 text-zinc-500" />
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-              <button onClick={() => navigate('/bookshelf')} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-                <BookOpen className="w-5 h-5 text-zinc-600" />
-              </button>
-              {user.role === 'admin' && (
-                <button onClick={() => navigate('/admin')} className="hidden md:flex p-2 hover:bg-zinc-100 rounded-full transition-colors" title="管理后台">
-                  <Shield className="w-5 h-5 text-zinc-600" />
-                </button>
-              )}
-              <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full transition-colors relative">
-                <Avatar url={user.avatar} className="w-6 h-6" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+              <div className="flex-1 max-w-xs relative group mx-2 sm:mx-0">
+                <Search className="absolute left-3 w-4 h-4 text-zinc-400 group-focus-within:text-black" style={{ top: '50%', transform: 'translateY(-50%)', marginTop: '0' }} />
+                <input 
+                  type="text" 
+                  placeholder="搜索帖子..." 
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  className="w-full rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-1 focus:ring-black transition-all outline-none"
+                  style={{ backgroundColor: '#f4f4f5', border: 'none' }}
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-zinc-200 rounded-full">
+                    <X className="w-3 h-3 text-zinc-500" />
+                  </button>
                 )}
-              </button>
-              <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full transition-colors"><LogOut className="w-5 h-5 text-zinc-500" /></button>
+              </div>
+
+              <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                <button
+                  onClick={() => { setSelectedBook(null); navigate('/bookshelf'); }}
+                  className="p-2 hover:bg-zinc-100 rounded-full transition-colors"
+                >
+                  <BookOpen className="w-5 h-5 text-zinc-600" />
+                </button>
+                {user.role === 'admin' && (
+                  <button onClick={() => navigate('/admin')} className="hidden md:flex p-2 hover:bg-zinc-100 rounded-full transition-colors" title="管理后台">
+                    <Shield className="w-5 h-5 text-zinc-600" />
+                  </button>
+                )}
+                <button onClick={() => navigate(`/profile/${user.id}`)} className="p-1.5 md:p-2 hover:bg-zinc-100 rounded-full transition-colors relative">
+                  <Avatar url={user.avatar} className="w-6 h-6" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                  )}
+                </button>
+                <button onClick={handleLogout} className="hidden md:block p-2 hover:bg-zinc-100 rounded-full transition-colors"><LogOut className="w-5 h-5 text-zinc-500" /></button>
+              </div>
             </div>
-          </div>
           </nav>
           <div className="hidden md:flex sticky top-14 bg-white z-30 border-b border-zinc-100">
             <div className="max-w-5xl mx-auto px-4 w-full flex gap-1 py-2 overflow-x-auto">
@@ -449,7 +453,33 @@ function AppContent() {
           
           <Route path="/post/:postId" element={user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" replace />} />
           <Route path="/profile/:userId" element={user ? <UserProfileWrapper /> : <Navigate to="/login" replace />} />
-          <Route path="/bookshelf" element={user ? <Bookshelf onNavigateBack={() => navigate(-1)} onBookClick={(postId: string) => navigate(`/post/${postId}`)} showToast={showToast} /> : <Navigate to="/login" replace />} />
+
+          {/* 书架路由：有选中书籍则显示详情，否则显示列表 */}
+          <Route path="/bookshelf" element={
+            user ? (
+              selectedBook ? (
+                <BookDetail
+                  book={selectedBook}
+                  currentUserId={user.id}
+                  currentUserName={user.user_name}
+                  onNavigateBack={() => setSelectedBook(null)}
+                  onPostClick={(postId: string) => {
+                    setSelectedBook(null);
+                    navigate(`/post/${postId}`);
+                  }}
+                  showToast={showToast}
+                />
+              ) : (
+                <Bookshelf
+                  onNavigateBack={() => navigate(-1)}
+                  onBookClick={(postId: string) => navigate(`/post/${postId}`)}
+                  onBookDetailClick={(book: BookRating) => setSelectedBook(book)}
+                  showToast={showToast}
+                />
+              )
+            ) : <Navigate to="/login" replace />
+          } />
+
           <Route path="/admin" element={user?.role === 'admin' ? <AdminPanel /> : <Navigate to="/feed" replace />} />
         </Routes>
       </main>
