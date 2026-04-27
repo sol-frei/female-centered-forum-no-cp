@@ -313,16 +313,6 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
                 />
               </div>
 
-              {/* 新增：推荐/排雷帖链接 */}
-              <div className="col-span-2">
-                <label className="block text-xs text-zinc-400 mb-1">推荐/排雷帖链接</label>
-                <input
-                  type="text" value={bookLink}
-                  onChange={(e) => setBookLink(e.target.value)}
-                  placeholder="粘贴原帖链接（选填）"
-                  className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors placeholder:text-zinc-300"
-                />
-              </div>
 
               {/* 新增：主要人物 */}
               <div className="col-span-2">
@@ -349,8 +339,8 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
                         onChange={(e) => updateCharacter(idx, 'role', e.target.value)}
                         className="w-20 px-2 py-1.5 border border-zinc-200 rounded text-sm outline-none text-zinc-700 bg-white"
                       >
-                        <option value="女主">女主</option>
-                        <option value="女配">女配</option>
+                        <option value="主角">主角</option>
+                        <option value="配角">配角</option>
                         <option value="反派">反派</option>
                         <option value="其他">其他</option>
                       </select>
