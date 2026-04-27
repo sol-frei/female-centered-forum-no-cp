@@ -8,7 +8,7 @@ import {
   rename_collection
 } from '../services/storage';
 import {
-  Loader2, FolderOpen, Plus, Trash2, X,
+  Loader2, Plus, Trash2, X,
   BookmarkX, Pencil, Check, ChevronDown, ChevronRight
 } from 'lucide-react';
 import PostContent from './PostContent';
@@ -214,22 +214,15 @@ export function CollectionsTab({
 
   return (
     <div className="flex flex-col gap-3">
-      {collections.length === 0 && !showCreateInput ? (
-        <div className="text-center py-16 text-zinc-400">
-          <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <p className="text-sm">还没有收藏夹</p>
-        </div>
-      ) : (
-        collections.map(c => (
-          <CollectionItem
-            key={c.id}
-            collection={c}
-            onDelete={handleDelete}
-            onRename={handleRename}
-            onPostClick={onPostClick}
-          />
-        ))
-      )}
+      {collections.map(c => (
+        <CollectionItem
+          key={c.id}
+          collection={c}
+          onDelete={handleDelete}
+          onRename={handleRename}
+          onPostClick={onPostClick}
+        />
+      ))}
 
       {showCreateInput ? (
         <div className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-zinc-300 rounded-2xl">
