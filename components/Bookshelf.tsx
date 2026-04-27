@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Search, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Search, ChevronDown } from 'lucide-react';
 import { get_all_book_ratings } from '../services/storage';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -16,23 +16,87 @@ const LoadingSpinner = () => (
   </div>
 );
 
-const BOOK_CATEGORIES = [
-  '全部', '推荐', '排雷', '完结', '连载中', '断更', 
-  '恐怖灵异', '科幻未来', '年代重制', '热血竞技'
+const PRINCIPLES_TEXT = [
+  '作者预收/写过/阅读男主文、bl、言情等非4B小说。',
+  '连载中/断更/卡v/坑文等操作。',
+  '文笔差 / 一般，剧情设定欠缺。',
+  '评论区磕cp、吵架，作者关闭评论区等。',
+  '作者现实其他骚操作（已婚、提男友、拒绝激女读者等）。',
+  '描写氛围、语言、过于暧昧，女角色之间（非女主）关系有百合倾向。',
+  '女男比例低于2：1。',
+  '随父姓，默认任何角色随父姓，不单指主角，不指出也不批判也没改变。',
+  '女性角色塑造不用心、刻板印象（取名随意、脸谱化、平面化）。',
+  '服美役（白幼瘦、面部、高跟鞋、胸臀腿特写、衣服配饰等外貌方面的描写）。',
+  '驴竞、拉踩其他女角色。',
+  '忽略女性困难处境、物化女性。',
+  '性别认知障碍，自称哥、爸、爷、弟等，女扮男装，女角色被称为先生等。',
+  '扶持男性、接男儿，有男人分享女角色胜利果实/成果/遗产等。',
+  '男性角色与女性角色存在单向/双向性缘。',
+  '美化男性（母父对比、男性深情、男性友情、男性导师等）、偏爱男性。',
+  '男性角色有高光、有成长线。',
+  '掺腐（非批判）。',
+  '存在厌女词、辱女词（s|b、m|d、cao、草字头等，包括但不限于这类词）。',
+  '存在男本位词:男|女、父|母、师父、师叔、徒弟等，嫖娼、妓女、嫁娶、奴才、婢女等偏旁为女的贬义词。',
+  '用性侵、造黄谣等方式x惩罚女性、描写角色x行为等。',
+  '过度渲染女性苦楚/雄堕，但反抗/觉醒内容占比很少。',
+  '是否有提到推广或倡导女权的思想和行为【没有需扣分】。',
+  '是否有明确的反男权思想和行为【没有需扣分】。',
+  '是否默认女性为第一性【没有需扣分】。',
 ];
+
+const BOOK_CATEGORIES = [
+  '热血竞技','西幻史诗','姼想奇幻', '科幻未来','恐怖灵异','无限快穿','性别战争','年代重制',
+  '悬疑推理', '东方架空', '校园青春', '职场商战', '武侠仙侠','其他',
+];
+
+// 分类标签颜色 —— 全部改为内联 style 对象，彻底避免国产浏览器 Tailwind 变量解析失败
+const CATEGORY_STYLES: Record<string, React.CSSProperties> = {
+  '热血竞技': { backgroundColor: '#fef2f2', color: '#ef4444', borderColor: '#fee2e2' }, // 充满激情的正红
+  '西幻史诗': { backgroundColor: '#fdf2f8', color: '#db2777', borderColor: '#fbcfe8' },
+  '姼想奇幻': { backgroundColor: '#faf5ff', color: '#9333ea', borderColor: '#e9d5ff' },
+  '科幻未来': { backgroundColor: '#ecfeff', color: '#0891b2', borderColor: '#a5f3fc' },
+  '悬疑推理': { backgroundColor: '#fffbeb', color: '#b45309', borderColor: '#fde68a' },
+  '东方架空': { backgroundColor: '#fff7ed', color: '#ea580c', borderColor: '#fed7aa' },
+  '校园青春': { backgroundColor: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' },
+  '职场商战': { backgroundColor: '#f8fafc', color: '#475569', borderColor: '#cbd5e1' },
+  '武侠仙侠': { backgroundColor: '#fef2f2', color: '#dc2626', borderColor: '#fecaca' },
+  '恐怖灵异': { backgroundColor: '#f9fafb', color: '#111827', borderColor: '#374151' }, // 深沉冷峻色调
+  '无限快穿': { backgroundColor: '#f5f3ff', color: '#7c3aed', borderColor: '#ddd6fe' }, // 梦幻科技感紫色
+  '性别战争': { backgroundColor: '#fff1f2', color: '#e11d48', borderColor: '#fecdd3' }, // 鲜明冲突的玫瑰红
+  '年代重制': { backgroundColor: '#fefce8', color: '#854d0e', borderColor: '#fef08a' }, // 复古怀旧的琥珀色
+  '其他':     { backgroundColor: '#fafafa', color: '#71717a', borderColor: '#e4e4e7' },
+};
+
+// 评分框颜色 —— 改为内联 style，避免国产浏览器解析 Tailwind 颜色失败
+const getScoreStyle = (score: number) => {
+  if (score >= 8) return {
+    color: '#16a34a', backgroundColor: '#f0fdf4', borderColor: '#bbf7d0',
+    dotColor: '#22c55e',
+  };
+  if (score >= 5) return {
+    color: '#ca8a04', backgroundColor: '#fefce8', borderColor: '#fde68a',
+    dotColor: '#eab308',
+  };
+  return {
+    color: '#dc2626', backgroundColor: '#fef2f2', borderColor: '#fecaca',
+    dotColor: '#ef4444',
+  };
+};
 
 export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: BookshelfProps) {
   const [books, setBooks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('全部');
+  const [sortBy, setSortBy] = useState('latest');
+  const [filterBy, setFilterBy] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [expandedBookId, setExpandedBookId] = useState<string | null>(null);
 
   useEffect(() => { loadBooks(); }, []);
 
   const loadBooks = async () => {
     setIsLoading(true);
     try {
-      // 这里的 API 保持不变
       const data = await get_all_book_ratings({ sortBy: 'latest' });
       setBooks(data);
     } catch (error) {
@@ -42,136 +106,239 @@ export default function Bookshelf({ onNavigateBack, onBookClick, showToast }: Bo
     }
   };
 
-  // 模拟图片中的过滤逻辑
-  const filteredBooks = books.filter(book => {
-    const matchesSearch = searchQuery 
-      ? (book.book_name.includes(searchQuery) || book.book_author.includes(searchQuery))
-      : true;
-    
-    if (categoryFilter === '全部') return matchesSearch;
-    if (categoryFilter === '推荐') return matchesSearch && book.final_score >= 8;
-    if (categoryFilter === '排雷') return matchesSearch && book.final_score < 6;
-    // 其他分类过滤...
-    return matchesSearch && (book.book_category === categoryFilter || categoryFilter === '全部');
-  });
+  const filteredAndSortedBooks = books
+    .filter(book => {
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        return book.book_name.toLowerCase().includes(q) || book.book_author.toLowerCase().includes(q);
+      }
+      return true;
+    })
+    .filter(book => {
+      if (filterBy === 'high') return book.final_score >= 8;
+      if (filterBy === 'medium') return book.final_score >= 5 && book.final_score < 8;
+      if (filterBy === 'low') return book.final_score < 5;
+      return true;
+    })
+    .filter(book => categoryFilter === 'all' || book.book_category === categoryFilter)
+    .sort((a, b) => {
+      if (sortBy === 'latest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      if (sortBy === 'highest') return b.final_score - a.final_score;
+      if (sortBy === 'lowest') return a.final_score - b.final_score;
+      return 0;
+    });
 
   if (isLoading) return <LoadingSpinner />;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen" style={{ backgroundColor: '#fafafa' }}>
+
       {/* ── 顶栏 ── */}
-      <div className="sticky top-0 bg-white z-10 border-b border-zinc-100">
-        <div className="max-w-3xl mx-auto px-4 pt-3 pb-4">
-          {/* 状态行 */}
-          <div className="flex justify-end items-center mb-4 text-zinc-400 text-xs gap-4">
-            <span>共 {filteredBooks.length} 本</span>
-            <button className="p-1"><ChevronRight className="w-4 h-4 rotate-90" /></button>
+      <div
+        className="sticky top-0 bg-white z-10 shadow-sm"
+        style={{ borderBottom: '1px solid #e4e4e7' }}
+      >
+        <div className="max-w-5xl mx-auto px-4 py-3">
+
+          {/* 标题行 */}
+          <div className="flex items-center gap-3 mb-3">
+            <button onClick={onNavigateBack} className="p-1.5 hover:bg-zinc-100 rounded-full transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-xl font-bold">书架</h1>
+            <span
+              className="ml-auto text-xs px-2 py-1 rounded-full"
+              style={{ color: '#a1a1aa', backgroundColor: '#f4f4f5' }}
+            >
+              共 {filteredAndSortedBooks.length} 本
+            </span>
           </div>
 
-          {/* 搜索框 */}
-          <div className="relative mb-5">
+          {/* 搜索框 —— 用 flexbox + position absolute 替代 translate-y，修复国产浏览器放大镜偏移 */}
+          <div className="relative mb-3" style={{ display: 'flex', alignItems: 'center' }}>
+            <Search
+              className="w-4 h-4"
+              style={{
+                color: '#a1a1aa',
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                pointerEvents: 'none',
+              }}
+            />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索书名或作者..."
-              className="w-full px-4 py-2.5 rounded-lg text-sm outline-none bg-zinc-50 border border-transparent focus:bg-white focus:border-zinc-200 transition-all"
+              className="w-full pl-9 pr-4 py-2 rounded-lg text-sm outline-none transition-all"
+              style={{ border: '1px solid #e4e4e7', backgroundColor: '#fafafa' }}
             />
           </div>
 
-          {/* 胶囊标签栏 */}
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-            {BOOK_CATEGORIES.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setCategoryFilter(cat)}
-                className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm transition-all"
-                style={{
-                  backgroundColor: categoryFilter === cat ? '#18181b' : '#f4f4f5',
-                  color: categoryFilter === cat ? '#ffffff' : '#71717a'
-                }}
-              >
-                {cat}
-              </button>
-            ))}
+          {/* 筛选行 —— 分类框限制最大宽度，避免在手机上撑满 */}
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <select
+              value={sortBy} onChange={(e) => setSortBy(e.target.value)}
+              className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs outline-none"
+              style={{ border: '1px solid #e4e4e7', backgroundColor: '#ffffff', color: '#3f3f46' }}
+            >
+              <option value="latest">最新评分</option>
+              <option value="highest">评分最高</option>
+              <option value="lowest">评分最低</option>
+            </select>
+            <select
+              value={filterBy} onChange={(e) => setFilterBy(e.target.value)}
+              className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs outline-none"
+              style={{ border: '1px solid #e4e4e7', backgroundColor: '#ffffff', color: '#3f3f46' }}
+            >
+              <option value="all">全部分数</option>
+              <option value="high">高分 ≥8</option>
+              <option value="medium">中等 5-8</option>
+              <option value="low">低分 &lt;5</option>
+            </select>
+            {/* 分类下拉：maxWidth 限制宽度，让它刚好容纳文字+原生箭头即可 */}
+            <select
+              value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
+              className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs outline-none"
+              style={{
+                border: '1px solid #e4e4e7',
+                backgroundColor: '#ffffff',
+                color: '#3f3f46',
+                maxWidth: '7.5rem',   // 约等于"全部分类↓"所需宽度
+              }}
+            >
+              <option value="all">全部分类</option>
+              {BOOK_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
           </div>
         </div>
       </div>
 
       {/* ── 书籍列表 ── */}
-      <div className="max-w-3xl mx-auto">
-        {filteredBooks.length === 0 ? (
-          <div className="text-center py-20 text-sm text-zinc-400">暂无符合条件的书籍</div>
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4">
+        {filteredAndSortedBooks.length === 0 ? (
+          <div className="text-center py-20 text-sm" style={{ color: '#a1a1aa' }}>暂无符合条件的书籍</div>
         ) : (
-          <div className="divide-y divide-zinc-50">
-            {filteredBooks.map((book, index) => (
-              <div
-                key={book.id}
-                onClick={() => onBookClick(book.post_id)}
-                className="flex items-center gap-4 px-4 py-5 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer"
-              >
-                {/* 序号 */}
-                <div className="w-4 text-sm font-medium text-zinc-900">
-                  {index + 1}
-                </div>
-
-                {/* 封面占位符 */}
-                <div 
-                  className="flex-shrink-0 w-12 h-16 rounded border flex items-center justify-center bg-zinc-50"
-                  style={{ borderColor: '#e4e4e7' }}
+          <div className="space-y-3">
+            {filteredAndSortedBooks.map((book) => {
+              const ss = getScoreStyle(book.final_score);
+              const catStyle = CATEGORY_STYLES[book.book_category] || CATEGORY_STYLES['其他'];
+              return (
+                <div
+                  key={book.id}
+                  className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  style={{ border: '1px solid #e4e4e7' }}
                 >
-                  <div className="w-4 h-5 border-2 border-zinc-200 rounded-sm" />
-                </div>
+                  {/* 书籍主信息行 */}
+                  <div className="p-3 sm:p-4 flex items-center gap-3">
 
-                {/* 中间信息 */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-0.5">
-                    <h3 className="text-[15px] font-bold text-zinc-900 truncate">
-                      {book.book_name}
-                    </h3>
-                  </div>
-                  <p className="text-sm text-zinc-500 mb-2 truncate">
-                    {book.book_author}
-                  </p>
-                  
-                  <div className="flex gap-1.5">
-                    {/* 推荐/排雷 标签 */}
-                    <span 
-                      className="px-1.5 py-0.5 rounded text-[10px] font-bold text-white"
-                      style={{ backgroundColor: book.final_score >= 8 ? '#18181b' : '#71717a' }}
+                    {/* 评分框 —— 完全内联 style */}
+                    <div
+                      className="flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center"
+                      style={{
+                        color: ss.color,
+                        backgroundColor: ss.backgroundColor,
+                        border: `2px solid ${ss.borderColor}`,
+                      }}
                     >
-                      {book.final_score >= 8 ? '推荐' : (book.final_score < 6 ? '排雷' : '点评')}
-                    </span>
-                    {/* 连载状态 */}
-                    <span 
-                      className="px-1.5 py-0.5 rounded text-[10px] bg-zinc-100 text-zinc-500 border border-zinc-200"
-                    >
-                      {book.book_status || '完结'}
-                    </span>
-                  </div>
-                </div>
+                      <div className="text-xl sm:text-2xl font-bold leading-none">
+                        {book.final_score.toFixed(1)}
+                      </div>
+                    </div>
 
-                {/* 右侧评分 */}
-                <div 
-                  className="text-2xl font-bold italic"
-                  style={{ color: '#27272a' }}
-                >
-                  {book.final_score.toFixed(1)}
+                    {/* 文字信息 */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm sm:text-base font-bold leading-snug mb-1 break-words" style={{ color: '#18181b' }}>
+                        {book.book_name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <p className="text-xs" style={{ color: '#71717a' }}>{book.book_author}</p>
+                        {book.book_category && (
+                          <span
+                            className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                            style={{
+                              color: catStyle.color,
+                              backgroundColor: catStyle.backgroundColor,
+                              border: `1px solid ${catStyle.borderColor}`,
+                            }}
+                          >
+                            {book.book_category}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs mt-0.5" style={{ color: '#a1a1aa' }}>
+                        {book.reviewer_name} · {new Date(book.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+
+                    {/* 展开按钮 */}
+                    <button
+                      onClick={() => setExpandedBookId(expandedBookId === book.id ? null : book.id)}
+                      className="flex-shrink-0 p-1.5 hover:bg-zinc-100 rounded-full transition-colors"
+                    >
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform duration-200 ${expandedBookId === book.id ? 'rotate-180' : ''}`}
+                        style={{ color: '#a1a1aa' }}
+                      />
+                    </button>
+                  </div>
+
+                  {/* 展开内容 */}
+                  {expandedBookId === book.id && (
+                    <div
+                      className="p-3 sm:p-4"
+                      style={{ borderTop: '1px solid #f4f4f5', backgroundColor: 'rgba(250,250,250,0.6)' }}
+                    >
+                      <div
+                        className="bg-white rounded-xl p-3 max-h-96 overflow-y-auto"
+                        style={{ border: '1px solid #f4f4f5' }}
+                      >
+                        {Object.entries(book.principle_scores).map(([key, value]) => {
+                          if (!value) return null;
+                          const idx = parseInt(key.replace('p', '')) - 1;
+                          const isLastThree = idx >= 22;
+                          const shouldBeGreen = isLastThree ? value === 'yes' : value === 'no';
+                          return (
+                            <div key={key} className="flex gap-2.5 py-2.5">
+                              {/* 圆点 —— 内联 style */}
+                              <span
+                                className="flex-shrink-0 w-4 h-4 rounded-full mt-0.5"
+                                style={{ backgroundColor: shouldBeGreen ? '#22c55e' : '#ef4444' }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm leading-relaxed" style={{ color: '#3f3f46' }}>
+                                  {PRINCIPLES_TEXT[idx]}
+                                </p>
+                                {book.principle_remarks[key] && (
+                                  <p
+                                    className="text-xs mt-1 rounded px-2 py-1"
+                                    style={{ color: '#a1a1aa', backgroundColor: '#fafafa' }}
+                                  >
+                                    备注：{book.principle_remarks[key]}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <button
+                        onClick={() => onBookClick(book.post_id)}
+                        className="mt-3 w-full py-2.5 rounded-xl text-sm font-medium transition-colors"
+                        style={{ backgroundColor: '#18181b', color: '#ffffff' }}
+                      >
+                        查看完整帖子
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
-
-      {/* 底部填充 */}
-      <div className="h-20" />
-      
-      {/* 隐藏滚动条样式 */}
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
     </div>
   );
 }
