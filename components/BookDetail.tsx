@@ -394,31 +394,31 @@ export default function BookDetail({
               </div>
             </div>
           ) : (
-            <button
-              onClick={() => setEditingLink(true)}
-              className="w-full text-left flex items-center gap-2 text-sm transition-colors hover:bg-zinc-50"
-              style={{
-                padding: '8px 10px',
-                border: '0.5px solid #e4e4e7',
-                borderRadius: 8,
-                color: '#18181b',
-              }}
-            >
-              <LinkIcon />
-              <span style={{ flex: 1, color: book.book_link ? '#18181b' : '#a1a1aa', fontSize: 13, wordBreak: 'break-all' }}>
-                {book.book_link || '添加推荐/排雷帖链接'}
-              </span>
-              {book.book_link && (
-                
-                  href={book.book_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={e => e.stopPropagation()}
-                >
-                  <ExternalLink className="w-3.5 h-3.5" style={{ color: '#a1a1aa' }} />
-                </a>
-              )}
-            </button>
+          <button
+            onClick={() => setEditingLink(true)}
+            className="w-full text-left flex items-center gap-2 text-sm transition-colors hover:bg-zinc-50"
+            style={{
+              padding: '8px 10px',
+              border: '0.5px solid #e4e4e7',
+              borderRadius: 8,
+              color: '#18181b',
+            }}
+          >
+            <LinkIcon />
+            <span style={{ flex: 1, color: book.book_link ? '#18181b' : '#a1a1aa', fontSize: 13, wordBreak: 'break-all' }}>
+              {book.book_link || '添加推荐/排雷帖链接'}
+            </span>
+            {book.book_link && (
+              
+                href={book.book_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+              >
+                <ExternalLink className="w-3.5 h-3.5" style={{ color: '#a1a1aa' }} />
+              </a>
+            )}
+          </button>
           )}
         </div>
 
