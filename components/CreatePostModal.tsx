@@ -276,13 +276,29 @@ const handleSubmit = async () => {
           const ratingUserName = bookRating.reviewer_name?.trim() && bookRating.reviewer_name !== '匿名发帖者'
             ? bookRating.reviewer_name.trim()
             : user.user_name;
-
+      
           await create_book_rating({
             post_id: newPost.id,
             user_id: user.id,
-            ...bookRating,
             user_name: ratingUserName,
-          } as any);
+            book_name: bookRating.book_name,
+            book_author: bookRating.book_author,
+            book_platform: bookRating.book_platform,
+            book_category: bookRating.book_category,
+            impressed_score: bookRating.impressed_score,
+            principle_scores: bookRating.principle_scores,
+            principle_remarks: bookRating.principle_remarks,
+            extra_deduction: bookRating.extra_deduction,
+            extra_remark: bookRating.extra_remark,
+            final_score: bookRating.final_score,
+            reviewer_comment: bookRating.reviewer_name,
+            reviewer_name: ratingUserName,
+            serial_status: bookRating.serial_status,
+            recommendation_tag: bookRating.recommendation_tag,
+            book_intro: bookRating.book_intro,
+            book_link: bookRating.book_link,
+            book_characters: bookRating.book_characters,
+          });
         } catch (error) {
           console.error('保存图书评分失败:', error);
           showToast('帖子发布成功，但评分保存失败', 'warning');
