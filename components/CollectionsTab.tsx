@@ -140,9 +140,7 @@ function CollectionItem({
                     onClick={() => onPostClick(p.id)}
                   >
                     <h4 className="font-semibold text-zinc-900 text-base line-clamp-1">{p.title}</h4>
-                    <div className="text-zinc-400 line-clamp-1 mt-0.5">
-                      <PostContent content={p.content} className="text-sm" />
-                    </div>
+
                   </div>
                   <button
                     onClick={() => handleRemovePost(p.id)}
