@@ -955,3 +955,168 @@ export const addToCollection = async (collectionId: string, postId: string) => {
   if (error) throw error;
   return true;
 };
+
+
+
+
+// ─────────────────────────────────────────
+// 书架新功能：图片上传、详情更新、读者书评点赞
+// ─────────────────────────────────────────
+
+/**
+ * 上传书籍封面到 book-covers bucket
+ * 返回公开访问的 URL
+ */
+export async function upload_book_cover(
+  bookRatingId: string,
+  file: File
+): Promise<string> {
+  const fileExt = file.name.split('.').pop();
+  const filePath = `${bookRatingId}/cover.${fileExt}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('book-covers')
+    .upload(filePath, file, { upsert: true });
+
+  if (uploadError) throw new Error(`封面上传失败: ${uploadError.message}`);
+
+  const { data } = supabase.storage
+    .from('book-covers')
+    .getPublicUrl(filePath);
+
+  // 把 URL 写回 book_ratings 表
+  await update_book_rating(bookRatingId, { cover_url: data.publicUrl });
+
+  return data.publicUrl;
+}
+
+/**
+ * 上传人物插图到 character-images bucket
+ * charIndex: 人物在 book_characters 数组中的下标
+ */
+export async function upload_character_illustration(
+  bookRatingId: string,
+  charIndex: number,
+  file: File,
+  currentCharacters: Character[]
+): Promise<Character[]> {
+  const fileExt = file.name.split('.').pop();
+  const filePath = `${bookRatingId}/char_${charIndex}.${fileExt}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('character-images')
+    .upload(filePath, file, { upsert: true });
+
+  if (uploadError) throw new Error(`插图上传失败: ${uploadError.message}`);
+
+  const { data } = supabase.storage
+    .from('character-images')
+    .getPublicUrl(filePath);
+
+  // 更新对应人物的 illustration_url
+  const updatedChars = currentCharacters.map((char, idx) =>
+    idx === charIndex
+      ? { ...char, illustration_url: data.publicUrl }
+      : char
+  );
+
+  await update_book_rating(bookRatingId, { book_characters: updatedChars });
+
+  return updatedChars;
+}
+
+/**
+ * 更新书籍简介
+ */
+export async function update_book_intro(
+  bookRatingId: string,
+  intro: string
+): Promise<void> {
+  await update_book_rating(bookRatingId, { book_intro: intro });
+}
+
+/**
+ * 更新推荐/排雷帖链接
+ */
+export async function update_book_link(
+  bookRatingId: string,
+  link: string
+): Promise<void> {
+  await update_book_rating(bookRatingId, { book_link: link });
+}
+
+/**
+ * 提交读者印象分和书评
+ * 如果该用户已经评过，更新原有记录；否则新增
+ */
+export async function submit_reader_review(
+  bookRatingId: string,
+  currentReviews: ReaderReview[],
+  newReview: {
+    user_id: string;
+    user_name: string;
+    impression_score: number;
+    review_text: string;
+  }
+): Promise<ReaderReview[]> {
+  const existingIndex = currentReviews.findIndex(
+    r => r.user_id === newReview.user_id
+  );
+
+  let updatedReviews: ReaderReview[];
+
+  if (existingIndex >= 0) {
+    // 已评过，更新原有记录
+    updatedReviews = currentReviews.map((r, i) =>
+      i === existingIndex
+        ? {
+            ...r,
+            impression_score: newReview.impression_score,
+            review_text: newReview.review_text,
+          }
+        : r
+    );
+  } else {
+    // 新增
+    const review: ReaderReview = {
+      user_id: newReview.user_id,
+      user_name: newReview.user_name,
+      impression_score: newReview.impression_score,
+      review_text: newReview.review_text,
+      likes: 0,
+      liked_by: [],
+      created_at: new Date().toISOString(),
+    };
+    updatedReviews = [...currentReviews, review];
+  }
+
+  await update_book_rating(bookRatingId, { reader_reviews: updatedReviews });
+  return updatedReviews;
+}
+
+/**
+ * 切换读者书评点赞状态
+ */
+export async function toggle_review_like(
+  bookRatingId: string,
+  currentReviews: ReaderReview[],
+  reviewIndex: number,
+  userId: string
+): Promise<ReaderReview[]> {
+  const review = currentReviews[reviewIndex];
+  const alreadyLiked = review.liked_by.includes(userId);
+
+  const updatedReviews = currentReviews.map((r, i) => {
+    if (i !== reviewIndex) return r;
+    return {
+      ...r,
+      likes: alreadyLiked ? r.likes - 1 : r.likes + 1,
+      liked_by: alreadyLiked
+        ? r.liked_by.filter(id => id !== userId)
+        : [...r.liked_by, userId],
+    };
+  });
+
+  await update_book_rating(bookRatingId, { reader_reviews: updatedReviews });
+  return updatedReviews;
+}
