@@ -112,25 +112,25 @@ export default function BookDetail({
 
   const reviews: ReaderReview[] = book.reader_reviews || [];
   const myReview = reviews.find(r => r.user_id === currentUserId);
-    // ✅ 修改1：父组件刷新数据后同步本地 state
-  React.useEffect(() => {
-    setBook(initialBook);
-    setIntroText(initialBook.book_intro || '');
-  }, [initialBook.id]);
+  
+    // 将原本的两个 useEffect 合并
+    React.useEffect(() => {
+      // 只有当 ID 真的变化了（切换书籍），才重置整个本地状态
+      setBook(initialBook);
+      setIntroText(initialBook.book_intro || '');
+      setEditingIntro(false); // 切换书时退出编辑模式
+    
+      const currentMyReview = initialBook.reader_reviews?.find(r => r.user_id === currentUserId);
+      if (currentMyReview) {
+        setStarRating(currentMyReview.impression_score);
+        setReviewText(currentMyReview.review_text || '');
+      } else {
+        setStarRating(0);
+        setReviewText('');
+      }
+    }, [initialBook.id]); // ⚠️ 注意：这里只监听 id，不要监听 initialBook 对象本身，防止无限循环
 
   
-React.useEffect(() => {
-  const currentMyReview = initialBook.reader_reviews?.find(r => r.user_id === currentUserId);
-  if (currentMyReview) {
-    setStarRating(currentMyReview.impression_score);
-    setReviewText(currentMyReview.review_text || '');
-  } else {
-    // 如果切换了一本书，或者没评价过，重置状态
-    setStarRating(0);
-    setReviewText('');
-  }
-}, [initialBook.id, currentUserId]); // ✅ 这样数据变了，本地输入框状态才会跟着变
-
   // ── 封面上传 ──
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
