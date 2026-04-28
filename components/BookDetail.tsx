@@ -1,12 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { ArrowLeft, Edit2 } from 'lucide-react';
 import { BookRating, ReaderReview, Character } from '../types';
+
 import {
   upload_book_cover,
   upload_character_illustration,
   update_book_intro,
   submit_reader_review,
   toggle_review_like,
+  get_book_rating_by_id
 } from '../services/storage';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -113,14 +115,25 @@ export default function BookDetail({
   const reviews: ReaderReview[] = book.reader_reviews || [];
   const myReview = reviews.find(r => r.user_id === currentUserId);
   
-    // 将原本的两个 useEffect 合并
-    React.useEffect(() => {
-      // 只有当 ID 真的变化了（切换书籍），才重置整个本地状态
-      setBook(initialBook);
-      setIntroText(initialBook.book_intro || '');
-      setEditingIntro(false); // 切换书时退出编辑模式
-    
-      const currentMyReview = initialBook.reader_reviews?.find(r => r.user_id === currentUserId);
+React.useEffect(() => {
+  async function loadBook() {
+    if (!initialBook.id) return;
+
+    try {
+      const fresh = await get_book_rating_by_id(initialBook.id);
+
+      setBook({
+        ...fresh,
+        reader_reviews: fresh.reader_reviews || [],
+      });
+
+      setIntroText(fresh.book_intro || '');
+      setEditingIntro(false);
+
+      const currentMyReview = fresh.reader_reviews?.find(
+        r => r.user_id === currentUserId
+      );
+
       if (currentMyReview) {
         setStarRating(currentMyReview.impression_score);
         setReviewText(currentMyReview.review_text || '');
@@ -128,7 +141,13 @@ export default function BookDetail({
         setStarRating(0);
         setReviewText('');
       }
-    }, [initialBook.id]); // ⚠️ 注意：这里只监听 id，不要监听 initialBook 对象本身，防止无限循环
+    } catch (e) {
+      console.error('获取最新书籍失败', e);
+    }
+  }
+
+  loadBook();
+}, [initialBook.id]);
 
   
   // ── 封面上传 ──
