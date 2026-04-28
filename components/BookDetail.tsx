@@ -109,8 +109,6 @@ export default function BookDetail({
   const coverInputRef = useRef<HTMLInputElement>(null);
   const charInputRef = useRef<HTMLInputElement>(null);
   const [pendingCharIdx, setPendingCharIdx] = useState<number | null>(null);
-  const [editingCharIdx, setEditingCharIdx] = useState<number | null>(null);
-  const [editingCharData, setEditingCharData] = useState<{ name: string; role: string }>({ name: '', role: '' });
 
   const reviews: ReaderReview[] = book.reader_reviews || [];
   const myReview = reviews.find(r => r.user_id === currentUserId);
@@ -173,18 +171,6 @@ export default function BookDetail({
     } catch {
       showToast('保存失败', 'error');
     }
-  };
-
-  // ── 人物信息编辑保存 ──
-  const handleSaveChar = () => {
-    if (editingCharIdx === null) return;
-    setBook(prev => {
-      const chars = [...(prev.book_characters || [])];
-      chars[editingCharIdx] = { ...chars[editingCharIdx], ...editingCharData };
-      return { ...prev, book_characters: chars };
-    });
-    setEditingCharIdx(null);
-    showToast('人物信息已更新', 'success');
   };
 
   // ── 提交印象分 ──
@@ -311,19 +297,16 @@ export default function BookDetail({
                 </span>
               )}
               {book.serial_status && (
-                <span style={pill(STATUS_LABEL[book.serial_status])}>
-                  {STATUS_LABEL[book.serial_status]}
+                <span style={pill(STATUS_LABEL[book.serial_status] || book.serial_status)}>
+                  {STATUS_LABEL[book.serial_status] || book.serial_status}
                 </span>
               )}
             </div>
 
-            {/* 评分公式 */}
+            {/* 最终得分 */}
             <div className="text-2xl font-semibold" style={{ color: '#18181b', lineHeight: 1 }}>
-              {book.impressed_score}
-              <span className="text-base font-normal" style={{ color: '#71717a' }}> 印象均分</span>
-            </div>
-            <div className="text-sm mt-1" style={{ color: '#a1a1aa' }}>
-              准则扣 −{(book.impressed_score - book.final_score).toFixed(1)} → 最终 {book.final_score.toFixed(1)}
+              {book.final_score.toFixed(1)}
+              <span className="text-base font-normal" style={{ color: '#71717a' }}> 最终得分</span>
             </div>
             <div className="text-sm mt-1" style={{ color: '#a1a1aa' }}>
               {reviews.length} 人评分
@@ -423,24 +406,24 @@ export default function BookDetail({
               {book.book_characters.map((char: Character, idx: number) => (
                 <div
                   key={idx}
+                  className="cursor-pointer group"
                   style={{
                     border: '0.5px solid #e4e4e7',
                     borderRadius: 8,
                     padding: '8px 10px',
                     position: 'relative',
                   }}
+                  onClick={() => {
+                    setPendingCharIdx(idx);
+                    charInputRef.current?.click();
+                  }}
                 >
-                  {/* 插图区域 */}
                   <div
-                    className="flex items-center justify-center overflow-hidden mb-2 relative cursor-pointer group"
+                    className="flex items-center justify-center overflow-hidden mb-2 relative"
                     style={{
                       width: '100%', height: 60,
                       borderRadius: 4,
                       backgroundColor: '#f4f4f5',
-                    }}
-                    onClick={() => {
-                      setPendingCharIdx(idx);
-                      charInputRef.current?.click();
                     }}
                   >
                     {uploadingCharIdx === idx ? (
@@ -457,56 +440,8 @@ export default function BookDetail({
                       <span style={{ color: '#fff', fontSize: 10 }}>上传插图</span>
                     </div>
                   </div>
-
-                  {/* 姓名/角色编辑 */}
-                  {editingCharIdx === idx ? (
-                    <div>
-                      <input
-                        value={editingCharData.name}
-                        onChange={e => setEditingCharData(d => ({ ...d, name: e.target.value }))}
-                        placeholder="姓名"
-                        className="w-full text-xs outline-none mb-1"
-                        style={{
-                          border: '0.5px solid #e4e4e7', borderRadius: 4,
-                          padding: '3px 5px', color: '#18181b', fontFamily: 'inherit',
-                        }}
-                      />
-                      <input
-                        value={editingCharData.role}
-                        onChange={e => setEditingCharData(d => ({ ...d, role: e.target.value }))}
-                        placeholder="角色"
-                        className="w-full text-xs outline-none mb-1.5"
-                        style={{
-                          border: '0.5px solid #e4e4e7', borderRadius: 4,
-                          padding: '3px 5px', color: '#71717a', fontFamily: 'inherit',
-                        }}
-                      />
-                      <div className="flex gap-1">
-                        <button
-                          onClick={handleSaveChar}
-                          className="flex-1 text-xs py-0.5 rounded"
-                          style={{ backgroundColor: '#18181b', color: '#fff' }}
-                        >保存</button>
-                        <button
-                          onClick={() => setEditingCharIdx(null)}
-                          className="flex-1 text-xs py-0.5 rounded"
-                          style={{ border: '0.5px solid #e4e4e7', color: '#71717a' }}
-                        >取消</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      className="cursor-pointer"
-                      onClick={() => {
-                        setEditingCharIdx(idx);
-                        setEditingCharData({ name: char.name, role: char.role || '' });
-                      }}
-                    >
-                      <div className="text-sm font-medium" style={{ color: '#18181b' }}>{char.name}</div>
-                      <div className="text-xs" style={{ color: '#a1a1aa', marginTop: 1 }}>{char.role}</div>
-                      <div className="text-xs mt-1" style={{ color: '#d4d4d8' }}>点击编辑</div>
-                    </div>
-                  )}
+                  <div className="text-sm font-medium" style={{ color: '#18181b' }}>{char.name}</div>
+                  <div className="text-xs" style={{ color: '#a1a1aa', marginTop: 1 }}>{char.role}</div>
                 </div>
               ))}
             </div>
@@ -519,7 +454,6 @@ export default function BookDetail({
             />
           </div>
         )}
-
 
         {/* ── 读者书评 ── */}
         <div>
@@ -537,7 +471,7 @@ export default function BookDetail({
                     style={{ borderBottom: '0.5px solid #f4f4f5' }}
                   >
                     <div
-                      className="flex-shrink-0 flex items-center justify-center rounded-full text-sm font-medium"
+                      className="flex-shrink-0 flex items-center justify-center rounded-full overflow-hidden text-sm font-medium"
                       style={{
                         width: 32, height: 32,
                         backgroundColor: '#f4f4f5',
@@ -545,7 +479,11 @@ export default function BookDetail({
                         color: '#71717a',
                       }}
                     >
-                      {r.user_name.charAt(0)}
+                      {(r as any).avatar_url ? (
+                        <img src={(r as any).avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        r.user_name.charAt(0)
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2 mb-1">
