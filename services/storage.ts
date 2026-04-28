@@ -911,10 +911,17 @@ export async function submit_reader_review(
   const totalScore = updatedReviews.reduce((sum, r) => sum + r.impression_score, 0);
   const newImpressedScore = Math.round((totalScore / updatedReviews.length) * 10) / 10;
 
-  // 4. 重新计算准则扣分（统计 principle_scores 中 'no' 的数量 × 每项扣分权重）
-  //    与发帖人评分时的逻辑保持一致：每个 'no' 扣 0.5 分
+  // 4. 重新计算准则扣分，与 BookRatingModal.calculateFinalScore 逻辑完全一致：
+  //    p1-p22：选 'yes'（有）扣1分；p23-p25（reverseScore）：选 'no'（没有）扣1分
+  const REVERSE_SCORE_IDS = ['p23', 'p24', 'p25'];
   const principleScores: Record<string, 'yes' | 'no' | null> = bookData?.principle_scores || {};
-  const principleDeduction = Object.values(principleScores).filter(v => v === 'no').length * 1;
+  const principleDeduction = Object.entries(principleScores).reduce((sum, [id, answer]) => {
+    if (REVERSE_SCORE_IDS.includes(id)) {
+      return sum + (answer === 'no' ? 1 : 0);
+    } else {
+      return sum + (answer === 'yes' ? 1 : 0);
+    }
+  }, 0);
 
   const extraDeduction = bookData?.extra_deduction ?? 0;
   const newFinalScore = Math.round((newImpressedScore - principleDeduction - extraDeduction) * 10) / 10;
