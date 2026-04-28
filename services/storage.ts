@@ -719,35 +719,14 @@ export async function get_book_rating_by_post(postId: string): Promise<BookRatin
 }
 
 export async function get_book_rating_by_id(id: string): Promise<BookRating> {
-  const { data: rating, error } = await supabase
-    .from('book_ratings')
+  const { data, error } = await supabase
+    .from('book_ratings_full')
     .select('*')
     .eq('id', id)
     .single();
 
   if (error) throw error;
-
-  // 合并 book_details 中用户编辑过的字段（优先级更高）
-  const { data: detail } = await supabase
-    .from('book_details')
-    .select('*')
-    .eq('post_id', rating.post_id)
-    .maybeSingle();
-
-  return {
-    ...rating,
-    ...(detail ? {
-      cover_url: detail.cover_url ?? rating.cover_url,
-      book_intro: detail.book_intro ?? rating.book_intro,
-      book_link: detail.book_link ?? rating.book_link,
-      book_characters: detail.book_characters ?? rating.book_characters,
-      reader_reviews: detail.reader_reviews ?? rating.reader_reviews,
-      impressed_score: detail.impressed_score ?? rating.impressed_score,
-      final_score: detail.final_score ?? rating.final_score,
-      serial_status: detail.serial_status ?? rating.serial_status,
-      recommendation_tag: detail.recommendation_tag ?? rating.recommendation_tag,
-    } : {}),
-  };
+  return data;
 }
 
 
