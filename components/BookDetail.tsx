@@ -179,7 +179,7 @@ export default function BookDetail({
     if (!book.id) return;
     setSubmittingReview(true);
     try {
-      const updated = await submit_reader_review(
+      const { updatedReviews, newImpressedScore, newFinalScore } = await submit_reader_review(
         book.id,
         reviews,
         {
@@ -189,7 +189,12 @@ export default function BookDetail({
           review_text: reviewText,
         }
       );
-      setBook(prev => ({ ...prev, reader_reviews: updated }));
+      setBook(prev => ({
+        ...prev,
+        reader_reviews: updatedReviews,
+        impressed_score: newImpressedScore,
+        final_score: newFinalScore,
+      }));
       showToast('评分已提交', 'success');
     } catch {
       showToast('提交失败', 'error');
