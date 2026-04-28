@@ -1045,3 +1045,20 @@ export async function toggle_review_like(
   await update_book_rating(bookRatingId, { reader_reviews: updatedReviews });
   return updatedReviews;
 }
+
+// 专门给帖子页用，永远返回评分人的原始数据，不受读者评分影响
+export async function get_book_rating_by_post_original(postId: string): Promise<BookRating | null> {
+  try {
+    const { data, error } = await supabase
+      .from('book_ratings')  // 查原表，不查视图
+      .select('*')
+      .eq('post_id', postId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  } catch (error: any) {
+    console.error('获取图书评分失败:', error);
+    return null;
+  }
+}
