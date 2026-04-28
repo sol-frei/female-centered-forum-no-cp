@@ -111,7 +111,7 @@ export default function Bookshelf({
 
       {/* ── 顶栏 ── */}
       <div className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-zinc-100">
-        <div className="max-w-2xl mx-auto px-4">
+        <div className="w-full max-w-2xl mx-auto px-4">
 
           {/* 返回按钮行 */}
           <div className="py-3 flex items-center justify-between">
@@ -189,7 +189,7 @@ export default function Bookshelf({
       </div>
 
       {/* ── 书籍列表 ── */}
-      <div className="max-w-2xl mx-auto px-4 py-3">
+      <div className="w-full max-w-2xl mx-auto px-4 py-3">
         {filtered.length === 0 ? (
           <div
             className="text-center py-20"
@@ -241,14 +241,22 @@ export default function Bookshelf({
                   {/* 信息 */}
                   <div className="flex-1 min-w-0">
                     <div
-                      className="font-medium mb-0.5 truncate"
-                      style={{ fontSize: 16, color: '#18181b' }}
+                      className="font-medium mb-0.5"
+                      style={{
+                        fontSize: 16,
+                        color: '#18181b',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        lineHeight: '1.4',
+                      }}
                     >
                       {book.book_name}
                     </div>
                     <div
                       className="mb-1.5 truncate"
-                      style={{ fontSize: 13, color: '#71717a' }}
+                      style={{ fontSize: 14, color: '#71717a' }}
                     >
                       {book.book_author}
                     </div>
