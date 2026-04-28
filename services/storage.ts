@@ -705,7 +705,7 @@ export async function delete_book_rating(ratingId: string): Promise<void> {
 export async function get_book_rating_by_post(postId: string): Promise<BookRating | null> {
   try {
     const { data, error } = await supabase
-      .from('book_ratings')
+      .from('book_ratings_full')
       .select('*')
       .eq('post_id', postId)
       .maybeSingle();
@@ -736,7 +736,7 @@ export async function get_all_book_ratings(options?: {
 }): Promise<BookRating[]> {
   try {
     let query = supabase
-      .from('book_ratings')
+      .from('book_ratings_full')
       .select('*');
 
     if (options?.sortBy === 'highest') {
@@ -764,7 +764,7 @@ export async function get_all_book_ratings(options?: {
 export async function get_book_ratings_by_user(userId: string): Promise<BookRating[]> {
   try {
     const { data, error } = await supabase
-      .from('book_ratings')
+      .from('book_ratings_full')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -780,7 +780,7 @@ export async function get_book_ratings_by_user(userId: string): Promise<BookRati
 export async function search_book_ratings(query: string): Promise<BookRating[]> {
   try {
     const { data, error } = await supabase
-      .from('book_ratings')
+      .from('book_ratings_full')
       .select('*')
       .or(`book_name.ilike.%${query}%,book_author.ilike.%${query}%`)
       .order('created_at', { ascending: false });
