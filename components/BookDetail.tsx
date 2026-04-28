@@ -314,7 +314,7 @@ export default function BookDetail({
               <span className="text-base font-normal" style={{ color: '#71717a' }}> 最终得分</span>
             </div>
             <div className="text-sm mt-1" style={{ color: '#a1a1aa' }}>
-              {reviews.length} 人评分
+              {reviews.length+1} 人评分
             </div>
           </div>
         </div>
