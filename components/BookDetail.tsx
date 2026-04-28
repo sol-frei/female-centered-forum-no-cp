@@ -119,12 +119,17 @@ export default function BookDetail({
   }, [initialBook.id]);
 
   
-  React.useEffect(() => {
-    if (myReview) {
-      setStarRating(myReview.impression_score);
-      setReviewText(myReview.review_text || '');
-    }
-  }, []);
+React.useEffect(() => {
+  const currentMyReview = initialBook.reader_reviews?.find(r => r.user_id === currentUserId);
+  if (currentMyReview) {
+    setStarRating(currentMyReview.impression_score);
+    setReviewText(currentMyReview.review_text || '');
+  } else {
+    // 如果切换了一本书，或者没评价过，重置状态
+    setStarRating(0);
+    setReviewText('');
+  }
+}, [initialBook.id, currentUserId]); // ✅ 这样数据变了，本地输入框状态才会跟着变
 
   // ── 封面上传 ──
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
