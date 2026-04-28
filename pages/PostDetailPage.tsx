@@ -434,7 +434,19 @@ const PostDetailPage = ({
                       <div className="text-xs text-zinc-500 mt-1">印象分</div>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-zinc-700">-{(bookRating.impressed_score - bookRating.final_score - bookRating.extra_deduction).toFixed(1)}</div>
+
+                    
+                      <div className="text-2xl font-bold text-zinc-700">-{
+                      (() => {
+                        const REVERSE_IDS = ['p23', 'p24', 'p25'];
+                        return Object.entries(bookRating.principle_scores).reduce((sum, [id, val]) => {
+                          if (REVERSE_IDS.includes(id)) return sum + (val === 'no' ? 1 : 0);
+                          return sum + (val === 'yes' ? 1 : 0);
+                        }, 0);
+                      })()
+                    }</div>
+
+                      
                       <div className="text-xs text-zinc-500 mt-1">准则扣分</div>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center">
