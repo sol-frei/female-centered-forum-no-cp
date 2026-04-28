@@ -99,6 +99,7 @@ export default function BookDetail({
   const [book, setBook] = useState<BookRating>(initialBook);
   const [editingIntro, setEditingIntro] = useState(false);
   const [introText, setIntroText] = useState(initialBook.book_intro || '');
+  const [introExpanded, setIntroExpanded] = useState(false);
   const [starRating, setStarRating] = useState(0);
   const [hoverStar, setHoverStar] = useState(0);
   const [reviewText, setReviewText] = useState('');
@@ -108,6 +109,8 @@ export default function BookDetail({
   const coverInputRef = useRef<HTMLInputElement>(null);
   const charInputRef = useRef<HTMLInputElement>(null);
   const [pendingCharIdx, setPendingCharIdx] = useState<number | null>(null);
+  const [editingCharIdx, setEditingCharIdx] = useState<number | null>(null);
+  const [editingCharData, setEditingCharData] = useState<{ name: string; role: string }>({ name: '', role: '' });
 
   const reviews: ReaderReview[] = book.reader_reviews || [];
   const myReview = reviews.find(r => r.user_id === currentUserId);
@@ -172,6 +175,18 @@ export default function BookDetail({
     }
   };
 
+  // ── 人物信息编辑保存 ──
+  const handleSaveChar = () => {
+    if (editingCharIdx === null) return;
+    setBook(prev => {
+      const chars = [...(prev.book_characters || [])];
+      chars[editingCharIdx] = { ...chars[editingCharIdx], ...editingCharData };
+      return { ...prev, book_characters: chars };
+    });
+    setEditingCharIdx(null);
+    showToast('人物信息已更新', 'success');
+  };
+
   // ── 提交印象分 ──
   const handleSubmitReview = async () => {
     if (!starRating) { showToast('请先选择分数', 'warning'); return; }
@@ -214,16 +229,16 @@ export default function BookDetail({
   };
 
   const secTitle: React.CSSProperties = {
-    fontSize: 11,
-    fontWeight: 500,
+    fontSize: 13,
+    fontWeight: 600,
     color: '#a1a1aa',
     marginBottom: 8,
     letterSpacing: '0.04em',
   };
 
   const pill = (label: string, inv?: boolean): React.CSSProperties => ({
-    fontSize: 11,
-    padding: '2px 7px',
+    fontSize: 12,
+    padding: '3px 9px',
     borderRadius: 20,
     border: '0.5px solid',
     borderColor: inv ? '#18181b' : '#e4e4e7',
@@ -236,22 +251,10 @@ export default function BookDetail({
     <div className="min-h-screen bg-white">
 
       {/* ── 顶栏 ── */}
-      <div
-        className="sticky top-0 bg-white z-10 flex items-center gap-3 px-4 py-3"
-        style={{ borderBottom: '0.5px solid #e4e4e7' }}
-      >
-        <button
-          onClick={onNavigateBack}
-          className="p-1.5 hover:bg-zinc-100 rounded-full transition-colors flex-shrink-0"
-        >
-          <ArrowLeft className="w-5 h-5" style={{ color: '#18181b' }} />
+      <div className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-zinc-100 px-4 py-3 flex items-center justify-between">
+        <button onClick={onNavigateBack} className="text-zinc-600 hover:text-black font-medium flex items-center gap-2">
+          <ArrowLeft className="w-5 h-5" /> <span className="text-base">返回</span>
         </button>
-        <span
-          className="text-sm font-medium truncate"
-          style={{ color: '#18181b' }}
-        >
-          {book.book_name}
-        </span>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-5">
@@ -288,10 +291,10 @@ export default function BookDetail({
 
           {/* 基础信息 */}
           <div className="flex-1 min-w-0">
-            <div className="text-base font-medium mb-1" style={{ color: '#18181b', lineHeight: 1.3 }}>
+            <div className="text-xl font-semibold mb-1" style={{ color: '#18181b', lineHeight: 1.3 }}>
               {book.book_name}
             </div>
-            <div className="text-xs mb-2" style={{ color: '#71717a' }}>
+            <div className="text-sm mb-2" style={{ color: '#71717a' }}>
               {book.book_author}
             </div>
 
@@ -315,14 +318,14 @@ export default function BookDetail({
             </div>
 
             {/* 评分公式 */}
-            <div className="text-xl font-medium" style={{ color: '#18181b', lineHeight: 1 }}>
+            <div className="text-2xl font-semibold" style={{ color: '#18181b', lineHeight: 1 }}>
               {book.impressed_score}
-              <span className="text-sm font-normal" style={{ color: '#71717a' }}> 印象均分</span>
+              <span className="text-base font-normal" style={{ color: '#71717a' }}> 印象均分</span>
             </div>
-            <div className="text-xs mt-1" style={{ color: '#a1a1aa' }}>
+            <div className="text-sm mt-1" style={{ color: '#a1a1aa' }}>
               准则扣 −{(book.impressed_score - book.final_score).toFixed(1)} → 最终 {book.final_score.toFixed(1)}
             </div>
-            <div className="text-xs mt-1" style={{ color: '#a1a1aa' }}>
+            <div className="text-sm mt-1" style={{ color: '#a1a1aa' }}>
               {reviews.length} 人评分
             </div>
           </div>
@@ -352,32 +355,59 @@ export default function BookDetail({
                   padding: '8px 10px',
                   border: '0.5px solid #e4e4e7',
                   borderRadius: 8,
-                  height: 90,
+                  height: 120,
                   marginBottom: 6,
                   color: '#18181b',
                   fontFamily: 'inherit',
+                  lineHeight: 1.7,
                 }}
               />
               <div className="flex gap-2">
                 <button
                   onClick={handleSaveIntro}
-                  className="text-xs px-3 py-1.5 rounded"
+                  className="text-sm px-3 py-1.5 rounded"
                   style={{ backgroundColor: '#18181b', color: '#fff' }}
                 >
                   保存
                 </button>
                 <button
                   onClick={() => { setEditingIntro(false); setIntroText(book.book_intro || ''); }}
-                  className="text-xs px-3 py-1.5 rounded"
+                  className="text-sm px-3 py-1.5 rounded"
                   style={{ border: '0.5px solid #e4e4e7', color: '#71717a' }}
                 >
                   取消
                 </button>
               </div>
             </div>
+          ) : book.book_intro ? (
+            <div>
+              <div
+                style={{
+                  color: '#3f3f46',
+                  fontSize: 15,
+                  lineHeight: 1.8,
+                  overflow: 'hidden',
+                  maxHeight: introExpanded ? 'none' : '5.4em',
+                  position: 'relative',
+                }}
+              >
+                {book.book_intro.split(/\n+/).map((para, i) => (
+                  <p key={i} style={{ marginBottom: '0.6em' }}>{para}</p>
+                ))}
+              </div>
+              {book.book_intro.split(/\n+/).length > 3 || book.book_intro.length > 120 ? (
+                <button
+                  onClick={() => setIntroExpanded(v => !v)}
+                  className="text-sm mt-1"
+                  style={{ color: '#a1a1aa' }}
+                >
+                  {introExpanded ? '收起 ↑' : '展开全文 ↓'}
+                </button>
+              ) : null}
+            </div>
           ) : (
-            <p className="text-sm leading-relaxed" style={{ color: book.book_intro ? '#3f3f46' : '#a1a1aa' }}>
-              {book.book_intro || '暂无简介，点击编辑添加…'}
+            <p className="text-sm leading-relaxed" style={{ color: '#a1a1aa' }}>
+              暂无简介，点击编辑添加…
             </p>
           )}
         </div>
@@ -393,24 +423,24 @@ export default function BookDetail({
               {book.book_characters.map((char: Character, idx: number) => (
                 <div
                   key={idx}
-                  className="cursor-pointer group"
                   style={{
                     border: '0.5px solid #e4e4e7',
                     borderRadius: 8,
                     padding: '8px 10px',
                     position: 'relative',
                   }}
-                  onClick={() => {
-                    setPendingCharIdx(idx);
-                    charInputRef.current?.click();
-                  }}
                 >
+                  {/* 插图区域 */}
                   <div
-                    className="flex items-center justify-center overflow-hidden mb-2 relative"
+                    className="flex items-center justify-center overflow-hidden mb-2 relative cursor-pointer group"
                     style={{
                       width: '100%', height: 60,
                       borderRadius: 4,
                       backgroundColor: '#f4f4f5',
+                    }}
+                    onClick={() => {
+                      setPendingCharIdx(idx);
+                      charInputRef.current?.click();
                     }}
                   >
                     {uploadingCharIdx === idx ? (
@@ -427,8 +457,56 @@ export default function BookDetail({
                       <span style={{ color: '#fff', fontSize: 10 }}>上传插图</span>
                     </div>
                   </div>
-                  <div className="text-xs font-medium" style={{ color: '#18181b' }}>{char.name}</div>
-                  <div className="text-xs" style={{ color: '#a1a1aa', marginTop: 1 }}>{char.role}</div>
+
+                  {/* 姓名/角色编辑 */}
+                  {editingCharIdx === idx ? (
+                    <div>
+                      <input
+                        value={editingCharData.name}
+                        onChange={e => setEditingCharData(d => ({ ...d, name: e.target.value }))}
+                        placeholder="姓名"
+                        className="w-full text-xs outline-none mb-1"
+                        style={{
+                          border: '0.5px solid #e4e4e7', borderRadius: 4,
+                          padding: '3px 5px', color: '#18181b', fontFamily: 'inherit',
+                        }}
+                      />
+                      <input
+                        value={editingCharData.role}
+                        onChange={e => setEditingCharData(d => ({ ...d, role: e.target.value }))}
+                        placeholder="角色"
+                        className="w-full text-xs outline-none mb-1.5"
+                        style={{
+                          border: '0.5px solid #e4e4e7', borderRadius: 4,
+                          padding: '3px 5px', color: '#71717a', fontFamily: 'inherit',
+                        }}
+                      />
+                      <div className="flex gap-1">
+                        <button
+                          onClick={handleSaveChar}
+                          className="flex-1 text-xs py-0.5 rounded"
+                          style={{ backgroundColor: '#18181b', color: '#fff' }}
+                        >保存</button>
+                        <button
+                          onClick={() => setEditingCharIdx(null)}
+                          className="flex-1 text-xs py-0.5 rounded"
+                          style={{ border: '0.5px solid #e4e4e7', color: '#71717a' }}
+                        >取消</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setEditingCharIdx(idx);
+                        setEditingCharData({ name: char.name, role: char.role || '' });
+                      }}
+                    >
+                      <div className="text-sm font-medium" style={{ color: '#18181b' }}>{char.name}</div>
+                      <div className="text-xs" style={{ color: '#a1a1aa', marginTop: 1 }}>{char.role}</div>
+                      <div className="text-xs mt-1" style={{ color: '#d4d4d8' }}>点击编辑</div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -447,7 +525,7 @@ export default function BookDetail({
         <div>
           <div style={secTitle}>读者书评</div>
           {reviews.length === 0 ? (
-            <p className="text-xs" style={{ color: '#a1a1aa' }}>暂无书评</p>
+            <p className="text-sm" style={{ color: '#a1a1aa' }}>暂无书评</p>
           ) : (
             <div>
               {reviews.map((r, i) => {
@@ -459,9 +537,9 @@ export default function BookDetail({
                     style={{ borderBottom: '0.5px solid #f4f4f5' }}
                   >
                     <div
-                      className="flex-shrink-0 flex items-center justify-center rounded-full text-xs font-medium"
+                      className="flex-shrink-0 flex items-center justify-center rounded-full text-sm font-medium"
                       style={{
-                        width: 26, height: 26,
+                        width: 32, height: 32,
                         backgroundColor: '#f4f4f5',
                         border: '0.5px solid #e4e4e7',
                         color: '#71717a',
@@ -471,17 +549,17 @@ export default function BookDetail({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2 mb-1">
-                        <span className="text-xs font-medium" style={{ color: '#18181b' }}>{r.user_name}</span>
-                        <span className="text-xs" style={{ color: '#a1a1aa' }}>印象分 {r.impression_score.toFixed(1)}</span>
+                        <span className="text-sm font-medium" style={{ color: '#18181b' }}>{r.user_name}</span>
+                        <span className="text-sm" style={{ color: '#a1a1aa' }}>印象分 {r.impression_score.toFixed(1)}</span>
                       </div>
                       {r.review_text && (
-                        <p className="text-xs leading-relaxed mb-2" style={{ color: '#3f3f46' }}>
+                        <p className="text-sm leading-relaxed mb-2" style={{ color: '#3f3f46' }}>
                           {r.review_text}
                         </p>
                       )}
                       <button
                         onClick={() => handleToggleLike(i)}
-                        className="flex items-center gap-1 text-xs transition-colors"
+                        className="flex items-center gap-1 text-sm transition-colors"
                         style={{
                           color: liked ? '#18181b' : '#a1a1aa',
                           border: '0.5px solid',
@@ -510,7 +588,7 @@ export default function BookDetail({
             padding: 14,
           }}
         >
-          <div className="text-xs font-medium mb-3" style={{ color: '#18181b' }}>
+          <div className="text-sm font-medium mb-3" style={{ color: '#18181b' }}>
             {myReview ? '修改我的印象分' : '打印象分（1–10）'}
           </div>
 
@@ -536,7 +614,7 @@ export default function BookDetail({
                 </span>
               );
             })}
-            <span className="text-xs ml-1" style={{ color: '#a1a1aa' }}>
+            <span className="text-sm ml-1" style={{ color: '#a1a1aa' }}>
               {starRating ? `${starRating} 分` : '点击评分'}
             </span>
           </div>
@@ -545,7 +623,7 @@ export default function BookDetail({
             value={reviewText}
             onChange={e => setReviewText(e.target.value)}
             placeholder="写下你的书评（可选）…"
-            className="w-full text-xs outline-none resize-none"
+            className="w-full text-sm outline-none resize-none"
             style={{
               padding: '7px 10px',
               border: '0.5px solid #e4e4e7',
