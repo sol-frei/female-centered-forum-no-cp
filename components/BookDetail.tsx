@@ -87,38 +87,38 @@ function HeartIcon({ filled }: { filled: boolean }) {
     </svg>
   );
 }
+    
+    const [book, setBook] = useState<BookRating>(initialBook);
+    const [editingIntro, setEditingIntro] = useState(false);
+    const [introText, setIntroText] = useState(initialBook.book_intro || '');
+    const [introExpanded, setIntroExpanded] = useState(false);
+    const [starRating, setStarRating] = useState(0);
+    const [hoverStar, setHoverStar] = useState(0);
+    const [reviewText, setReviewText] = useState('');
+    const [submittingReview, setSubmittingReview] = useState(false);
+    const [uploadingCover, setUploadingCover] = useState(false);
+    const [uploadingCharIdx, setUploadingCharIdx] = useState<number | null>(null);
+    const coverInputRef = useRef<HTMLInputElement>(null);
+    const charInputRef = useRef<HTMLInputElement>(null);
+    const [pendingCharIdx, setPendingCharIdx] = useState<number | null>(null);
+    
+    const reviews: ReaderReview[] = book.reader_reviews || [];
+    const myReview = reviews.find(r => r.user_id === currentUserId);
+    
+    // ✅ 修改1：父组件刷新数据后同步本地 state
+    React.useEffect(() => {
+      setBook(initialBook);
+      setIntroText(initialBook.book_intro || '');
+    }, [initialBook.id]);
+    
+    // ✅ 修改2：依赖项从 [] 改为 [myReview?.user_id]
+    React.useEffect(() => {
+      if (myReview) {
+        setStarRating(myReview.impression_score);
+        setReviewText(myReview.review_text || '');
+      }
+    }, [myReview?.user_id]);
 
-export default function BookDetail({
-  book: initialBook,
-  currentUserId,
-  currentUserName,
-  onNavigateBack,
-  onPostClick,
-  showToast,
-}: BookDetailProps) {
-  const [book, setBook] = useState<BookRating>(initialBook);
-  const [editingIntro, setEditingIntro] = useState(false);
-  const [introText, setIntroText] = useState(initialBook.book_intro || '');
-  const [introExpanded, setIntroExpanded] = useState(false);
-  const [starRating, setStarRating] = useState(0);
-  const [hoverStar, setHoverStar] = useState(0);
-  const [reviewText, setReviewText] = useState('');
-  const [submittingReview, setSubmittingReview] = useState(false);
-  const [uploadingCover, setUploadingCover] = useState(false);
-  const [uploadingCharIdx, setUploadingCharIdx] = useState<number | null>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
-  const charInputRef = useRef<HTMLInputElement>(null);
-  const [pendingCharIdx, setPendingCharIdx] = useState<number | null>(null);
-
-  const reviews: ReaderReview[] = book.reader_reviews || [];
-  const myReview = reviews.find(r => r.user_id === currentUserId);
-
-  React.useEffect(() => {
-    if (myReview) {
-      setStarRating(myReview.impression_score);
-      setReviewText(myReview.review_text || '');
-    }
-  }, []);
 
   // ── 封面上传 ──
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
