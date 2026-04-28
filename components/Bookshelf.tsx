@@ -110,36 +110,30 @@ export default function Bookshelf({
     <div className="min-h-screen" style={{ backgroundColor: '#fafafa' }}>
 
       {/* ── 顶栏 ── */}
-      <div
-        className="sticky top-0 bg-white z-10"
-        style={{ borderBottom: '0.5px solid #e4e4e7' }}
-      >
+      <div className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-zinc-100">
         <div className="max-w-2xl mx-auto px-4">
 
-          {/* 标题行 */}
-          <div className="flex items-center gap-3 pt-3 pb-2">
-            <button
-              onClick={onNavigateBack}
-              className="p-1.5 hover:bg-zinc-100 rounded-full transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" style={{ color: '#18181b' }} />
+          {/* 返回按钮行 */}
+          <div className="py-3 flex items-center justify-between">
+            <button onClick={onNavigateBack} className="text-zinc-600 hover:text-black font-medium flex items-center gap-2">
+              <ArrowLeft className="w-5 h-5" /> <span className="text-base">返回</span>
             </button>
             <span
-              className="ml-auto text-xs px-2 py-1 rounded-full"
-              style={{ color: '#a1a1aa', backgroundColor: '#f4f4f5' }}
+              className="text-sm px-2.5 py-1 rounded-full"
+              style={{ color: '#71717a', backgroundColor: '#f4f4f5' }}
             >
               共 {filtered.length} 本
             </span>
           </div>
 
           {/* 搜索框 */}
-          <div className="relative mb-2" style={{ display: 'flex', alignItems: 'center' }}>
+          <div className="relative mb-2.5" style={{ display: 'flex', alignItems: 'center' }}>
             <Search
               className="w-4 h-4"
               style={{
                 color: '#a1a1aa',
                 position: 'absolute',
-                left: 10,
+                left: 12,
                 top: '50%',
                 transform: 'translateY(-50%)',
                 pointerEvents: 'none',
@@ -150,14 +144,15 @@ export default function Bookshelf({
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="搜索书名或作者…"
-              className="w-full text-sm outline-none"
+              className="w-full outline-none"
               style={{
-                paddingLeft: 32,
+                fontSize: 15,
+                paddingLeft: 36,
                 paddingRight: 12,
-                paddingTop: 7,
-                paddingBottom: 7,
+                paddingTop: 9,
+                paddingBottom: 9,
                 border: '0.5px solid #e4e4e7',
-                borderRadius: 8,
+                borderRadius: 10,
                 backgroundColor: '#fafafa',
                 color: '#18181b',
               }}
@@ -167,21 +162,22 @@ export default function Bookshelf({
           {/* 筛选芯片 */}
           <div
             ref={chipsRef}
-            className="flex gap-2 overflow-x-auto pb-2"
+            className="flex gap-2 overflow-x-auto pb-2.5"
             style={{ scrollbarWidth: 'none' }}
           >
             {FILTER_CHIPS.map(chip => (
               <button
                 key={chip.key}
                 onClick={() => setActiveChip(chip.key)}
-                className="flex-shrink-0 text-xs transition-colors"
+                className="flex-shrink-0 transition-colors"
                 style={{
-                  padding: '4px 10px',
+                  fontSize: 13,
+                  padding: '5px 12px',
                   borderRadius: 20,
                   border: '0.5px solid',
                   borderColor: activeChip === chip.key ? '#18181b' : '#e4e4e7',
                   backgroundColor: activeChip === chip.key ? '#18181b' : '#ffffff',
-                  color: activeChip === chip.key ? '#ffffff' : '#71717a',
+                  color: activeChip === chip.key ? '#ffffff' : '#52525b',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -196,8 +192,8 @@ export default function Bookshelf({
       <div className="max-w-2xl mx-auto px-4 py-3">
         {filtered.length === 0 ? (
           <div
-            className="text-center py-20 text-sm"
-            style={{ color: '#a1a1aa' }}
+            className="text-center py-20"
+            style={{ fontSize: 15, color: '#a1a1aa' }}
           >
             没有符合条件的书籍
           </div>
@@ -208,17 +204,18 @@ export default function Bookshelf({
               return (
                 <div
                   key={book.id}
-                  className="flex items-center gap-3 py-3 cursor-pointer"
+                  className="flex items-center gap-3 py-3.5 cursor-pointer"
                   style={{ borderBottom: '0.5px solid #f4f4f5' }}
                   onClick={() => onBookDetailClick(book)}
                 >
                   {/* 排名 */}
                   <div
-                    className="text-sm flex-shrink-0 text-center"
+                    className="flex-shrink-0 text-center"
                     style={{
-                      minWidth: 18,
-                      fontWeight: rank <= 3 ? 500 : 400,
-                      color: rank <= 3 ? '#18181b' : '#a1a1aa',
+                      minWidth: 22,
+                      fontSize: 15,
+                      fontWeight: rank <= 3 ? 600 : 400,
+                      color: '#18181b',
                     }}
                   >
                     {rank}
@@ -228,8 +225,8 @@ export default function Bookshelf({
                   <div
                     className="flex-shrink-0 flex items-center justify-center overflow-hidden"
                     style={{
-                      width: 44,
-                      height: 62,
+                      width: 48,
+                      height: 66,
                       borderRadius: 4,
                       backgroundColor: '#f4f4f5',
                       border: '0.5px solid #e4e4e7',
@@ -244,14 +241,14 @@ export default function Bookshelf({
                   {/* 信息 */}
                   <div className="flex-1 min-w-0">
                     <div
-                      className="text-sm font-medium mb-0.5 truncate"
-                      style={{ color: '#18181b' }}
+                      className="font-medium mb-0.5 truncate"
+                      style={{ fontSize: 16, color: '#18181b' }}
                     >
                       {book.book_name}
                     </div>
                     <div
-                      className="text-xs mb-1 truncate"
-                      style={{ color: '#71717a' }}
+                      className="mb-1.5 truncate"
+                      style={{ fontSize: 13, color: '#71717a' }}
                     >
                       {book.book_author}
                     </div>
@@ -259,8 +256,8 @@ export default function Bookshelf({
                       {book.recommendation_tag && (
                         <span
                           style={{
-                            fontSize: 11,
-                            padding: '1px 6px',
+                            fontSize: 12,
+                            padding: '2px 8px',
                             borderRadius: 20,
                             border: '0.5px solid',
                             borderColor: book.recommendation_tag === 'recommend' ? '#18181b' : '#e4e4e7',
@@ -274,8 +271,8 @@ export default function Bookshelf({
                       {book.serial_status && (
                         <span
                           style={{
-                            fontSize: 11,
-                            padding: '1px 6px',
+                            fontSize: 12,
+                            padding: '2px 8px',
                             borderRadius: 20,
                             border: '0.5px solid #e4e4e7',
                             color: '#71717a',
@@ -289,8 +286,8 @@ export default function Bookshelf({
 
                   {/* 评分 */}
                   <div
-                    className="flex-shrink-0 text-lg font-medium"
-                    style={{ color: '#18181b' }}
+                    className="flex-shrink-0 font-semibold"
+                    style={{ fontSize: 18, color: '#18181b' }}
                   >
                     {book.final_score.toFixed(1)}
                   </div>
