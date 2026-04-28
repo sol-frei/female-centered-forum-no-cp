@@ -579,15 +579,8 @@ export async function create_book_rating(ratingData: {
         book_intro: ratingData.book_intro ?? null,
         book_link: ratingData.book_link ?? null,
         book_characters: ratingData.book_characters ?? [],
-        reader_reviews: [{
-          user_id: ratingData.user_id,
-          user_name: ratingData.reviewer_name || ratingData.user_name,
-          impression_score: ratingData.impressed_score,
-          review_text: ratingData.reviewer_comment || '',
-          likes: 0,
-          liked_by: [],
-          created_at: new Date().toISOString(),
-        }],
+        original_impressed_score: ratingData.impressed_score,
+        reader_reviews: [],
         created_at: new Date().toISOString(),
       }])
       .select()
@@ -915,9 +908,19 @@ export async function submit_reader_review(
 
   if (fetchError) throw fetchError;
 
-  // 3. 计算新的印象均分：所有 reader_reviews 的平均（发帖人已作为第一条写入）
-  const totalScore = updatedReviews.reduce((sum, r) => sum + r.impression_score, 0);
-  const newImpressedScore = Math.round((totalScore / updatedReviews.length) * 10) / 10;
+  // 3. 计算新的印象均分：
+  //    评分人（Pluto等，无账号）的原始印象分 + 所有 reader_reviews 的印象分，一起平均
+  //    原始印象分存在数据库的 impressed_score 字段（发帖时录入，不会被覆盖，单独读取）
+  const { data: originalData } = await supabase
+    .from('book_ratings')
+    .select('original_impressed_score')
+    .eq('id', bookRatingId)
+    .single();
+  const originalImpressedScore = originalData?.original_impressed_score ?? 0;
+  const readerTotal = updatedReviews.reduce((sum, r) => sum + r.impression_score, 0);
+  const newImpressedScore = Math.round(
+    ((originalImpressedScore + readerTotal) / (1 + updatedReviews.length)) * 10
+  ) / 10;
 
   // 4. 重新计算准则扣分，与 BookRatingModal.calculateFinalScore 逻辑完全一致：
   //    p1-p22：选 'yes'（有）扣1分；p23-p25（reverseScore）：选 'no'（没有）扣1分
