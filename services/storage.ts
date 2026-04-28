@@ -907,9 +907,29 @@ export async function submit_reader_review(
 
   if (fetchError) throw fetchError;
 
-  // 3. 计算新的印象均分（所有读者印象分的平均值）
-  const totalScore = updatedReviews.reduce((sum, r) => sum + r.impression_score, 0);
-  const newImpressedScore = Math.round((totalScore / updatedReviews.length) * 10) / 10;
+  // 3. 计算新的印象均分：发帖人原始印象分 + 所有读者书评印象分，一起平均
+  //    发帖人的原始印象分存在 book_ratings.impressed_score（初始值），
+  //    但现在 impressed_score 会被覆盖，所以从数据库另取原始值
+  const { data: originalData } = await supabase
+    .from('book_ratings')
+    .select('impressed_score, user_id')
+    .eq('id', bookRatingId)
+    .single();
+
+  // 找出读者书评里是否已有发帖人自己的评分（避免重复计算）
+  const posterUserId = originalData?.user_id;
+  const posterOriginalScore = originalData?.impressed_score ?? 0;
+  const reviewerScores = updatedReviews.map(r => r.impression_score);
+  
+  // 如果发帖人也在 reader_reviews 里打了分，就用他在 reader_reviews 里的分
+  // 否则用他的原始 impressed_score（发帖时填的）
+  const posterHasReview = updatedReviews.some(r => r.user_id === posterUserId);
+  const allScores = posterHasReview
+    ? reviewerScores  // 发帖人已在 reader_reviews 里，直接用所有人的
+    : [posterOriginalScore, ...reviewerScores]; // 发帖人不在，加上他的原始分
+
+  const totalScore = allScores.reduce((sum, s) => sum + s, 0);
+  const newImpressedScore = Math.round((totalScore / allScores.length) * 10) / 10;
 
   // 4. 重新计算准则扣分，与 BookRatingModal.calculateFinalScore 逻辑完全一致：
   //    p1-p22：选 'yes'（有）扣1分；p23-p25（reverseScore）：选 'no'（没有）扣1分
