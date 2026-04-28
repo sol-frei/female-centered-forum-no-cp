@@ -598,17 +598,25 @@ export async function update_book_rating(
   updates: Partial<BookRating>
 ): Promise<BookRating> {
   try {
-    const { data, error } = await supabase
+    // 先执行 update，不用 .single() 避免 RLS 导致 PGRST116
+    const { error } = await supabase
       .from('book_ratings')
       .update({
         ...updates,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', ratingId)
-      .select()
-      .single();
+      .eq('id', ratingId);
 
     if (error) throw error;
+
+    // 更新成功后单独读取最新数据
+    const { data, error: fetchError } = await supabase
+      .from('book_ratings')
+      .select('*')
+      .eq('id', ratingId)
+      .single();
+
+    if (fetchError) throw fetchError;
     return data;
   } catch (error: any) {
     console.error('更新图书评分失败:', error);
@@ -859,7 +867,8 @@ export async function submit_reader_review(
     impression_score: number;
     review_text: string;
   }
-): Promise<ReaderReview[]> {
+): Promise<{ updatedReviews: ReaderReview[]; newImpressedScore: number; newFinalScore: number }> {
+  // 1. 更新书评列表
   const existingIndex = currentReviews.findIndex(
     r => r.user_id === newReview.user_id
   );
@@ -889,8 +898,35 @@ export async function submit_reader_review(
     updatedReviews = [...currentReviews, review];
   }
 
-  await update_book_rating(bookRatingId, { reader_reviews: updatedReviews });
-  return updatedReviews;
+  // 2. 读取当前书籍数据（需要 principles_deduction 和 extra_deduction 来重算）
+  const { data: bookData, error: fetchError } = await supabase
+    .from('book_ratings')
+    .select('principle_scores, extra_deduction')
+    .eq('id', bookRatingId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  // 3. 计算新的印象均分（所有读者印象分的平均值）
+  const totalScore = updatedReviews.reduce((sum, r) => sum + r.impression_score, 0);
+  const newImpressedScore = Math.round((totalScore / updatedReviews.length) * 10) / 10;
+
+  // 4. 重新计算准则扣分（统计 principle_scores 中 'no' 的数量 × 每项扣分权重）
+  //    与发帖人评分时的逻辑保持一致：每个 'no' 扣 0.5 分
+  const principleScores: Record<string, 'yes' | 'no' | null> = bookData?.principle_scores || {};
+  const principleDeduction = Object.values(principleScores).filter(v => v === 'no').length * 1;
+
+  const extraDeduction = bookData?.extra_deduction ?? 0;
+  const newFinalScore = Math.round((newImpressedScore - principleDeduction - extraDeduction) * 10) / 10;
+
+  // 5. 一次性写入书评列表 + 更新后的分数
+  await update_book_rating(bookRatingId, {
+    reader_reviews: updatedReviews,
+    impressed_score: newImpressedScore,
+    final_score: newFinalScore,
+  });
+
+  return { updatedReviews, newImpressedScore, newFinalScore };
 }
 
 export async function toggle_review_like(
