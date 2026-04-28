@@ -702,10 +702,11 @@ export async function delete_book_rating(ratingId: string): Promise<void> {
   }
 }
 
+// 帖子页专用：永远返回评分人原始数据，不受读者评分影响
 export async function get_book_rating_by_post(postId: string): Promise<BookRating | null> {
   try {
     const { data, error } = await supabase
-      .from('book_ratings_full')
+      .from('book_ratings')
       .select('*')
       .eq('post_id', postId)
       .maybeSingle();
