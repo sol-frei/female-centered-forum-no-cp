@@ -655,6 +655,18 @@ export async function get_book_rating_by_post(postId: string): Promise<BookRatin
   }
 }
 
+export async function get_book_rating_by_id(id: string): Promise<BookRating> {
+  const { data, error } = await supabase
+    .from('book_ratings')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+
 export async function get_all_book_ratings(options?: {
   sortBy?: 'latest' | 'highest' | 'lowest';
   limit?: number;
