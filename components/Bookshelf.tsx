@@ -107,7 +107,10 @@ export default function Bookshelf({
   if (isLoading) return <LoadingSpinner />;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#fafafa' }}>
+    <div className="min-h-screen bg-white">
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+      `}</style>
 
       {/* ── 顶栏 ── */}
       <div className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-zinc-100">
@@ -153,7 +156,7 @@ export default function Bookshelf({
                 paddingBottom: 9,
                 border: '0.5px solid #e4e4e7',
                 borderRadius: 10,
-                backgroundColor: '#fafafa',
+                backgroundColor: '#ffffff',
                 color: '#18181b',
               }}
             />
@@ -162,8 +165,12 @@ export default function Bookshelf({
           {/* 筛选芯片 */}
           <div
             ref={chipsRef}
-            className="flex gap-2 overflow-x-auto pb-2.5"
-            style={{ scrollbarWidth: 'none' }}
+            className="hide-scrollbar flex gap-2 overflow-x-auto pb-2.5 -mx-4 px-4"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch',
+            } as React.CSSProperties}
           >
             {FILTER_CHIPS.map(chip => (
               <button
