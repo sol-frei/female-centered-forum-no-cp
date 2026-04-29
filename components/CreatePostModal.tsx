@@ -291,7 +291,7 @@ const handleSubmit = async () => {
             extra_deduction: bookRating.extra_deduction,
             extra_remark: bookRating.extra_remark,
             final_score: bookRating.final_score,
-            reviewer_comment: bookRating.reviewer_name,
+            reviewer_comment: bookRating.reviewer_comment ?? '',
             reviewer_name: ratingUserName,
             serial_status: bookRating.serial_status,
             recommendation_tag: bookRating.recommendation_tag,
