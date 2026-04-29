@@ -567,7 +567,8 @@ export async function create_book_rating(ratingData: {
         book_author: ratingData.book_author,
         book_platform: ratingData.book_platform,
         book_category: ratingData.book_category,
-        original_impressed_score: ratingData.impressed_score,
+        post_impressed_score: ratingData.impressed_score, 
+        post_final_score: ratingData.final_score, 
         principle_scores: ratingData.principle_scores,
         principle_remarks: ratingData.principle_remarks,
         extra_deduction: ratingData.extra_deduction,
@@ -620,7 +621,7 @@ export async function update_book_rating(
   updates: Partial<BookRating>
 ): Promise<BookRating> {
   try {
-    // 1. 读取 post_id
+    // 1. 读取 post_id (保持不变)
     const { data: existing, error: fetchIdError } = await supabase
       .from('book_ratings')
       .select('post_id')
@@ -630,16 +631,32 @@ export async function update_book_rating(
     if (fetchIdError) throw fetchIdError;
     const postId = existing.post_id;
 
-    // 2. 分离字段：book_details（扩展内容）vs book_ratings（评分核心）
+    // 2. 分离字段
     const detailsUpdates: Record<string, any> = {};
     const ratingsUpdates: Record<string, any> = {};
 
     for (const [key, value] of Object.entries(updates)) {
+      // 如果字段属于 book_details 表的扩展字段
       if (BOOK_DETAILS_FIELDS.includes(key as keyof BookRating)) {
         detailsUpdates[key] = value;
-      } else {
+      } 
+      // 这里的逻辑变得非常直接：
+      // 只要 key 是 post_impressed_score 或 post_final_score，
+      // 它就会被自动放入 ratingsUpdates 写入数据库。
+      else {
         ratingsUpdates[key] = value;
       }
+    }
+
+    // 特殊处理：如果前端传的是旧的 impressed_score，在这里做一次自动纠正
+    // 这样可以增加代码的健壮性，防止前端漏改
+    if ('impressed_score' in updates) {
+      ratingsUpdates['post_impressed_score'] = (updates as any).impressed_score;
+      delete ratingsUpdates['impressed_score'];
+    }
+    if ('final_score' in updates) {
+      ratingsUpdates['post_final_score'] = (updates as any).final_score;
+      delete ratingsUpdates['final_score'];
     }
 
     // reviewer_comment 清空时需显式写 null
@@ -647,16 +664,20 @@ export async function update_book_rating(
       ratingsUpdates['reviewer_comment'] = updates.reviewer_comment ?? null;
     }
 
-    // 3. 写 book_ratings（RLS 保护，仅原作者可写）
+    // 3. 写 book_ratings（更新楼主的 post_impressed_score 和 post_final_score）
     if (Object.keys(ratingsUpdates).length > 0) {
       const { error: ratingsError } = await supabase
         .from('book_ratings')
-        .update({ ...ratingsUpdates, updated_at: new Date().toISOString() })
+        .update({ 
+          ...ratingsUpdates, 
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', ratingId);
+      
       if (ratingsError) throw ratingsError;
     }
 
-    // 4. 写 book_details（upsert，所有登录用户可写）
+    // 4. 写 book_details（保持不变）
     if (Object.keys(detailsUpdates).length > 0) {
       const { error: detailsError } = await supabase
         .from('book_details')
@@ -667,12 +688,14 @@ export async function update_book_rating(
       if (detailsError) throw detailsError;
     }
 
-    // 5. 返回视图中合并后的最新数据（impressed_score/final_score 由视图自动算）
+    // 5. 返回视图中合并后的最新数据
+    // 此时视图会自动返回 post_impressed_score 和 计算后的平均分 impressed_score
     const { data, error: viewFetchError } = await supabase
       .from('book_ratings_full')
       .select('*')
       .eq('id', ratingId)
       .single();
+      
     if (viewFetchError) throw viewFetchError;
 
     return data;
@@ -681,6 +704,9 @@ export async function update_book_rating(
     throw new Error(`更新图书评分失败: ${error.message}`);
   }
 }
+
+
+
 
 export async function delete_book_rating(ratingId: string): Promise<void> {
   try {
