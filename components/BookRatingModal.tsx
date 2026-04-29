@@ -96,6 +96,8 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
     initialData?.book_characters || [{ name: '', role: '主角' }]
   );
 
+  const [reviewerComment, setReviewerComment] = useState(initialData?.reviewer_comment || '');
+
   const calculateFinalScore = () => {
     let deductions = 0;
     const baseScore = Number(impressedScore) || 0;
@@ -149,8 +151,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       book_intro: bookIntro,
       book_link: bookLink,
       book_characters: bookCharacters.filter(c => c.name.trim()),
-      // 透传编辑前已有的字段，防止更新时丢失
-      reviewer_comment: initialData?.reviewer_comment,
+      reviewer_comment: reviewerComment.trim() || undefined,
       original_impressed_score: initialData?.original_impressed_score,
     });
   };
@@ -457,6 +458,17 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
               value={extraRemark}
               onChange={(e) => setExtraRemark(e.target.value)}
               placeholder="说明额外扣分原因..."
+              className="w-full bg-zinc-50 rounded-lg px-3 py-2.5 h-24 text-sm outline-none border border-zinc-100 focus:border-zinc-300 focus:bg-white transition-all placeholder:text-zinc-300 resize-none"
+            />
+          </section>
+
+          {/* 爱女姐有话说 */}
+          <section>
+            <p className="text-xs text-zinc-400 mb-4 pb-2 border-b border-zinc-100">爱女姐有话说</p>
+            <textarea
+              value={reviewerComment}
+              onChange={(e) => setReviewerComment(e.target.value)}
+              placeholder="写下你对这本书的推荐语或总结（选填）..."
               className="w-full bg-zinc-50 rounded-lg px-3 py-2.5 h-24 text-sm outline-none border border-zinc-100 focus:border-zinc-300 focus:bg-white transition-all placeholder:text-zinc-300 resize-none"
             />
           </section>
