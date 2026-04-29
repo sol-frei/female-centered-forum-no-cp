@@ -9,28 +9,30 @@ interface BookRatingModalProps {
   showToast: (msg: string, type: ToastType) => void;
   initialData?: BookRatingData;
 }
-
 export interface BookRatingData {
   book_name: string;
   book_author: string;
   book_platform: string;
   book_category: string;
   reviewer_name: string;
-  impressed_score: number;
-  principle_scores: { [key: string]: 'yes' | 'no' | null };
-  principle_remarks: { [key: string]: string };
-  extra_deduction: number;
-  extra_remark: string;
+  
+  // 核心逻辑字段：用于数据库存储，确保楼主分数独立
+  post_impressed_score: number; 
+  post_final_score: number;
+
+  // 组件内部展示字段：保留这两个可以让你不用去大规模改动 Modal 里的进度条和显示逻辑
+  impressed_score: number; 
   final_score: number;
-  // 新增
+
+  // 状态与元数据
   serial_status: 'finished' | 'ongoing' | 'hiatus';
   recommendation_tag: 'recommend' | 'warn';
   book_intro: string;
   book_link: string;
   book_characters: { name: string; role: string; avatar?: string; illustration_url?: string }[];
+  
   // 编辑时需保留的字段
   reviewer_comment?: string | null;
-  original_impressed_score?: number;
 }
 
 const BOOK_CATEGORIES = [
@@ -139,12 +141,12 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       book_platform: bookPlatform,
       book_category: bookCategory,
       reviewer_name: reviewerName.trim(),  // 空值透传，由外层决定默认名
-      impressed_score: Number(impressedScore),
+      post_impressed_score: Number(impressedScore),
       principle_scores: principleScores,
       principle_remarks: principleRemarks,
       extra_deduction: extraDeduction,
       extra_remark: extraRemark,
-      final_score: finalScore,
+      post_final_score: finalScore,
       // 新增
       serial_status: serialStatus,
       recommendation_tag: recommendationTag,
