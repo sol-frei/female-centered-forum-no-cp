@@ -594,35 +594,67 @@ export async function create_book_rating(ratingData: {
   }
 }
 
-// 用户可编辑的字段列表（写入 book_details 表）
+// 写入 book_details 表的字段（扩展内容，所有登录用户可写）
+// impressed_score / final_score 由下方重算逻辑统一写入，不在此列表
 const BOOK_DETAILS_FIELDS: (keyof BookRating)[] = [
   'cover_url',
   'book_intro',
   'book_link',
   'book_characters',
   'reader_reviews',
-  'impressed_score',
-  'final_score',
   'serial_status',
   'recommendation_tag',
 ];
+
+// 任意一个变动都触发 impressed_score / final_score 重算并同步到 book_details
+const SCORE_TRIGGER_FIELDS = ['original_impressed_score', 'principle_scores', 'extra_deduction'];
+
+const REVERSE_SCORE_IDS = ['p23', 'p24', 'p25'];
+
+/** 根据最新数据重算书架展示用的 impressed_score 和 final_score */
+function recalcScores(bookData: {
+  original_impressed_score: number;
+  principle_scores: Record<string, 'yes' | 'no' | null>;
+  extra_deduction: number;
+  reader_reviews?: { impression_score: number }[];
+}): { impressed_score: number; final_score: number } {
+  const { original_impressed_score, principle_scores, extra_deduction, reader_reviews = [] } = bookData;
+
+  // 印象分 = 原始印象分与所有读者印象分的平均值
+  const readerTotal = reader_reviews.reduce((sum, r) => sum + r.impression_score, 0);
+  const impressed_score =
+    Math.round(((original_impressed_score + readerTotal) / (1 + reader_reviews.length)) * 10) / 10;
+
+  // 准则扣分
+  const principleDeduction = Object.entries(principle_scores).reduce((sum, [id, answer]) => {
+    if (REVERSE_SCORE_IDS.includes(id)) return sum + (answer === 'no' ? 1 : 0);
+    return sum + (answer === 'yes' ? 1 : 0);
+  }, 0);
+
+  const final_score = Math.max(
+    0,
+    Math.round((impressed_score - principleDeduction - extra_deduction) * 10) / 10
+  );
+
+  return { impressed_score, final_score };
+}
 
 export async function update_book_rating(
   ratingId: string,
   updates: Partial<BookRating>
 ): Promise<BookRating> {
   try {
-    // 1. 先从 book_ratings 读取 post_id
+    // 1. 读取当前数据（post_id + 重算所需字段）
     const { data: existing, error: fetchIdError } = await supabase
       .from('book_ratings')
-      .select('post_id')
+      .select('post_id, original_impressed_score, principle_scores, extra_deduction')
       .eq('id', ratingId)
       .single();
 
     if (fetchIdError) throw fetchIdError;
     const postId = existing.post_id;
 
-    // 2. 分离：哪些字段写 book_details（所有人可写），哪些写 book_ratings（原作者专属）
+    // 2. 分离：哪些字段写 book_details，哪些写 book_ratings
     const detailsUpdates: Record<string, any> = {};
     const ratingsUpdates: Record<string, any> = {};
 
@@ -634,12 +666,45 @@ export async function update_book_rating(
       }
     }
 
-    // reviewer_comment 清空时 undefined 不会进入 entries，需显式写 null 才能清除数据库旧值
+    // reviewer_comment 清空时需显式写 null 才能清除数据库旧值
     if ('reviewer_comment' in updates) {
       ratingsUpdates['reviewer_comment'] = updates.reviewer_comment ?? null;
     }
 
-    // 3. 写 book_details（upsert by post_id，所有登录用户可写）
+    // 3. 先写 book_ratings（RLS 保护，仅原作者可写）
+    if (Object.keys(ratingsUpdates).length > 0) {
+      const { error: ratingsError } = await supabase
+        .from('book_ratings')
+        .update({ ...ratingsUpdates, updated_at: new Date().toISOString() })
+        .eq('id', ratingId);
+      if (ratingsError) throw ratingsError;
+    }
+
+    // 4. 若核心评分字段有变动，重算 impressed_score / final_score 并写入 book_details
+    const needsRecalc = SCORE_TRIGGER_FIELDS.some(f => f in updates);
+    if (needsRecalc) {
+      // 读取 book_details 里的 reader_reviews（读者书评存在这里）
+      const { data: detailRow } = await supabase
+        .from('book_details')
+        .select('reader_reviews')
+        .eq('post_id', postId)
+        .maybeSingle();
+
+      const { impressed_score, final_score } = recalcScores({
+        original_impressed_score:
+          (updates.original_impressed_score as number) ?? existing.original_impressed_score ?? 0,
+        principle_scores:
+          (updates.principle_scores as Record<string, 'yes' | 'no' | null>) ?? existing.principle_scores ?? {},
+        extra_deduction:
+          (updates.extra_deduction as number) ?? existing.extra_deduction ?? 0,
+        reader_reviews: detailRow?.reader_reviews ?? [],
+      });
+
+      detailsUpdates['impressed_score'] = impressed_score;
+      detailsUpdates['final_score'] = final_score;
+    }
+
+    // 5. 写 book_details（upsert，所有登录用户可写）
     if (Object.keys(detailsUpdates).length > 0) {
       const { error: detailsError } = await supabase
         .from('book_details')
@@ -650,16 +715,7 @@ export async function update_book_rating(
       if (detailsError) throw detailsError;
     }
 
-    // 4. 写 book_ratings（仅限原作者自己的字段，RLS 保护）
-    if (Object.keys(ratingsUpdates).length > 0) {
-      const { error: ratingsError } = await supabase
-        .from('book_ratings')
-        .update({ ...ratingsUpdates, updated_at: new Date().toISOString() })
-        .eq('id', ratingId);
-      if (ratingsError) throw ratingsError;
-    }
-
-    // 5. 读取合并后的最新数据返回
+    // 6. 读取合并后的最新数据返回
     const { data: rating, error: ratingFetchError } = await supabase
       .from('book_ratings')
       .select('*')
