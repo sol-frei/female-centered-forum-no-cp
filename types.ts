@@ -149,7 +149,8 @@ export interface BookRating {
   book_author: string;
   book_platform: string;
   book_category: string;
-  original_impressed_score: number;  // 评分人录入的原始印象分，编辑时回填此值
+  post_impressed_score: number;  // 楼主在帖子中打出的原始分
+  post_final_score: number;      // 楼主发帖时的初始总分（不随读者评分变化）  
   principle_scores: { [key: string]: 'yes' | 'no' | null };
   principle_remarks: { [key: string]: string };
   extra_deduction: number;
