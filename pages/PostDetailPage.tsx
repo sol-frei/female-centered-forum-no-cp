@@ -12,7 +12,7 @@ import {
   addToCollection, 
   check_sensitive_words,
   toggle_like_comment,
-  get_book_rating_by_post // 导入获取评分函数
+  get_book_rating_by_post_original // 导入获取评分函数
 } from '../services/storage';
 
 import { uploadImage } from '../services/storageService';
