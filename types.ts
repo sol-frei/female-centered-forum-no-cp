@@ -136,39 +136,39 @@ export interface ReaderReview {
 }
 
 // 书籍打分信息
+// 数据来源：book_ratings_full 视图（book_ratings + book_details 合并）
+// book_ratings：评分核心数据，RLS 保护，仅发帖人可写
+// book_details：扩展展示数据，所有登录用户可写
 export interface BookRating {
+  // ── 来自 book_ratings（评分核心，RLS 保护）──
   id: string;
   post_id: string;
   user_id: string;
   user_name: string;
-
-  // 书籍基础信息
   book_name: string;
   book_author: string;
   book_platform: string;
   book_category: string;
-  serial_status?: 'finished' | 'ongoing' | 'hiatus'; // 替换原 book_status
-  recommendation_tag?: 'recommend' | 'warn';          // 新增：推荐/排雷
-
-  // 详情页内容
-  cover_url?: string;              // 新增：封面图片URL
-  book_link?: string;              // 推荐/排雷帖链接
-  book_intro?: string;             // 书籍简介
-  book_characters?: Character[];   // 主要人物数组
-  reader_reviews?: ReaderReview[]; // 新增：读者书评列表
-
-  // 评分核心数据
-  impressed_score: number;
+  original_impressed_score: number;  // 评分人录入的原始印象分，编辑时回填此值
   principle_scores: { [key: string]: 'yes' | 'no' | null };
   principle_remarks: { [key: string]: string };
   extra_deduction: number;
   extra_remark: string;
-  final_score: number;
-
-  // 元数据
   reviewer_name: string;
   reviewer_comment?: string | null;
-  original_impressed_score?: number; // 原始印象分（修改前的备份）
   created_at: string;
   updated_at?: string;
+
+  // ── 来自 book_details（扩展展示，所有登录用户可写）──
+  serial_status?: 'finished' | 'ongoing' | 'hiatus';
+  recommendation_tag?: 'recommend' | 'warn';
+  cover_url?: string;
+  book_link?: string;
+  book_intro?: string;
+  book_characters?: Character[];
+  reader_reviews?: ReaderReview[];
+
+  // ── 由视图自动计算，只读，勿手动写入数据库 ──
+  impressed_score: number;  // 原始印象分与读者印象分的平均值
+  final_score: number;      // impressed_score - 准则扣分 - extra_deduction
 }
