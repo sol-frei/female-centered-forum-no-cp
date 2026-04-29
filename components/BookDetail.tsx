@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { ArrowLeft, Edit2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 import { BookRating, ReaderReview, Character } from '../types';
 
 import {
@@ -22,34 +22,6 @@ interface BookDetailProps {
   showToast: (msg: string, type: ToastType) => void;
 }
 
-const PRINCIPLES_TEXT = [
-  '作者预收/写过/阅读男主文、bl、言情等非4B小说。',
-  '连载中/断更/卡v/坑文等操作。',
-  '文笔差 / 一般，剧情设定欠缺。',
-  '评论区磕cp、吵架，作者关闭评论区等。',
-  '作者现实其他骚操作（已婚、提男友、拒绝激女读者等）。',
-  '描写氛围、语言、过于暧昧，女角色之间（非女主）关系有百合倾向。',
-  '女男比例低于2：1。',
-  '随父姓，默认任何角色随父姓，不单指主角，不指出也不批判也没改变。',
-  '女性角色塑造不用心、刻板印象（取名随意、脸谱化、平面化）。',
-  '服美役（白幼瘦、面部、高跟鞋、胸臀腿特写、衣服配饰等外貌方面的描写）。',
-  '驴竞、拉踩其他女角色。',
-  '忽略女性困难处境、物化女性。',
-  '性别认知障碍，自称哥、爸、爷、弟等，女扮男装，女角色被称为先生等。',
-  '扶持男性、接男儿，有男人分享女角色胜利果实/成果/遗产等。',
-  '男性角色与女性角色存在单向/双向性缘。',
-  '美化男性（母父对比、男性深情、男性友情、男性导师等）、偏爱男性。',
-  '男性角色有高光、有成长线。',
-  '掺腐（非批判）。',
-  '存在厌女词、辱女词（s|b、m|d、cao、草字头等，包括但不限于这类词）。',
-  '存在男本位词:男|女、父|母、师父、师叔、徒弟等，嫖娼、妓女、嫁娶、奴才、婢女等偏旁为女的贬义词。',
-  '用性侵、造黄谣等方式x惩罚女性、描写角色x行为等。',
-  '过度渲染女性苦楚/雄堕，但反抗/觉醒内容占比很少。',
-  '是否有提到推广或倡导女权的思想和行为【没有需扣分】。',
-  '是否有明确的反男权思想和行为【没有需扣分】。',
-  '是否默认女性为第一性【没有需扣分】。',
-];
-
 const STATUS_LABEL: Record<string, string> = {
   finished: '完结',
   ongoing: '连载中',
@@ -61,10 +33,10 @@ const TAG_LABEL: Record<string, string> = {
   warn: '排雷',
 };
 
+// ── 内部图标组件 ──
 function BookIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
-      style={{ width: 24, height: 24, opacity: 0.2 }}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8 opacity-20">
       <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
     </svg>
@@ -73,8 +45,7 @@ function BookIcon() {
 
 function PersonIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
-      style={{ width: 16, height: 16, opacity: 0.2 }}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 opacity-20">
       <circle cx="12" cy="8" r="4" />
       <path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" />
     </svg>
@@ -84,7 +55,7 @@ function PersonIcon() {
 function HeartIcon({ filled }: { filled: boolean }) {
   return (
     <svg viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'}
-      stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}>
+      stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
       <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
     </svg>
   );
@@ -114,43 +85,26 @@ export default function BookDetail({
 
   const reviews: ReaderReview[] = book.reader_reviews || [];
   const myReview = reviews.find(r => r.user_id === currentUserId);
-  
-React.useEffect(() => {
-  async function loadBook() {
-    if (!initialBook.id) return;
 
-    try {
-      const fresh = await get_book_rating_by_id(initialBook.id);
-
-      setBook({
-        ...fresh,
-        reader_reviews: fresh.reader_reviews || [],
-      });
-
-      setIntroText(fresh.book_intro || '');
-      setEditingIntro(false);
-
-      const currentMyReview = fresh.reader_reviews?.find(
-        r => r.user_id === currentUserId
-      );
-
-      if (currentMyReview) {
-        setStarRating(currentMyReview.impression_score);
-        setReviewText(currentMyReview.review_text || '');
-      } else {
-        setStarRating(0);
-        setReviewText('');
+  useEffect(() => {
+    async function loadBook() {
+      if (!initialBook.id) return;
+      try {
+        const fresh = await get_book_rating_by_id(initialBook.id);
+        setBook({ ...fresh, reader_reviews: fresh.reader_reviews || [] });
+        setIntroText(fresh.book_intro || '');
+        const currentMyReview = fresh.reader_reviews?.find(r => r.user_id === currentUserId);
+        if (currentMyReview) {
+          setStarRating(currentMyReview.impression_score);
+          setReviewText(currentMyReview.review_text || '');
+        }
+      } catch (e) {
+        console.error('获取最新书籍失败', e);
       }
-    } catch (e) {
-      console.error('获取最新书籍失败', e);
     }
-  }
+    loadBook();
+  }, [initialBook.id, currentUserId]);
 
-  loadBook();
-}, [initialBook.id]);
-
-  
-  // ── 封面上传 ──
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !book.id) return;
@@ -167,18 +121,12 @@ React.useEffect(() => {
     }
   };
 
-  // ── 人物插图上传 ──
   const handleCharUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || pendingCharIdx === null || !book.id) return;
     setUploadingCharIdx(pendingCharIdx);
     try {
-      const updated = await upload_character_illustration(
-        book.id,
-        pendingCharIdx,
-        file,
-        book.book_characters || []
-      );
+      const updated = await upload_character_illustration(book.id, pendingCharIdx, file, book.book_characters || []);
       setBook(prev => ({ ...prev, book_characters: updated }));
       showToast('插图上传成功', 'success');
     } catch {
@@ -190,7 +138,6 @@ React.useEffect(() => {
     }
   };
 
-  // ── 简介保存 ──
   const handleSaveIntro = async () => {
     if (!book.id) return;
     try {
@@ -203,7 +150,6 @@ React.useEffect(() => {
     }
   };
 
-  // ── 提交印象分 ──
   const handleSubmitReview = async () => {
     if (!starRating) { showToast('请先选择分数', 'warning'); return; }
     if (!book.id) return;
@@ -233,411 +179,234 @@ React.useEffect(() => {
     }
   };
 
-  // ── 书评点赞 ──
   const handleToggleLike = async (reviewIndex: number) => {
     if (!book.id) return;
     try {
-      const updated = await toggle_review_like(
-        book.id,
-        reviews,
-        reviewIndex,
-        currentUserId
-      );
+      const updated = await toggle_review_like(book.id, reviews, reviewIndex, currentUserId);
       setBook(prev => ({ ...prev, reader_reviews: updated }));
     } catch {
       showToast('操作失败', 'error');
     }
   };
 
-  const secTitle: React.CSSProperties = {
-    fontSize: 13,
-    fontWeight: 600,
-    color: '#a1a1aa',
-    marginBottom: 8,
-    letterSpacing: '0.04em',
-  };
-
-  const pill = (label: string, inv?: boolean): React.CSSProperties => ({
-    fontSize: 12,
-    padding: '3px 9px',
-    borderRadius: 20,
-    border: '0.5px solid',
-    borderColor: inv ? '#18181b' : '#e4e4e7',
-    backgroundColor: inv ? '#18181b' : 'transparent',
-    color: inv ? '#ffffff' : '#71717a',
-    display: 'inline-block',
-  });
+  // ── 统一样式 ──
+  const sectionCard = "bg-white rounded-2xl border border-zinc-100 p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]";
+  const sectionTitle = "text-[15px] font-bold text-zinc-800 mb-4 flex items-center gap-2";
 
   return (
-    <div className="min-h-screen bg-white">
-
+    <div className="min-h-screen bg-[#fafafa] pb-10">
       {/* ── 顶栏 ── */}
-      <div className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-zinc-100 px-4 py-3 flex items-center justify-between">
-        <button onClick={onNavigateBack} className="text-zinc-600 hover:text-black font-medium flex items-center gap-2">
-          <ArrowLeft className="w-5 h-5" /> <span className="text-base">返回</span>
-        </button>
+      <div className="sticky top-0 z-40 w-full bg-white/70 backdrop-blur-md border-b border-zinc-100 px-4 py-3">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <button onClick={onNavigateBack} className="text-zinc-500 hover:text-black flex items-center gap-1 transition-colors">
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm font-medium">书籍详情</span>
+          </button>
+        </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-4 space-y-5">
-
-        {/* ── Hero ── */}
-        <div className="flex gap-4">
-
-          {/* 封面 */}
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        
+        {/* ── Hero 区域 ── */}
+        <div className="flex gap-6 items-start">
           <div
-            className="flex-shrink-0 flex items-center justify-center overflow-hidden relative cursor-pointer group"
-            style={{
-              width: 80, height: 112,
-              borderRadius: 6,
-              backgroundColor: '#f4f4f5',
-              border: '0.5px solid #e4e4e7',
-            }}
+            className="flex-shrink-0 relative group cursor-pointer shadow-md"
+            style={{ width: 100, height: 140, borderRadius: 10, overflow: 'hidden', border: '1px solid #f4f4f5' }}
             onClick={() => coverInputRef.current?.click()}
           >
             {uploadingCover ? (
-              <div className="w-5 h-5 border-2 border-zinc-300 border-t-zinc-700 rounded-full animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center bg-zinc-50">
+                <div className="w-5 h-5 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin" />
+              </div>
             ) : book.cover_url ? (
-              <img src={book.cover_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
             ) : (
-              <BookIcon />
+              <div className="w-full h-full bg-zinc-100 flex items-center justify-center"><BookIcon /></div>
             )}
-            <div
-              className="absolute inset-0 flex items-end justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ background: 'rgba(0,0,0,0.35)', borderRadius: 6 }}
-            >
-              <span style={{ color: '#fff', fontSize: 10, paddingBottom: 6 }}>上传封面</span>
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-2">
+              <span className="text-white text-[10px]">更换封面</span>
             </div>
           </div>
           <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
 
-          {/* 基础信息 */}
-          <div className="flex-1 min-w-0">
-            <div className="text-xl font-semibold mb-1" style={{ color: '#18181b', lineHeight: 1.3 }}>
-              {book.book_name}
-            </div>
-            <div className="text-sm mb-2" style={{ color: '#71717a' }}>
-              {book.book_author}
-            </div>
-
-            {/* 标签 */}
-            <div className="flex flex-wrap gap-1.5 mb-3">
+          <div className="flex-1">
+            <h1 className="text-2xl font-extrabold text-zinc-900 leading-tight mb-1">{book.book_name}</h1>
+            <p className="text-zinc-500 text-sm mb-4">{book.book_author}</p>
+            
+            <div className="flex flex-wrap gap-2 mb-4">
               {book.recommendation_tag && (
-                <span style={pill(TAG_LABEL[book.recommendation_tag], book.recommendation_tag === 'recommend')}>
+                <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${book.recommendation_tag === 'recommend' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}>
                   {TAG_LABEL[book.recommendation_tag]}
                 </span>
               )}
-              {book.book_category && (
-                <span style={pill(book.book_category)}>
-                  {book.book_category}
-                </span>
-              )}
-              {book.serial_status && (
-                <span style={pill(STATUS_LABEL[book.serial_status] || book.serial_status)}>
-                  {STATUS_LABEL[book.serial_status] || book.serial_status}
-                </span>
-              )}
+              {book.book_category && <span className="px-2 py-0.5 rounded bg-zinc-50 border border-zinc-100 text-zinc-500 text-[11px]">{book.book_category}</span>}
+              {book.serial_status && <span className="px-2 py-0.5 rounded bg-zinc-50 text-zinc-500 text-[11px]">{STATUS_LABEL[book.serial_status]}</span>}
             </div>
 
-            {/* 最终得分 */}
-            <div className="text-2xl font-semibold" style={{ color: '#18181b', lineHeight: 1 }}>
-              {book.final_score.toFixed(1)}
-              <span className="text-base font-normal" style={{ color: '#71717a' }}> 最终得分</span>
-            </div>
-            <div className="text-sm mt-1" style={{ color: '#a1a1aa' }}>
-              {reviews.length+1} 人评分
+            <div className="flex flex-col">
+              <div className="flex items-baseline gap-1">
+                <span className="text-3xl font-black text-zinc-900">{book.final_score.toFixed(1)}</span>
+                <span className="text-zinc-400 text-xs font-bold">最终得分</span>
+              </div>
+              <span className="text-zinc-400 text-[11px] mt-1">{reviews.length + 1} 人已评</span>
             </div>
           </div>
         </div>
 
         {/* ── 简介 ── */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span style={secTitle}>简介</span>
+        <section className={sectionCard}>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className={sectionTitle}>书籍简介</h2>
             {!editingIntro && (
-              <button
-                onClick={() => setEditingIntro(true)}
-                className="flex items-center gap-1 text-xs"
-                style={{ color: '#a1a1aa' }}
-              >
-                <Edit2 className="w-3 h-3" /> 编辑
+              <button onClick={() => setEditingIntro(true)} className="text-zinc-400 hover:text-zinc-600">
+                <Edit2 className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
+          
           {editingIntro ? (
-            <div>
+            <div className="space-y-3">
               <textarea
                 value={introText}
                 onChange={e => setIntroText(e.target.value)}
-                className="w-full text-sm outline-none resize-none"
-                style={{
-                  padding: '8px 10px',
-                  border: '0.5px solid #e4e4e7',
-                  borderRadius: 8,
-                  height: 120,
-                  marginBottom: 6,
-                  color: '#18181b',
-                  fontFamily: 'inherit',
-                  lineHeight: 1.7,
-                }}
+                className="w-full text-sm p-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none min-h-[140px] leading-relaxed"
               />
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSaveIntro}
-                  className="text-sm px-3 py-1.5 rounded"
-                  style={{ backgroundColor: '#18181b', color: '#fff' }}
-                >
-                  保存
-                </button>
-                <button
-                  onClick={() => { setEditingIntro(false); setIntroText(book.book_intro || ''); }}
-                  className="text-sm px-3 py-1.5 rounded"
-                  style={{ border: '0.5px solid #e4e4e7', color: '#71717a' }}
-                >
-                  取消
-                </button>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setEditingIntro(false)} className="px-4 py-1.5 text-xs text-zinc-400">取消</button>
+                <button onClick={handleSaveIntro} className="px-4 py-1.5 text-xs bg-zinc-900 text-white rounded-lg">保存</button>
               </div>
-            </div>
-          ) : book.book_intro ? (
-            <div>
-              <div
-                style={{
-                  color: '#3f3f46',
-                  fontSize: 15,
-                  lineHeight: 1.8,
-                  overflow: 'hidden',
-                  maxHeight: introExpanded ? 'none' : '5.4em',
-                  position: 'relative',
-                }}
-              >
-                {book.book_intro.split(/\n+/).map((para, i) => (
-                  <p key={i} style={{ marginBottom: '0.6em' }}>{para}</p>
-                ))}
-              </div>
-              {book.book_intro.split(/\n+/).length > 3 || book.book_intro.length > 120 ? (
-                <button
-                  onClick={() => setIntroExpanded(v => !v)}
-                  className="text-sm mt-1"
-                  style={{ color: '#a1a1aa' }}
-                >
-                  {introExpanded ? '收起 ↑' : '展开全文 ↓'}
-                </button>
-              ) : null}
             </div>
           ) : (
-            <p className="text-sm leading-relaxed" style={{ color: '#a1a1aa' }}>
-              暂无简介，点击编辑添加…
-            </p>
+            <div className="relative">
+              <div 
+                className={`text-zinc-600 text-[14px] leading-relaxed transition-all duration-300 ${!introExpanded && 'max-h-24 overflow-hidden'}`}
+                style={{ whiteSpace: 'pre-wrap' }}
+              >
+                {book.book_intro || '暂无简介，点击右上角添加...'}
+              </div>
+              {book.book_intro && book.book_intro.length > 100 && (
+                <button 
+                  onClick={() => setIntroExpanded(!introExpanded)} 
+                  className="w-full mt-3 py-1 text-xs font-bold text-zinc-400 flex items-center justify-center gap-1 border-t border-zinc-50"
+                >
+                  {introExpanded ? <><ChevronUp className="w-3 h-3"/> 收起内容</> : <><ChevronDown className="w-3 h-3"/> 展开全文</>}
+                </button>
+              )}
+            </div>
           )}
-        </div>
+        </section>
 
         {/* ── 人物 ── */}
         {book.book_characters && book.book_characters.length > 0 && (
-          <div>
-            <div style={secTitle}>人物</div>
-            <div
-              className="grid gap-2"
-              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}
-            >
-              {book.book_characters.map((char: Character, idx: number) => (
-                <div
-                  key={idx}
-                  className="cursor-pointer group"
-                  style={{
-                    border: '0.5px solid #e4e4e7',
-                    borderRadius: 8,
-                    padding: '8px 10px',
-                    position: 'relative',
-                  }}
-                  onClick={() => {
-                    setPendingCharIdx(idx);
-                    charInputRef.current?.click();
-                  }}
-                >
-                  <div
-                    className="flex items-center justify-center overflow-hidden mb-2 relative"
-                    style={{
-                      width: '100%', height: 60,
-                      borderRadius: 4,
-                      backgroundColor: '#f4f4f5',
-                    }}
-                  >
+          <section>
+            <h2 className={sectionTitle + " px-1"}>人物档案</h2>
+            <div className="flex gap-4 overflow-x-auto pb-4 px-1 scrollbar-hide">
+              {book.book_characters.map((char, idx) => (
+                <div key={idx} className="flex-shrink-0 w-20 group cursor-pointer" onClick={() => { setPendingCharIdx(idx); charInputRef.current?.click(); }}>
+                  <div className="w-20 h-20 rounded-full bg-zinc-100 border-2 border-white shadow-sm overflow-hidden mb-2 relative">
                     {uploadingCharIdx === idx ? (
-                      <div className="w-4 h-4 border-2 border-zinc-300 border-t-zinc-700 rounded-full animate-spin" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-zinc-50/80">
+                        <div className="w-4 h-4 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin" />
+                      </div>
                     ) : char.illustration_url ? (
-                      <img src={char.illustration_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={char.illustration_url} className="w-full h-full object-cover" />
                     ) : (
-                      <PersonIcon />
+                      <div className="w-full h-full flex items-center justify-center"><PersonIcon /></div>
                     )}
-                    <div
-                      className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 4 }}
-                    >
-                      <span style={{ color: '#fff', fontSize: 10 }}>上传插图</span>
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Edit2 className="w-4 h-4 text-white" />
                     </div>
                   </div>
-                  <div className="text-sm font-medium" style={{ color: '#18181b' }}>{char.name}</div>
-                  <div className="text-xs" style={{ color: '#a1a1aa', marginTop: 1 }}>{char.role}</div>
+                  <div className="text-center">
+                    <div className="text-[12px] font-bold text-zinc-800 truncate">{char.name}</div>
+                    <div className="text-[10px] text-zinc-400">{char.role}</div>
+                  </div>
                 </div>
               ))}
             </div>
-            <input
-              ref={charInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleCharUpload}
-            />
-          </div>
+            <input ref={charInputRef} type="file" accept="image/*" className="hidden" onChange={handleCharUpload} />
+          </section>
         )}
 
-        {/* ── 读者书评 ── */}
-        <div>
-          <div style={secTitle}>读者书评</div>
-          {reviews.length === 0 ? (
-            <p className="text-sm" style={{ color: '#a1a1aa' }}>暂无书评</p>
-          ) : (
-            <div>
-              {reviews.map((r, i) => {
-                const liked = r.liked_by.includes(currentUserId);
-                return (
-                  <div
-                    key={i}
-                    className="flex gap-3 py-3"
-                    style={{ borderBottom: '0.5px solid #f4f4f5' }}
-                  >
-                    <div
-                      className="flex-shrink-0 flex items-center justify-center rounded-full overflow-hidden text-sm font-medium"
-                      style={{
-                        width: 32, height: 32,
-                        backgroundColor: '#f4f4f5',
-                        border: '0.5px solid #e4e4e7',
-                        color: '#71717a',
-                      }}
-                    >
-                      {(r as any).avatar_url ? (
-                        <img src={(r as any).avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        r.user_name.charAt(0)
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2 mb-1">
-                        <span className="text-sm font-medium" style={{ color: '#18181b' }}>{r.user_name}</span>
-                        <span className="text-sm" style={{ color: '#a1a1aa' }}>印象分 {r.impression_score.toFixed(1)}</span>
-                      </div>
-                      {r.review_text && (
-                        <p className="text-sm leading-relaxed mb-2" style={{ color: '#3f3f46' }}>
-                          {r.review_text}
-                        </p>
-                      )}
-                      <button
-                        onClick={() => handleToggleLike(i)}
-                        className="flex items-center gap-1 text-sm transition-colors"
-                        style={{
-                          color: liked ? '#18181b' : '#a1a1aa',
-                          border: '0.5px solid',
-                          borderColor: liked ? '#e4e4e7' : '#f4f4f5',
-                          borderRadius: 20,
-                          padding: '2px 8px',
-                          background: 'none',
-                        }}
-                      >
-                        <HeartIcon filled={liked} />
-                        <span>{r.likes}</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* ── 我的印象分 ── */}
-        <div
-          style={{
-            border: '0.5px solid #e4e4e7',
-            borderRadius: 12,
-            padding: 14,
-          }}
-        >
-          <div className="text-sm font-medium mb-3" style={{ color: '#18181b' }}>
-            {myReview ? '修改我的印象分' : '打印象分（1–10）'}
+        {/* ── 撰写评论卡片 ── */}
+        <section className="bg-zinc-900 rounded-2xl p-6 text-white shadow-xl">
+          <h2 className="text-sm font-bold mb-4 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+            {myReview ? '修改我的评价' : '发表你的印象分'}
+          </h2>
+          <div className="flex items-center gap-2 mb-5">
+            {[...Array(10)].map((_, i) => (
+              <button
+                key={i}
+                onMouseEnter={() => setHoverStar(i + 1)}
+                onMouseLeave={() => setHoverStar(0)}
+                onClick={() => setStarRating(i + 1)}
+                className={`text-xl transition-all duration-200 ${ (hoverStar || starRating) > i ? 'text-white scale-125' : 'text-zinc-700'}`}
+              >
+                ★
+              </button>
+            ))}
+            <span className="ml-3 text-2xl font-black text-white italic">{starRating || '0'}</span>
           </div>
-
-          <div className="flex items-center gap-1 mb-3">
-            {Array.from({ length: 10 }, (_, i) => {
-              const n = i + 1;
-              const lit = n <= (hoverStar || starRating);
-              return (
-                <span
-                  key={n}
-                  onClick={() => setStarRating(n)}
-                  onMouseEnter={() => setHoverStar(n)}
-                  onMouseLeave={() => setHoverStar(0)}
-                  style={{
-                    fontSize: 20,
-                    cursor: 'pointer',
-                    color: lit ? '#18181b' : '#e4e4e7',
-                    lineHeight: 1,
-                    userSelect: 'none',
-                  }}
-                >
-                  ★
-                </span>
-              );
-            })}
-            <span className="text-sm ml-1" style={{ color: '#a1a1aa' }}>
-              {starRating ? `${starRating} 分` : '点击评分'}
-            </span>
-          </div>
-
           <textarea
             value={reviewText}
             onChange={e => setReviewText(e.target.value)}
-            placeholder="写下你的书评（可选）…"
-            className="w-full text-sm outline-none resize-none"
-            style={{
-              padding: '7px 10px',
-              border: '0.5px solid #e4e4e7',
-              borderRadius: 8,
-              height: 56,
-              marginBottom: 8,
-              color: '#18181b',
-              fontFamily: 'inherit',
-              backgroundColor: '#fafafa',
-            }}
+            placeholder="写下你对此书的排雷或安利感悟..."
+            className="w-full bg-zinc-800 border-none rounded-xl p-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:ring-1 focus:ring-zinc-600 outline-none min-h-[100px] mb-4"
           />
-
           <button
             onClick={handleSubmitReview}
             disabled={submittingReview || !starRating}
-            className="w-full text-sm font-medium py-2 rounded-lg transition-colors"
-            style={{
-              backgroundColor: starRating ? '#18181b' : '#f4f4f5',
-              color: starRating ? '#fff' : '#a1a1aa',
-              border: 'none',
-            }}
+            className={`w-full py-3 rounded-xl text-sm font-bold transition-all ${starRating ? 'bg-white text-zinc-900 shadow-lg' : 'bg-zinc-800 text-zinc-600'}`}
           >
-            {submittingReview ? '提交中…' : myReview ? '更新评分' : '提交评分'}
+            {submittingReview ? '提交中...' : myReview ? '更新评价' : '发布评价'}
           </button>
-        </div>
+        </section>
 
-        {/* ── 查看完整帖子 ── */}
+        {/* ── 读者书评列表 ── */}
+        <section className="space-y-4">
+          <h2 className={sectionTitle + " px-1"}>书友短评 ({reviews.length})</h2>
+          {reviews.length === 0 ? (
+            <div className="text-center py-10 text-zinc-400 text-sm">暂无短评，快来抢沙发</div>
+          ) : (
+            <div className="space-y-3">
+              {reviews.map((r, i) => (
+                <div key={i} className="bg-white p-4 rounded-xl border border-zinc-100">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-400 uppercase">
+                        {r.user_name.charAt(0)}
+                      </div>
+                      <span className="text-xs font-bold text-zinc-700">{r.user_name}</span>
+                    </div>
+                    <div className="text-[11px] font-black bg-zinc-50 px-2 py-0.5 rounded text-zinc-400 italic">
+                      SCORE {r.impression_score.toFixed(1)}
+                    </div>
+                  </div>
+                  <p className="text-sm text-zinc-600 leading-relaxed mb-3 pl-10">{r.review_text}</p>
+                  <div className="flex justify-end pl-10">
+                    <button 
+                      onClick={() => handleToggleLike(i)}
+                      className={`flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full transition-all ${r.liked_by.includes(currentUserId) ? 'bg-zinc-900 text-white shadow-md' : 'bg-zinc-50 text-zinc-400'}`}
+                    >
+                      <HeartIcon filled={r.liked_by.includes(currentUserId)} />
+                      {r.likes}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ── 底部操作 ── */}
         <button
           onClick={() => onPostClick(book.post_id)}
-          className="w-full py-2.5 text-sm transition-colors"
-          style={{
-            border: '0.5px solid #e4e4e7',
-            borderRadius: 10,
-            color: '#18181b',
-            backgroundColor: 'transparent',
-          }}
+          className="w-full py-4 rounded-2xl border-2 border-zinc-100 text-zinc-900 font-black text-sm hover:bg-zinc-50 transition-all flex items-center justify-center gap-2"
         >
-          查看完整帖子 →
+          查看完整帖子详情 <ArrowLeft className="w-4 h-4 rotate-180" />
         </button>
 
-        <div style={{ height: 24 }} />
       </div>
     </div>
   );
