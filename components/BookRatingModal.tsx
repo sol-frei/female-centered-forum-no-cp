@@ -28,6 +28,9 @@ export interface BookRatingData {
   book_intro: string;
   book_link: string;
   book_characters: { name: string; role: string; avatar?: string; illustration_url?: string }[];
+  // 编辑时需保留的字段
+  reviewer_comment?: string;
+  original_impressed_score?: number;
 }
 
 const BOOK_CATEGORIES = [
@@ -133,7 +136,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       book_author: bookAuthor,
       book_platform: bookPlatform,
       book_category: bookCategory,
-      reviewer_name: reviewerName || '匿名发帖者',
+      reviewer_name: reviewerName.trim(),  // 空值透传，由外层决定默认名
       impressed_score: Number(impressedScore),
       principle_scores: principleScores,
       principle_remarks: principleRemarks,
@@ -146,6 +149,9 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       book_intro: bookIntro,
       book_link: bookLink,
       book_characters: bookCharacters.filter(c => c.name.trim()),
+      // 透传编辑前已有的字段，防止更新时丢失
+      reviewer_comment: initialData?.reviewer_comment,
+      original_impressed_score: initialData?.original_impressed_score,
     });
   };
 
@@ -238,7 +244,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
                 <input
                   type="text" value={bookPlatform}
                   onChange={(e) => setBookPlatform(e.target.value)}
-                  placeholder="晋江、番茄等"
+                  placeholder="番茄等"
                   className="w-full px-3 py-2 border border-zinc-200 rounded text-sm outline-none focus:border-zinc-400 transition-colors placeholder:text-zinc-300"
                 />
               </div>
