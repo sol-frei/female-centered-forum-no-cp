@@ -74,7 +74,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
   const [bookPlatform, setBookPlatform] = useState(initialData?.book_platform || '');
   const [bookCategory, setBookCategory] = useState(initialData?.book_category || '');
   const [reviewerName, setReviewerName] = useState(initialData?.reviewer_name || '');
-  const [impressedScore, setImpressedScore] = useState<number | string>(initialData?.impressed_score ?? 10);
+  const [impressedScore, setImpressedScore] = useState<number | string>(initialData?.post_impressed_score ?? 10);
   const [principleScores, setPrincipleScores] = useState<{ [key: string]: 'yes' | 'no' | null }>(
     initialData?.principle_scores || {}
   );
@@ -154,7 +154,6 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       book_link: bookLink,
       book_characters: bookCharacters.filter(c => c.name.trim()),
       reviewer_comment: reviewerComment.trim() || null,  // 空时传 null，确保能清除数据库旧值
-      original_impressed_score: initialData?.original_impressed_score,
     });
   };
 
@@ -483,7 +482,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       <div className="px-4 py-3 border-t border-zinc-200 bg-white flex items-center justify-between">
         <div className="flex items-baseline gap-2">
           <span className="text-xs text-zinc-400">最终评分</span>
-          <span className="text-2xl font-bold text-zinc-900">{finalScore.toFixed(1)}</span>
+          <span className="text-2xl font-bold text-zinc-900">{post_final_score.toFixed(1)}</span>
           <span className="text-xs text-zinc-400">/ 10</span>
         </div>
         <div className="flex items-center gap-3">
