@@ -450,7 +450,6 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
             recommendation_tag: bookRating.recommendation_tag,
             reader_reviews: bookRating.reader_reviews,
             reviewer_comment: bookRating.reviewer_comment,
-            original_impressed_score: bookRating.original_impressed_score,
           } as BookRatingData : undefined)}
         />
       )}
