@@ -430,7 +430,7 @@ const PostDetailPage = ({
 
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     <div className="bg-white rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-zinc-700">{bookRating.impressed_score}</div>
+                      <div className="text-2xl font-bold text-zinc-700">{bookRating.original_impressed_score}</div>
                       <div className="text-xs text-zinc-500 mt-1">印象分</div>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center">
