@@ -441,7 +441,6 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
             principle_remarks: bookRating.principle_remarks,
             extra_deduction: bookRating.extra_deduction,
             extra_remark: bookRating.extra_remark,
-            final_score: bookRating.final_score,
             book_characters: bookRating.book_characters,
             book_category: bookRating.book_category,
             book_intro: bookRating.book_intro,
