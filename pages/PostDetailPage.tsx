@@ -424,7 +424,7 @@ const PostDetailPage = ({
                       <div><span className="text-zinc-500">书名：</span><span className="font-medium text-zinc-800">{bookRating.book_name}</span></div>
                       <div><span className="text-zinc-500">作者：</span><span className="font-medium text-zinc-800">{bookRating.book_author}</span></div>
                       {bookRating.book_platform && (<div><span className="text-zinc-500">平台：</span><span className="font-medium text-zinc-800">{bookRating.book_platform}</span></div>)}
-                      <div><span className="text-zinc-500">评分人：</span><span className="font-medium text-zinc-800">{bookRating.reviewer_name || bookRating.user_name}</span></div>
+                      <div><span className="text-zinc-500">评分人：</span><span className="font-medium text-zinc-800">{bookRating.reviewer_name?.trim() && (<div>评分人：{bookRating.reviewer_name}</div>)}</span></div>
                     </div>
                   </div>
 
