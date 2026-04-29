@@ -29,7 +29,7 @@ export interface BookRatingData {
   book_link: string;
   book_characters: { name: string; role: string; avatar?: string; illustration_url?: string }[];
   // 编辑时需保留的字段
-  reviewer_comment?: string;
+  reviewer_comment?: string | null;
   original_impressed_score?: number;
 }
 
@@ -151,7 +151,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       book_intro: bookIntro,
       book_link: bookLink,
       book_characters: bookCharacters.filter(c => c.name.trim()),
-      reviewer_comment: reviewerComment.trim() || undefined,
+      reviewer_comment: reviewerComment.trim() || null,  // 空时传 null，确保能清除数据库旧值
       original_impressed_score: initialData?.original_impressed_score,
     });
   };
