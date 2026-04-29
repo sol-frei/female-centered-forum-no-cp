@@ -32,7 +32,8 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
       book_author: bookRating.book_author,
       book_platform: bookRating.book_platform,
       reviewer_name: bookRating.reviewer_name ?? '',
-      impressed_score: bookRating.impressed_score,
+      // 回填原始印象分（而非被读者评分平均过的值），确保编辑时看到的是评分人录入的原始值
+      impressed_score: bookRating.original_impressed_score ?? bookRating.impressed_score,
       principle_scores: bookRating.principle_scores,
       principle_remarks: bookRating.principle_remarks,
       extra_deduction: bookRating.extra_deduction,
@@ -424,7 +425,8 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
             book_author: bookRating.book_author,
             book_platform: bookRating.book_platform,
             reviewer_name: bookRating.reviewer_name ?? '',
-            impressed_score: bookRating.impressed_score,
+            // 回填原始印象分（而非被读者评分平均过的值），确保编辑时看到的是评分人录入的原始值
+      impressed_score: bookRating.original_impressed_score ?? bookRating.impressed_score,
             principle_scores: bookRating.principle_scores,
             principle_remarks: bookRating.principle_remarks,
             extra_deduction: bookRating.extra_deduction,
