@@ -702,11 +702,13 @@ export async function delete_book_rating(ratingId: string): Promise<void> {
   }
 }
 
-// 帖子页专用：永远返回评分人原始数据，不受读者评分影响
+// 帖子页专用：查 book_ratings_full 视图，合并 book_details 中的详情字段
+// （book_intro / book_characters / serial_status 等存在 book_details，
+//   必须查视图才能拿到完整数据，否则编辑时这些字段永远为空）
 export async function get_book_rating_by_post(postId: string): Promise<BookRating | null> {
   try {
     const { data, error } = await supabase
-      .from('book_ratings')
+      .from('book_ratings_full')
       .select('*')
       .eq('post_id', postId)
       .maybeSingle();
