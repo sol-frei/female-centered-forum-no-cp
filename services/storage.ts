@@ -546,9 +546,9 @@ export async function create_book_rating(ratingData: {
   principle_remarks: { [key: string]: string };
   extra_deduction: number;
   extra_remark: string;
-  final_score: number;
   reviewer_comment: string;
   reviewer_name: string;
+  // 扩展字段写入 book_details
   serial_status?: 'finished' | 'ongoing' | 'hiatus';
   recommendation_tag?: 'recommend' | 'warn';
   book_intro?: string;
@@ -556,6 +556,7 @@ export async function create_book_rating(ratingData: {
   book_characters?: Character[];
 }): Promise<BookRating> {
   try {
+    // 1. 写入 book_ratings（核心评分数据）
     const { data, error } = await supabase
       .from('book_ratings')
       .insert([{
@@ -566,27 +567,35 @@ export async function create_book_rating(ratingData: {
         book_author: ratingData.book_author,
         book_platform: ratingData.book_platform,
         book_category: ratingData.book_category,
-        impressed_score: ratingData.impressed_score,
+        original_impressed_score: ratingData.impressed_score,
         principle_scores: ratingData.principle_scores,
         principle_remarks: ratingData.principle_remarks,
         extra_deduction: ratingData.extra_deduction,
         extra_remark: ratingData.extra_remark,
-        final_score: ratingData.final_score,
         reviewer_comment: ratingData.reviewer_comment,
         reviewer_name: ratingData.reviewer_name,
-        serial_status: ratingData.serial_status ?? null,
-        recommendation_tag: ratingData.recommendation_tag ?? null,
-        book_intro: ratingData.book_intro ?? null,
-        book_link: ratingData.book_link ?? null,
-        book_characters: ratingData.book_characters ?? [],
-        original_impressed_score: ratingData.impressed_score,
-        reader_reviews: [],
         created_at: new Date().toISOString(),
       }])
       .select()
       .single();
 
     if (error) throw error;
+
+    // 2. 写入 book_details（扩展展示数据）
+    const { error: detailsError } = await supabase
+      .from('book_details')
+      .upsert({
+        post_id: ratingData.post_id,
+        serial_status: ratingData.serial_status ?? null,
+        recommendation_tag: ratingData.recommendation_tag ?? null,
+        book_intro: ratingData.book_intro ?? null,
+        book_link: ratingData.book_link ?? null,
+        book_characters: ratingData.book_characters ?? [],
+        reader_reviews: [],
+      }, { onConflict: 'post_id' });
+
+    if (detailsError) throw detailsError;
+
     return data;
   } catch (error: any) {
     console.error('创建图书评分失败:', error);
@@ -594,8 +603,8 @@ export async function create_book_rating(ratingData: {
   }
 }
 
-// 写入 book_details 表的字段（扩展内容，所有登录用户可写）
-// impressed_score / final_score 由下方重算逻辑统一写入，不在此列表
+// book_details 存放扩展展示数据（所有登录用户可写）
+// impressed_score / final_score 由视图自动计算，无需前端维护
 const BOOK_DETAILS_FIELDS: (keyof BookRating)[] = [
   'cover_url',
   'book_intro',
@@ -606,55 +615,22 @@ const BOOK_DETAILS_FIELDS: (keyof BookRating)[] = [
   'recommendation_tag',
 ];
 
-// 任意一个变动都触发 impressed_score / final_score 重算并同步到 book_details
-const SCORE_TRIGGER_FIELDS = ['original_impressed_score', 'principle_scores', 'extra_deduction'];
-
-const REVERSE_SCORE_IDS = ['p23', 'p24', 'p25'];
-
-/** 根据最新数据重算书架展示用的 impressed_score 和 final_score */
-function recalcScores(bookData: {
-  original_impressed_score: number;
-  principle_scores: Record<string, 'yes' | 'no' | null>;
-  extra_deduction: number;
-  reader_reviews?: { impression_score: number }[];
-}): { impressed_score: number; final_score: number } {
-  const { original_impressed_score, principle_scores, extra_deduction, reader_reviews = [] } = bookData;
-
-  // 印象分 = 原始印象分与所有读者印象分的平均值
-  const readerTotal = reader_reviews.reduce((sum, r) => sum + r.impression_score, 0);
-  const impressed_score =
-    Math.round(((original_impressed_score + readerTotal) / (1 + reader_reviews.length)) * 10) / 10;
-
-  // 准则扣分
-  const principleDeduction = Object.entries(principle_scores).reduce((sum, [id, answer]) => {
-    if (REVERSE_SCORE_IDS.includes(id)) return sum + (answer === 'no' ? 1 : 0);
-    return sum + (answer === 'yes' ? 1 : 0);
-  }, 0);
-
-  const final_score = Math.max(
-    0,
-    Math.round((impressed_score - principleDeduction - extra_deduction) * 10) / 10
-  );
-
-  return { impressed_score, final_score };
-}
-
 export async function update_book_rating(
   ratingId: string,
   updates: Partial<BookRating>
 ): Promise<BookRating> {
   try {
-    // 1. 读取当前数据（post_id + 重算所需字段）
+    // 1. 读取 post_id
     const { data: existing, error: fetchIdError } = await supabase
       .from('book_ratings')
-      .select('post_id, original_impressed_score, principle_scores, extra_deduction')
+      .select('post_id')
       .eq('id', ratingId)
       .single();
 
     if (fetchIdError) throw fetchIdError;
     const postId = existing.post_id;
 
-    // 2. 分离：哪些字段写 book_details，哪些写 book_ratings
+    // 2. 分离字段：book_details（扩展内容）vs book_ratings（评分核心）
     const detailsUpdates: Record<string, any> = {};
     const ratingsUpdates: Record<string, any> = {};
 
@@ -666,12 +642,12 @@ export async function update_book_rating(
       }
     }
 
-    // reviewer_comment 清空时需显式写 null 才能清除数据库旧值
+    // reviewer_comment 清空时需显式写 null
     if ('reviewer_comment' in updates) {
       ratingsUpdates['reviewer_comment'] = updates.reviewer_comment ?? null;
     }
 
-    // 3. 先写 book_ratings（RLS 保护，仅原作者可写）
+    // 3. 写 book_ratings（RLS 保护，仅原作者可写）
     if (Object.keys(ratingsUpdates).length > 0) {
       const { error: ratingsError } = await supabase
         .from('book_ratings')
@@ -680,31 +656,7 @@ export async function update_book_rating(
       if (ratingsError) throw ratingsError;
     }
 
-    // 4. 若核心评分字段有变动，重算 impressed_score / final_score 并写入 book_details
-    const needsRecalc = SCORE_TRIGGER_FIELDS.some(f => f in updates);
-    if (needsRecalc) {
-      // 读取 book_details 里的 reader_reviews（读者书评存在这里）
-      const { data: detailRow } = await supabase
-        .from('book_details')
-        .select('reader_reviews')
-        .eq('post_id', postId)
-        .maybeSingle();
-
-      const { impressed_score, final_score } = recalcScores({
-        original_impressed_score:
-          (updates.original_impressed_score as number) ?? existing.original_impressed_score ?? 0,
-        principle_scores:
-          (updates.principle_scores as Record<string, 'yes' | 'no' | null>) ?? existing.principle_scores ?? {},
-        extra_deduction:
-          (updates.extra_deduction as number) ?? existing.extra_deduction ?? 0,
-        reader_reviews: detailRow?.reader_reviews ?? [],
-      });
-
-      detailsUpdates['impressed_score'] = impressed_score;
-      detailsUpdates['final_score'] = final_score;
-    }
-
-    // 5. 写 book_details（upsert，所有登录用户可写）
+    // 4. 写 book_details（upsert，所有登录用户可写）
     if (Object.keys(detailsUpdates).length > 0) {
       const { error: detailsError } = await supabase
         .from('book_details')
@@ -715,34 +667,15 @@ export async function update_book_rating(
       if (detailsError) throw detailsError;
     }
 
-    // 6. 读取合并后的最新数据返回
-    const { data: rating, error: ratingFetchError } = await supabase
-      .from('book_ratings')
+    // 5. 返回视图中合并后的最新数据（impressed_score/final_score 由视图自动算）
+    const { data, error: viewFetchError } = await supabase
+      .from('book_ratings_full')
       .select('*')
       .eq('id', ratingId)
       .single();
-    if (ratingFetchError) throw ratingFetchError;
+    if (viewFetchError) throw viewFetchError;
 
-    const { data: detail } = await supabase
-      .from('book_details')
-      .select('*')
-      .eq('post_id', postId)
-      .maybeSingle();
-
-    return {
-      ...rating,
-      ...(detail ? {
-        cover_url: detail.cover_url ?? rating.cover_url,
-        book_intro: detail.book_intro ?? rating.book_intro,
-        book_link: detail.book_link ?? rating.book_link,
-        book_characters: detail.book_characters ?? rating.book_characters,
-        reader_reviews: detail.reader_reviews ?? rating.reader_reviews,
-        impressed_score: detail.impressed_score ?? rating.impressed_score,
-        final_score: detail.final_score ?? rating.final_score,
-        serial_status: detail.serial_status ?? rating.serial_status,
-        recommendation_tag: detail.recommendation_tag ?? rating.recommendation_tag,
-      } : {}),
-    };
+    return data;
   } catch (error: any) {
     console.error('更新图书评分失败:', error);
     throw new Error(`更新图书评分失败: ${error.message}`);
@@ -1009,24 +942,17 @@ export async function submit_reader_review(
   }
 ): Promise<{ updatedReviews: ReaderReview[]; newImpressedScore: number; newFinalScore: number }> {
   // 1. 更新书评列表
-  const existingIndex = currentReviews.findIndex(
-    r => r.user_id === newReview.user_id
-  );
+  const existingIndex = currentReviews.findIndex(r => r.user_id === newReview.user_id);
 
   let updatedReviews: ReaderReview[];
-
   if (existingIndex >= 0) {
     updatedReviews = currentReviews.map((r, i) =>
       i === existingIndex
-        ? {
-            ...r,
-            impression_score: newReview.impression_score,
-            review_text: newReview.review_text,
-          }
+        ? { ...r, impression_score: newReview.impression_score, review_text: newReview.review_text }
         : r
     );
   } else {
-    const review: ReaderReview = {
+    updatedReviews = [...currentReviews, {
       user_id: newReview.user_id,
       user_name: newReview.user_name,
       impression_score: newReview.impression_score,
@@ -1034,56 +960,17 @@ export async function submit_reader_review(
       likes: 0,
       liked_by: [],
       created_at: new Date().toISOString(),
-    };
-    updatedReviews = [...currentReviews, review];
+    }];
   }
 
-  // 2. 读取当前书籍数据（需要 principles_deduction 和 extra_deduction 来重算）
-  const { data: bookData, error: fetchError } = await supabase
-    .from('book_ratings')
-    .select('principle_scores, extra_deduction')
-    .eq('id', bookRatingId)
-    .single();
+  // 2. 只写 reader_reviews，impressed_score / final_score 由视图自动重算
+  const updated = await update_book_rating(bookRatingId, { reader_reviews: updatedReviews });
 
-  if (fetchError) throw fetchError;
-
-  // 3. 计算新的印象均分：
-  //    评分人（Pluto等，无账号）的原始印象分 + 所有 reader_reviews 的印象分，一起平均
-  //    原始印象分存在数据库的 impressed_score 字段（发帖时录入，不会被覆盖，单独读取）
-  const { data: originalData } = await supabase
-    .from('book_ratings')
-    .select('original_impressed_score')
-    .eq('id', bookRatingId)
-    .single();
-  const originalImpressedScore = originalData?.original_impressed_score ?? 0;
-  const readerTotal = updatedReviews.reduce((sum, r) => sum + r.impression_score, 0);
-  const newImpressedScore = Math.round(
-    ((originalImpressedScore + readerTotal) / (1 + updatedReviews.length)) * 10
-  ) / 10;
-
-  // 4. 重新计算准则扣分，与 BookRatingModal.calculateFinalScore 逻辑完全一致：
-  //    p1-p22：选 'yes'（有）扣1分；p23-p25（reverseScore）：选 'no'（没有）扣1分
-  const REVERSE_SCORE_IDS = ['p23', 'p24', 'p25'];
-  const principleScores: Record<string, 'yes' | 'no' | null> = bookData?.principle_scores || {};
-  const principleDeduction = Object.entries(principleScores).reduce((sum, [id, answer]) => {
-    if (REVERSE_SCORE_IDS.includes(id)) {
-      return sum + (answer === 'no' ? 1 : 0);
-    } else {
-      return sum + (answer === 'yes' ? 1 : 0);
-    }
-  }, 0);
-
-  const extraDeduction = bookData?.extra_deduction ?? 0;
-  const newFinalScore = Math.round((newImpressedScore - principleDeduction - extraDeduction) * 10) / 10;
-
-  // 5. 一次性写入书评列表 + 更新后的分数
-  await update_book_rating(bookRatingId, {
-    reader_reviews: updatedReviews,
-    impressed_score: newImpressedScore,
-    final_score: newFinalScore,
-  });
-
-  return { updatedReviews, newImpressedScore, newFinalScore };
+  return {
+    updatedReviews,
+    newImpressedScore: updated.impressed_score,
+    newFinalScore: updated.final_score,
+  };
 }
 
 export async function toggle_review_like(
@@ -1108,21 +995,4 @@ export async function toggle_review_like(
 
   await update_book_rating(bookRatingId, { reader_reviews: updatedReviews });
   return updatedReviews;
-}
-
-// 专门给帖子页用，永远返回评分人的原始数据，不受读者评分影响
-export async function get_book_rating_by_post_original(postId: string): Promise<BookRating | null> {
-  try {
-    const { data, error } = await supabase
-      .from('book_ratings')  // 查原表，不查视图
-      .select('*')
-      .eq('post_id', postId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
-  } catch (error: any) {
-    console.error('获取图书评分失败:', error);
-    return null;
-  }
 }
