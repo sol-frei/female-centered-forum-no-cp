@@ -168,6 +168,7 @@ export interface BookRating {
   // 元数据
   reviewer_name: string;
   reviewer_comment?: string;
+  original_impressed_score?: number; // 原始印象分（修改前的备份）
   created_at: string;
   updated_at?: string;
 }
