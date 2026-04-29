@@ -414,7 +414,7 @@ const PostDetailPage = ({
                       <span className="text-2xl">📚</span> 图书评分
                     </h3>
                     <div className="text-right">
-                      <div className="text-3xl font-bold text-zinc-800">{(bookRating.post_final_score ?? bookRating.final_score ?? 0).toFixed(1)}</div>
+                      <div className="text-3xl font-bold text-zinc-800">{((bookRating?.post_final_score ?? bookRating?.final_score ?? 0)).toFixed(1)}</div>
                       <div className="text-xs text-zinc-500">最终得分</div>
                     </div>
                   </div>
@@ -430,7 +430,7 @@ const PostDetailPage = ({
 
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     <div className="bg-white rounded-lg p-3 text-center">
-                      <div className="text-2xl font-bold text-zinc-700">{bookRating.post_impressed_score ?? bookRating.impressed_score ?? 0}</div>
+                      <div className="text-2xl font-bold text-zinc-700">{bookRating?.post_impressed_score ?? bookRating?.impressed_score ?? 0}</div>
                       <div className="text-xs text-zinc-500 mt-1">印象分</div>
                     </div>
                     <div className="bg-white rounded-lg p-3 text-center">
