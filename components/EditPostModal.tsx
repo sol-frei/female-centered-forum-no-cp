@@ -346,17 +346,17 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-white rounded-lg p-2 text-center">
-                <div className="text-base font-bold text-blue-600">{editRating.post_impressed_score}</div>
+                <div className="text-base font-bold text-blue-600">{editRating.impressed_score}</div>
                 <div className="text-[10px] text-zinc-400">印象分</div>
               </div>
               <div className="bg-white rounded-lg p-2 text-center">
                 <div className="text-base font-bold text-red-500">
-                  -{(editRating.post_impressed_score - editRating.post_final_score - editRating.extra_deduction).toFixed(1)}
+                  -{(editRating.impressed_score - editRating.final_score - editRating.extra_deduction).toFixed(1)}
                 </div>
                 <div className="text-[10px] text-zinc-400">准则扣分</div>
               </div>
               <div className="bg-white rounded-lg p-2 text-center">
-                <div className="text-base font-bold text-purple-600">{editRating.post_final_score.toFixed(1)}</div>
+                <div className="text-base font-bold text-purple-600">{editRating.final_score.toFixed(1)}</div>
                 <div className="text-[10px] text-zinc-400">最终得分</div>
               </div>
             </div>
@@ -429,38 +429,28 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
           }}
           showToast={showToast}
           initialData={editRating || (bookRating ? {
-           // 1. 基础信息与文本字段（带空字符串兜底）
-            book_name: bookRating.book_name ?? '',
-            book_author: bookRating.book_author ?? '',
-            book_platform: bookRating.book_platform ?? '',
-            book_category: bookRating.book_category ?? '',
+            book_name: bookRating.book_name,
+            book_author: bookRating.book_author,
+            book_platform: bookRating.book_platform,
             reviewer_name: bookRating.reviewer_name ?? '',
-            book_intro: bookRating.book_intro ?? '',
-            book_link: bookRating.book_link ?? '',
-            reviewer_comment: bookRating.reviewer_comment ?? '',
-            cover_url: bookRating.cover_url, // 选填字段可不兜底，或加 ?? null
-
-            // 2. 评分逻辑适配（解决白屏的关键：防止 toFixed(1) 作用于 null）
-            // 逻辑：优先读“楼主分”，没有则读“全站分”，再没有就给默认值
-            impressed_score: bookRating.post_impressed_score ?? bookRating.impressed_score ?? 8,
-            final_score: bookRating.post_final_score ?? bookRating.final_score ?? 0,
-            
-            // 明确给 post_ 字段赋值，确保保存时能准确传回数据库
-            post_impressed_score: bookRating.post_impressed_score ?? bookRating.impressed_score ?? 8,
-            post_final_score: bookRating.post_final_score ?? bookRating.final_score ?? 0,
-
-            // 3. 复杂对象与数组（带类型兜底，防止 .map() 或 Object.keys() 报错）
-            principle_scores: bookRating.principle_scores ?? {},
-            principle_remarks: bookRating.principle_remarks ?? {},
-            book_characters: bookRating.book_characters ?? [],
-            reader_reviews: bookRating.reader_reviews ?? [],
-
-            // 4. 数值与状态枚举兜底
-            extra_deduction: bookRating.extra_deduction ?? 0,
-            extra_remark: bookRating.extra_remark ?? '',
-            serial_status: bookRating.serial_status ?? 'ongoing',
-            recommendation_tag: bookRating.recommendation_tag ?? 'recommend',
-            
+            // ✨ 关键修改：回填楼主自己的原始分字段
+            impressed_score: bookRating.post_impressed_score ?? bookRating.impressed_score,
+            // ✨ 关键修改：回填楼主自己的初始总分字段
+            final_score: bookRating.post_final_score ?? bookRating.final_score,
+            principle_scores: bookRating.principle_scores,
+            principle_remarks: bookRating.principle_remarks,
+            extra_deduction: bookRating.extra_deduction,
+            extra_remark: bookRating.extra_remark,
+            book_characters: bookRating.book_characters,
+            book_category: bookRating.book_category,
+            book_intro: bookRating.book_intro,
+            book_link: bookRating.book_link,
+            cover_url: bookRating.cover_url,
+            serial_status: bookRating.serial_status,
+            recommendation_tag: bookRating.recommendation_tag,
+            reader_reviews: bookRating.reader_reviews,
+            reviewer_comment: bookRating.reviewer_comment,
+            original_impressed_score: bookRating.original_impressed_score,
           } as BookRatingData : undefined)}
         />
       )}
