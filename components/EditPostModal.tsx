@@ -38,6 +38,17 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
       extra_deduction: bookRating.extra_deduction,
       extra_remark: bookRating.extra_remark,
       final_score: bookRating.final_score,
+      // 补全扩展字段，防止 update_book_rating 时丢失
+      book_characters: bookRating.book_characters,
+      book_category: bookRating.book_category,
+      book_intro: bookRating.book_intro,
+      book_link: bookRating.book_link,
+      cover_url: bookRating.cover_url,
+      serial_status: bookRating.serial_status,
+      recommendation_tag: bookRating.recommendation_tag,
+      reader_reviews: bookRating.reader_reviews,
+      reviewer_comment: bookRating.reviewer_comment,
+      original_impressed_score: bookRating.original_impressed_score,
     } as BookRatingData : null
   );
 
@@ -203,6 +214,9 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
         title,
         content: JSON.stringify(finalContent),
         category,
+        // 保留原有字段，防止更新时丢失主角、简介等信息
+        protagonist: post.protagonist,
+        description: post.description,
         updated_at: new Date().toISOString()
       });
 
@@ -211,9 +225,9 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
         if (bookRating) {
           await update_book_rating(bookRating.id, editRating);
         } else {
-          // 同 CreatePostModal 逻辑：优先使用填写的 reviewer_name 作为 user_name
+          // 优先使用填写的 reviewer_name，为空时默认取发帖人的用户名
           const ratingUserName =
-            editRating.reviewer_name?.trim() && editRating.reviewer_name !== '匿名发帖者'
+            editRating.reviewer_name?.trim()
               ? editRating.reviewer_name.trim()
               : user.user_name;
           await create_book_rating({
@@ -416,6 +430,16 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
             extra_deduction: bookRating.extra_deduction,
             extra_remark: bookRating.extra_remark,
             final_score: bookRating.final_score,
+            book_characters: bookRating.book_characters,
+            book_category: bookRating.book_category,
+            book_intro: bookRating.book_intro,
+            book_link: bookRating.book_link,
+            cover_url: bookRating.cover_url,
+            serial_status: bookRating.serial_status,
+            recommendation_tag: bookRating.recommendation_tag,
+            reader_reviews: bookRating.reader_reviews,
+            reviewer_comment: bookRating.reviewer_comment,
+            original_impressed_score: bookRating.original_impressed_score,
           } as BookRatingData : undefined)}
         />
       )}
