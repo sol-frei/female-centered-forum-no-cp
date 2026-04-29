@@ -424,7 +424,7 @@ const PostDetailPage = ({
                       <div><span className="text-zinc-500">书名：</span><span className="font-medium text-zinc-800">{bookRating.book_name}</span></div>
                       <div><span className="text-zinc-500">作者：</span><span className="font-medium text-zinc-800">{bookRating.book_author}</span></div>
                       {bookRating.book_platform && (<div><span className="text-zinc-500">平台：</span><span className="font-medium text-zinc-800">{bookRating.book_platform}</span></div>)}
-                      {bookRating.reviewer_name?.trim() && (<div><span className="text-zinc-500">评分人：</span><span className="font-medium text-zinc-800">{bookRating.reviewer_name}</span></div>)}
+                      <div><span className="text-zinc-500">评分人：</span><span className="font-medium text-zinc-800">{bookRating.reviewer_name || bookRating.user_name}</span></div>
                     </div>
                   </div>
 
@@ -455,12 +455,10 @@ const PostDetailPage = ({
                     </div>
                   </div>
 
-
-
                   {bookRating.reviewer_comment && (
-                    <div className="bg-white rounded-lg p-4 mb-4">
-                      <div className="text-sm font-bold text-zinc-500 mb-1">爱女姐有话说</div>
-                      <div className="text-base text-zinc-700 whitespace-pre-wrap">{bookRating.reviewer_comment}</div>
+                    <div className="bg-white rounded-lg p-4">
+                      <div className="text-base font-bold text-zinc-700 mb-2">爱女姐有话说</div>
+                      <div className="text-base text-zinc-600 whitespace-pre-wrap">{bookRating.reviewer_comment}</div>
                     </div>
                   )}
 
