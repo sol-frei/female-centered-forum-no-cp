@@ -159,7 +159,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col overflow-hidden text-zinc-900">
+    <div className="fixed inset-0 bg-white z-50 flex flex-col text-zinc-900">
 
       {/* ── 顶栏 ── */}
       <div className="px-4 py-3 flex items-center justify-between border-b border-zinc-200">
@@ -181,7 +181,7 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       </div>
 
       {/* ── 主体 ── */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
 
           {/* 评分规则（折叠） */}
