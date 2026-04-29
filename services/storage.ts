@@ -634,6 +634,11 @@ export async function update_book_rating(
       }
     }
 
+    // reviewer_comment 清空时 undefined 不会进入 entries，需显式写 null 才能清除数据库旧值
+    if ('reviewer_comment' in updates) {
+      ratingsUpdates['reviewer_comment'] = updates.reviewer_comment ?? null;
+    }
+
     // 3. 写 book_details（upsert by post_id，所有登录用户可写）
     if (Object.keys(detailsUpdates).length > 0) {
       const { error: detailsError } = await supabase
