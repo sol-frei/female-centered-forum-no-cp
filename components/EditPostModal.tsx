@@ -346,17 +346,17 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-white rounded-lg p-2 text-center">
-                <div className="text-base font-bold text-blue-600">{editRating.impressed_score}</div>
+                <div className="text-base font-bold text-blue-600">{editRating.post_impressed_score}</div>
                 <div className="text-[10px] text-zinc-400">印象分</div>
               </div>
               <div className="bg-white rounded-lg p-2 text-center">
                 <div className="text-base font-bold text-red-500">
-                  -{(editRating.impressed_score - editRating.final_score - editRating.extra_deduction).toFixed(1)}
+                  -{(editRating.post_impressed_score - editRating.post_final_score - editRating.extra_deduction).toFixed(1)}
                 </div>
                 <div className="text-[10px] text-zinc-400">准则扣分</div>
               </div>
               <div className="bg-white rounded-lg p-2 text-center">
-                <div className="text-base font-bold text-purple-600">{editRating.final_score.toFixed(1)}</div>
+                <div className="text-base font-bold text-purple-600">{editRating.post_final_score.toFixed(1)}</div>
                 <div className="text-[10px] text-zinc-400">最终得分</div>
               </div>
             </div>
