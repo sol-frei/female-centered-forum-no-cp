@@ -223,18 +223,27 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
 
       // 更新/创建评分
       if (editRating) {
+        // 1. 构造一个符合新数据库字段名的 Payload
+        const ratingPayload = {
+          ...editRating,
+          post_impressed_score: editRating.impressed_score, // 将 弹窗分 映射到 楼主原始分
+          post_final_score: editRating.final_score,         // 将 弹窗总分 映射到 楼主初始总分
+        };
+      
         if (bookRating) {
-          await update_book_rating(bookRating.id, editRating);
+          // 更新现有评分
+          await update_book_rating(bookRating.id, ratingPayload);
         } else {
-          // 优先使用填写的 reviewer_name，为空时默认取发帖人的用户名
+          // 创建新评分
           const ratingUserName =
             editRating.reviewer_name?.trim()
               ? editRating.reviewer_name.trim()
               : user.user_name;
+      
           await create_book_rating({
             post_id: post.id,
             user_id: user.id,
-            ...editRating,
+            ...ratingPayload,
             user_name: ratingUserName,
           } as any);
         }
@@ -425,8 +434,10 @@ export default function EditPostModal({ user, post, bookRating, onClose, onSucce
             book_author: bookRating.book_author,
             book_platform: bookRating.book_platform,
             reviewer_name: bookRating.reviewer_name ?? '',
-            // 回填原始印象分（而非被读者评分平均过的值），确保编辑时看到的是评分人录入的原始值
-      impressed_score: bookRating.original_impressed_score ?? bookRating.impressed_score,
+            // ✨ 关键修改：回填楼主自己的原始分字段
+            impressed_score: bookRating.post_impressed_score ?? bookRating.impressed_score,
+            // ✨ 关键修改：回填楼主自己的初始总分字段
+            final_score: bookRating.post_final_score ?? bookRating.final_score,
             principle_scores: bookRating.principle_scores,
             principle_remarks: bookRating.principle_remarks,
             extra_deduction: bookRating.extra_deduction,
