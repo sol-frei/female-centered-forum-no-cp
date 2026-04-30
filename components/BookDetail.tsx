@@ -301,10 +301,22 @@ export default function BookDetail({
 
   const handleToggleLike = async (reviewIndex: number) => {
     if (!book.id) return;
+    // 乐观更新：先立即更新本地状态，不等网络返回，体感更快
+    const optimistic = reviews.map((r, i) => {
+      if (i !== reviewIndex) return r;
+      const liked = r.liked_by.includes(currentUserId);
+      return {
+        ...r,
+        likes: liked ? r.likes - 1 : r.likes + 1,
+        liked_by: liked ? r.liked_by.filter(id => id !== currentUserId) : [...r.liked_by, currentUserId],
+      };
+    });
+    setBook(prev => ({ ...prev, reader_reviews: optimistic }));
     try {
-      const updated = await toggle_review_like(book.id, reviews, reviewIndex, currentUserId);
-      setBook(prev => ({ ...prev, reader_reviews: updated }));
+      // 后台同步，失败时回滚
+      await toggle_review_like(book.id, reviews, reviewIndex, currentUserId);
     } catch {
+      setBook(prev => ({ ...prev, reader_reviews: reviews })); // 回滚
       showToast('点赞操作失败', 'error');
     }
   };
@@ -363,21 +375,23 @@ export default function BookDetail({
           {/* 书名、作者、标签 */}
           <div className="flex-1 flex flex-col justify-between h-[140px]">
             <div>
-              {/* 书名：移动端 text-xl 保证可读，桌面端 text-2xl */}
-              <h1 className="text-xl sm:text-2xl font-extrabold leading-tight mb-1">{book.book_name}</h1>
-              {/* 作者：从 text-sm 调整为 text-[15px] */}
-              <p className="text-base text-zinc-500 mb-3">{book.book_author}</p>
-
-              <div className="flex flex-wrap gap-2 items-center">
+              <h1 className="text-xl sm:text-2xl font-extrabold leading-tight mb-0.5">{book.book_name}</h1>
+              {/* 作者行：加"作者"标签 */}
+              <p className="text-sm text-zinc-400 mb-2">
+                <span className="text-[11px] bg-zinc-100 text-zinc-400 px-1.5 py-0.5 rounded mr-1.5 font-medium">作者</span>
+                {book.book_author}
+              </p>
+              {/* 标签行：flex-nowrap 防换行，超出滚动 */}
+              <div className="flex flex-nowrap gap-1.5 items-center overflow-x-auto scrollbar-hide">
                 {book.book_category && (
-                  <span className="px-2.5 py-1 rounded-lg bg-zinc-50 border border-zinc-100 text-zinc-500 text-sm">{book.book_category}</span>
+                  <span className="flex-shrink-0 px-2 py-0.5 rounded-md bg-zinc-50 border border-zinc-100 text-zinc-500 text-xs">{book.book_category}</span>
                 )}
                 {book.serial_status && (
-                  <span className="px-2.5 py-1 rounded-lg bg-zinc-50 text-zinc-500 text-sm">{STATUS_LABEL[book.serial_status]}</span>
+                  <span className="flex-shrink-0 px-2 py-0.5 rounded-md bg-zinc-50 text-zinc-500 text-xs">{STATUS_LABEL[book.serial_status]}</span>
                 )}
                 <button
                   onClick={() => onPostClick(book.post_id)}
-                  className="h-8 px-3 rounded-full bg-zinc-900 text-white flex items-center justify-center active:scale-95 transition-all shadow-sm text-sm font-bold whitespace-nowrap"
+                  className="flex-shrink-0 h-6 px-2.5 rounded-full bg-zinc-900 text-white flex items-center justify-center active:scale-95 transition-all shadow-sm text-xs font-bold whitespace-nowrap"
                 >
                   {book.recommendation_tag === 'recommend' ? '推荐帖' : '排雷帖'}
                 </button>
@@ -417,7 +431,7 @@ export default function BookDetail({
 
         {/* ── 简介 ── */}
         <section className={sectionCard}>
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-2">
             <h2 className={sectionTitle}>书籍简介</h2>
             {/* 编辑按钮仅对有权限用户展示 */}
             {!editingIntro && canEdit && (
@@ -442,7 +456,7 @@ export default function BookDetail({
             <div className="relative">
               {/* 简介正文：移动端 text-[15px]，行高 relaxed */}
               <div
-                className={`text-zinc-600 text-base leading-[1.85] transition-all duration-300 ${!introExpanded && 'max-h-32 overflow-hidden'}`}
+                className={`text-zinc-600 text-[17px] leading-[1.9] transition-all duration-300 ${!introExpanded && 'max-h-36 overflow-hidden'}`}
                 style={{ whiteSpace: 'pre-wrap' }}
               >
                 {book.book_intro || '暂无简介...'}
@@ -497,8 +511,8 @@ export default function BookDetail({
                     )}
                   </div>
                   <div className="text-center">
-                    <div className="text-sm font-bold text-zinc-800 truncate">{char.name}</div>
-                    <div className="text-[13px] text-zinc-400 mt-0.5">{char.role}</div>
+                    <div className="text-[15px] font-bold text-zinc-800 truncate">{char.name}</div>
+                    <div className="text-sm text-zinc-400 mt-0.5">{char.role}</div>
                   </div>
                 </div>
               ))}
@@ -516,27 +530,28 @@ export default function BookDetail({
             <div className="space-y-3">
               {reviews.map((r, i) => (
                 <div key={i} className="bg-white p-4 rounded-xl border border-zinc-100">
-                  <div className="flex justify-between items-start mb-2">
+                  <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-400 uppercase">
                         {r.user_name.charAt(0)}
                       </div>
                       <span className="text-[15px] font-bold text-zinc-700">{r.user_name}</span>
                     </div>
-                    <div className="text-sm font-black bg-zinc-50 px-2 py-0.5 rounded text-zinc-400 italic uppercase">
-                      SCORE {r.impression_score.toFixed(1)}
+                    {/* SCORE + 点赞同行，节省空间；点赞用乐观更新立即响应 */}
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-black bg-zinc-50 px-2 py-0.5 rounded text-zinc-400 italic uppercase">
+                        SCORE {r.impression_score.toFixed(1)}
+                      </div>
+                      <button
+                        onClick={() => handleToggleLike(i)}
+                        className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full transition-colors ${r.liked_by.includes(currentUserId) ? 'bg-red-500 text-white' : 'bg-zinc-50 text-zinc-400'}`}
+                      >
+                        <HeartIcon filled={r.liked_by.includes(currentUserId)} />
+                        {r.likes}
+                      </button>
                     </div>
                   </div>
-                  <p className="text-base text-zinc-600 leading-[1.85] mb-3 pl-10">{r.review_text}</p>
-                  <div className="flex justify-end pl-10">
-                    <button
-                      onClick={() => handleToggleLike(i)}
-                      className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full transition-all ${r.liked_by.includes(currentUserId) ? 'bg-zinc-900 text-white shadow-md' : 'bg-zinc-50 text-zinc-400'}`}
-                    >
-                      <HeartIcon filled={r.liked_by.includes(currentUserId)} />
-                      {r.likes}
-                    </button>
-                  </div>
+                  <p className="text-base text-zinc-600 leading-[1.85] pl-10">{r.review_text}</p>
                 </div>
               ))}
             </div>
