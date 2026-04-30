@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Edit2, ChevronDown, ChevronUp, X, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Edit2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { BookRating, ReaderReview } from '../types';
 
 import {
@@ -29,8 +29,8 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const TAG_LABEL: Record<string, string> = {
-  recommend: '推荐帖',
-  warn: '排雷帖',
+  recommend: '推荐',
+  warn: '排雷',
 };
 
 // ── 内部图标组件 ──
@@ -39,6 +39,15 @@ function BookIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8 opacity-20">
       <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+    </svg>
+  );
+}
+
+function PersonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6 opacity-20">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" />
     </svg>
   );
 }
@@ -65,6 +74,7 @@ export default function BookDetail({
   const [introText, setIntroText] = useState(initialBook.book_intro || '');
   const [introExpanded, setIntroExpanded] = useState(false);
   
+  // ── 评价弹窗状态 ──
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [starRating, setStarRating] = useState(0);
   const [hoverStar, setHoverStar] = useState(0);
@@ -72,7 +82,10 @@ export default function BookDetail({
   const [submittingReview, setSubmittingReview] = useState(false);
 
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingCharIdx, setUploadingCharIdx] = useState<number | null>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const charInputRef = useRef<HTMLInputElement>(null);
+  const [pendingCharIdx, setPendingCharIdx] = useState<number | null>(null);
 
   const reviews: ReaderReview[] = book.reader_reviews || [];
   const myReview = reviews.find(r => r.user_id === currentUserId);
@@ -96,6 +109,7 @@ export default function BookDetail({
     loadBook();
   }, [initialBook.id, currentUserId]);
 
+  // ── 处理逻辑 ──
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !book.id) return;
@@ -108,6 +122,22 @@ export default function BookDetail({
       showToast('上传失败', 'error');
     } finally {
       setUploadingCover(false);
+    }
+  };
+
+  const handleCharUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || pendingCharIdx === null || !book.id) return;
+    setUploadingCharIdx(pendingCharIdx);
+    try {
+      const updated = await upload_character_illustration(book.id, pendingCharIdx, file, book.book_characters || []);
+      setBook(prev => ({ ...prev, book_characters: updated }));
+      showToast('人物图上传成功', 'success');
+    } catch {
+      showToast('上传失败', 'error');
+    } finally {
+      setUploadingCharIdx(null);
+      setPendingCharIdx(null);
     }
   };
 
@@ -159,15 +189,15 @@ export default function BookDetail({
       const updated = await toggle_review_like(book.id, reviews, reviewIndex, currentUserId);
       setBook(prev => ({ ...prev, reader_reviews: updated }));
     } catch {
-      showToast('操作失败', 'error');
+      showToast('点赞操作失败', 'error');
     }
   };
 
   const sectionCard = "bg-white rounded-2xl border border-zinc-100 p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]";
-  const sectionTitle = "text-[14px] font-bold text-zinc-800 mb-4 flex items-center gap-2";
+  const sectionTitle = "text-[15px] font-bold text-zinc-800 mb-4 flex items-center gap-2";
 
   return (
-    <div className="relative min-h-screen bg-[#fafafa] pb-10 text-zinc-900">
+    <div className="relative min-h-screen bg-[#fafafa] pb-32 text-zinc-900">
       {/* ── 顶栏 ── */}
       <div className="sticky top-0 z-40 w-full bg-white/70 backdrop-blur-md border-b border-zinc-100 px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
@@ -180,11 +210,12 @@ export default function BookDetail({
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
         
-        {/* ── 顶部书名区域 ── */}
+        {/* ── Hero 区域 ── */}
         <div className="flex gap-6 items-start">
+          {/* 封面 */}
           <div
             className="flex-shrink-0 relative group cursor-pointer shadow-md"
-            style={{ width: 90, height: 126, borderRadius: 12, overflow: 'hidden', border: '1px solid #f4f4f5' }}
+            style={{ width: 100, height: 140, borderRadius: 10, overflow: 'hidden', border: '1px solid #f4f4f5' }}
             onClick={() => coverInputRef.current?.click()}
           >
             {uploadingCover ? (
@@ -202,49 +233,59 @@ export default function BookDetail({
           </div>
           <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
 
-          <div className="flex-1 min-w-0">
-            <h1 className="text-[22px] font-black leading-tight mb-1 truncate">{book.book_name}</h1>
-            <p className="text-zinc-400 text-[13px] font-medium mb-3">{book.book_author}</p>
-            
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              {/* 小巧的推荐/排雷按钮 */}
-              {book.recommendation_tag && (
-                <button 
+          {/* 书名、作者、标签、按钮 */}
+          <div className="flex-1 flex flex-col justify-between h-[140px]">
+            <div>
+              <h1 className="text-2xl font-extrabold leading-tight mb-1">{book.book_name}</h1>
+              <p className="text-zinc-500 text-sm mb-3">{book.book_author}</p>
+              
+              <div className="flex flex-wrap gap-1.5">
+                {book.recommendation_tag && (
+                  <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${book.recommendation_tag === 'recommend' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}>
+                    {TAG_LABEL[book.recommendation_tag]}
+                  </span>
+                )}
+                {book.book_category && <span className="px-2 py-0.5 rounded bg-zinc-50 border border-zinc-100 text-zinc-500 text-[11px]">{book.book_category}</span>}
+                {book.serial_status && <span className="px-2 py-0.5 rounded bg-zinc-50 text-zinc-500 text-[11px]">{STATUS_LABEL[book.serial_status]}</span>}
+                {/* 推荐帖/排雷帖小按钮 */}
+                <button
                   onClick={() => onPostClick(book.post_id)}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold shadow-sm transition-all active:scale-95 ${book.recommendation_tag === 'recommend' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600 border border-zinc-200'}`}
+                  className="px-2 py-0.5 rounded bg-zinc-50 border border-zinc-200 text-zinc-500 text-[11px] hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
                 >
-                  {TAG_LABEL[book.recommendation_tag]}
-                  <ArrowRight className="w-2.5 h-2.5" />
+                  {book.recommendation_tag === 'recommend' ? '推荐帖 →' : '排雷帖 →'}
                 </button>
-              )}
-              {book.book_category && <span className="px-2 py-1 rounded-lg bg-zinc-50 border border-zinc-100 text-zinc-400 text-[10px] font-bold">{book.book_category}</span>}
-              {book.serial_status && <span className="px-2 py-1 rounded-lg bg-zinc-50 text-zinc-400 text-[10px] font-bold">{STATUS_LABEL[book.serial_status]}</span>}
+              </div>
             </div>
+
+            <button 
+              onClick={() => setIsReviewModalOpen(true)}
+              className="self-start bg-zinc-900 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-lg hover:scale-105 transition-transform"
+            >
+              {myReview ? '修改评价' : '我读过'}
+            </button>
           </div>
         </div>
 
-        {/* ── 独立评分模块 (已移除“最终得分”) ── */}
-        <section className="bg-white rounded-2xl border border-zinc-100 p-6 flex items-center justify-between shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
-          <div className="flex flex-col">
+        {/* ── 评分卡片（独立区域）── */}
+        <section className={sectionCard}>
+          <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-black text-zinc-900 leading-none">{book.final_score.toFixed(1)}</span>
-              <span className="text-zinc-300 text-[12px] font-bold tracking-tight">/ {reviews.length + 1}人已评</span>
+              <span className="text-zinc-300 text-2xl font-light leading-none">/</span>
+              <span className="text-zinc-400 text-xl font-bold leading-none">10</span>
             </div>
-            <div className="mt-2.5 flex gap-0.5">
-               {/* 纯展示用的静态小星星 */}
-               {[...Array(5)].map((_, i) => (
-                 <span key={i} className={`text-xs ${i < Math.round(book.final_score / 2) ? 'text-zinc-900' : 'text-zinc-100'}`}>★</span>
-               ))}
+            <div className="text-right">
+              <div className="text-[11px] text-zinc-400">{reviews.length + 1} 人已评</div>
+              <div className="mt-1 flex gap-0.5 justify-end">
+                {[...Array(10)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-1.5 h-4 rounded-sm ${i < Math.round(book.final_score) ? 'bg-zinc-800' : 'bg-zinc-100'}`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-          
-          <button 
-            onClick={() => setIsReviewModalOpen(true)}
-            className="flex flex-col items-center justify-center w-16 h-16 rounded-2xl bg-zinc-50 border border-zinc-100 hover:bg-zinc-100 transition-colors group"
-          >
-            <Edit2 className="w-5 h-5 text-zinc-400 group-hover:text-zinc-900 transition-colors" />
-            <span className="text-[10px] font-bold text-zinc-400 mt-1">{myReview ? '修改' : '评分'}</span>
-          </button>
         </section>
 
         {/* ── 简介 ── */}
@@ -262,52 +303,90 @@ export default function BookDetail({
               <textarea
                 value={introText}
                 onChange={e => setIntroText(e.target.value)}
-                className="w-full text-sm p-4 bg-zinc-50 border border-zinc-100 rounded-xl outline-none min-h-[120px] leading-relaxed"
+                className="w-full text-sm p-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none min-h-[140px] leading-relaxed"
               />
               <div className="flex gap-2 justify-end">
-                <button onClick={() => setEditingIntro(false)} className="px-4 py-1.5 text-xs text-zinc-400 font-bold">取消</button>
-                <button onClick={handleSaveIntro} className="px-4 py-1.5 text-xs bg-zinc-900 text-white rounded-lg font-bold">保存</button>
+                <button onClick={() => setEditingIntro(false)} className="px-4 py-1.5 text-xs text-zinc-400">取消</button>
+                <button onClick={handleSaveIntro} className="px-4 py-1.5 text-xs bg-zinc-900 text-white rounded-lg">保存</button>
               </div>
             </div>
           ) : (
             <div className="relative">
-              <div className={`text-zinc-600 text-[14px] leading-relaxed transition-all duration-300 ${!introExpanded && 'max-h-24 overflow-hidden'}`} style={{ whiteSpace: 'pre-wrap' }}>
+              <div 
+                className={`text-zinc-600 text-[14px] leading-relaxed transition-all duration-300 ${!introExpanded && 'max-h-24 overflow-hidden'}`}
+                style={{ whiteSpace: 'pre-wrap' }}
+              >
                 {book.book_intro || '暂无简介...'}
               </div>
               {book.book_intro && book.book_intro.length > 100 && (
-                <button onClick={() => setIntroExpanded(!introExpanded)} className="w-full mt-3 py-1 text-xs font-bold text-zinc-300 flex items-center justify-center gap-1 border-t border-zinc-50">
-                  {introExpanded ? <><ChevronUp className="w-3 h-3"/> 收起</> : <><ChevronDown className="w-3 h-3"/> 展开</>}
+                <button 
+                  onClick={() => setIntroExpanded(!introExpanded)} 
+                  className="w-full mt-3 py-1 text-xs font-bold text-zinc-400 flex items-center justify-center gap-1 border-t border-zinc-50"
+                >
+                  {introExpanded ? <><ChevronUp className="w-3 h-3"/> 收起内容</> : <><ChevronDown className="w-3 h-3"/> 展开全文</>}
                 </button>
               )}
             </div>
           )}
         </section>
 
+        {/* ── 人物图 ── */}
+        {book.book_characters && book.book_characters.length > 0 && (
+          <section>
+            <h2 className={sectionTitle + " px-1"}>人物档案</h2>
+            <div className="flex gap-4 overflow-x-auto pb-4 px-1 scrollbar-hide">
+              {book.book_characters.map((char, idx) => (
+                <div key={idx} className="flex-shrink-0 w-20 group cursor-pointer" onClick={() => { setPendingCharIdx(idx); charInputRef.current?.click(); }}>
+                  <div className="w-20 h-20 rounded-full bg-zinc-100 border-2 border-white shadow-sm overflow-hidden mb-2 relative">
+                    {uploadingCharIdx === idx ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-zinc-50/80">
+                        <div className="w-4 h-4 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin" />
+                      </div>
+                    ) : char.illustration_url ? (
+                      <img src={char.illustration_url} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center"><PersonIcon /></div>
+                    )}
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Edit2 className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[12px] font-bold text-zinc-800 truncate">{char.name}</div>
+                    <div className="text-[10px] text-zinc-400">{char.role}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <input ref={charInputRef} type="file" accept="image/*" className="hidden" onChange={handleCharUpload} />
+          </section>
+        )}
+
         {/* ── 书友短评 ── */}
         <section className="space-y-4">
           <h2 className={sectionTitle + " px-1"}>书友短评 ({reviews.length})</h2>
           {reviews.length === 0 ? (
-            <div className="text-center py-10 text-zinc-300 text-xs font-bold">目前还没有评论</div>
+            <div className="text-center py-10 text-zinc-400 text-sm">暂无短评</div>
           ) : (
             <div className="space-y-3">
               {reviews.map((r, i) => (
-                <div key={i} className="bg-white p-5 rounded-2xl border border-zinc-100">
-                  <div className="flex justify-between items-start mb-3">
+                <div key={i} className="bg-white p-4 rounded-xl border border-zinc-100">
+                  <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-black text-zinc-400">
+                      <div className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-400 uppercase">
                         {r.user_name.charAt(0)}
                       </div>
-                      <span className="text-xs font-black text-zinc-700">{r.user_name}</span>
+                      <span className="text-xs font-bold text-zinc-700">{r.user_name}</span>
                     </div>
-                    <div className="text-[10px] font-black bg-zinc-50 px-2 py-0.5 rounded-lg text-zinc-300 italic">
+                    <div className="text-[11px] font-black bg-zinc-50 px-2 py-0.5 rounded text-zinc-400 italic uppercase">
                       SCORE {r.impression_score.toFixed(1)}
                     </div>
                   </div>
-                  <p className="text-sm text-zinc-500 leading-relaxed mb-4 pl-9">{r.review_text}</p>
-                  <div className="flex justify-end">
+                  <p className="text-sm text-zinc-600 leading-relaxed mb-3 pl-10">{r.review_text}</p>
+                  <div className="flex justify-end pl-10">
                     <button 
                       onClick={() => handleToggleLike(i)}
-                      className={`flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-full transition-all ${r.liked_by.includes(currentUserId) ? 'bg-zinc-900 text-white shadow-md' : 'bg-zinc-50 text-zinc-400'}`}
+                      className={`flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full transition-all ${r.liked_by.includes(currentUserId) ? 'bg-zinc-900 text-white shadow-md' : 'bg-zinc-50 text-zinc-400'}`}
                     >
                       <HeartIcon filled={r.liked_by.includes(currentUserId)} />
                       {r.likes}
@@ -318,53 +397,59 @@ export default function BookDetail({
             </div>
           )}
         </section>
+
       </div>
 
-      {/* ── 评价弹窗 ── */}
+      {/* ── 评价弹窗 (白色风格) ── */}
       {isReviewModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-          <div className="absolute inset-0 bg-zinc-900/20 backdrop-blur-sm" onClick={() => setIsReviewModalOpen(false)}/>
-          <section className="relative w-full max-w-lg bg-zinc-50 rounded-[28px] p-8 text-zinc-900 shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-[16px] font-black flex items-center gap-2">
+          <div 
+            className="absolute inset-0 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={() => setIsReviewModalOpen(false)}
+          />
+          
+          <section className="relative w-full max-w-lg bg-zinc-50 rounded-[24px] p-6 text-zinc-900 shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-[15px] font-bold flex items-center gap-2">
                 <span className="w-2 h-2 bg-zinc-900 rounded-full"></span>
-                {myReview ? '修改我的评价' : '发表读者评分'}
+                {myReview ? '修改我的评价' : '发表我的印象分'}
               </h2>
-              <button onClick={() => setIsReviewModalOpen(false)} className="p-1 hover:bg-zinc-200 rounded-full transition-colors">
+              <button onClick={() => setIsReviewModalOpen(false)} className="p-1 hover:bg-zinc-100 rounded-full transition-colors">
                 <X className="w-5 h-5 text-zinc-400" />
               </button>
             </div>
 
-            <div className="flex flex-col items-center gap-6 mb-8">
-              <div className="flex items-center gap-1">
+            {/* 评分区域 */}
+            <div className="flex flex-col items-center gap-4 mb-6">
+              <div className="flex items-center gap-1.5 overflow-x-auto w-full justify-center px-2 scrollbar-hide">
                 {[...Array(10)].map((_, i) => (
                   <button
                     key={i}
                     onMouseEnter={() => setHoverStar(i + 1)}
                     onMouseLeave={() => setHoverStar(0)}
                     onClick={() => setStarRating(i + 1)}
-                    className={`text-2xl transition-all duration-200 ${ (hoverStar || starRating) > i ? 'text-zinc-900 scale-110' : 'text-zinc-200'}`}
+                    className={`text-2xl transition-all duration-200 ${ (hoverStar || starRating) > i ? 'text-zinc-900 scale-110' : 'text-zinc-200 hover:text-zinc-400'}`}
                   >
                     ★
                   </button>
                 ))}
               </div>
-              <span className="text-4xl font-black text-zinc-900 italic">{starRating || '0'}</span>
+              <span className="text-3xl font-black text-zinc-900 italic leading-none">{starRating || '0'}</span>
             </div>
 
             <textarea
               value={reviewText}
               onChange={e => setReviewText(e.target.value)}
               placeholder="写下你对此书的排雷或安利感悟..."
-              className="w-full bg-white border border-zinc-200 rounded-2xl p-4 text-[14px] text-zinc-900 placeholder:text-zinc-300 focus:ring-1 focus:ring-zinc-900 outline-none min-h-[140px] mb-8 leading-relaxed shadow-sm"
+              className="w-full bg-zinc-100 border border-zinc-200 rounded-2xl p-4 text-[14px] text-zinc-900 placeholder:text-zinc-400 focus:ring-1 focus:ring-zinc-300 outline-none min-h-[140px] mb-6 leading-relaxed"
             />
 
             <button
               onClick={handleSubmitReview}
               disabled={submittingReview || !starRating}
-              className={`w-full py-4 rounded-2xl text-[15px] font-black transition-all active:scale-95 ${starRating ? 'bg-zinc-900 text-white shadow-xl' : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'}`}
+              className={`w-full py-4 rounded-2xl text-[15px] font-black transition-all active:scale-[0.98] ${starRating ? 'bg-zinc-900 text-white shadow-xl hover:bg-black' : 'bg-zinc-200 text-zinc-500 cursor-not-allowed'}`}
             >
-              {submittingReview ? '正在提交...' : myReview ? '保存修改' : '确认发布'}
+              {submittingReview ? '正在提交...' : myReview ? '更新评价' : '发布评价'}
             </button>
           </section>
         </div>
