@@ -332,7 +332,7 @@ export default function BookDetail({
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <button onClick={onNavigateBack} className="text-zinc-500 hover:text-black flex items-center gap-1 transition-colors">
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium">书籍详情</span>
+            <span className="text-sm font-medium">返回</span>
           </button>
         </div>
       </div>
@@ -430,7 +430,7 @@ export default function BookDetail({
         </section>
 
         {/* ── 简介 ── */}
-        <section className={sectionCard + " -mx-2"}>
+        <section className={sectionCard + " -mx-3"}>
           <div className="flex justify-between items-center mb-2">
             <h2 className={sectionTitle}>书籍简介</h2>
             {/* 编辑按钮仅对有权限用户展示 */}
@@ -539,7 +539,7 @@ export default function BookDetail({
                     {/* SCORE + 点赞同行，节省空间；点赞用乐观更新立即响应 */}
                     <div className="flex items-center gap-2">
                       <div className="text-sm font-black bg-zinc-50 px-2 py-0.5 rounded text-zinc-400 italic uppercase">
-                        SCORE {r.impression_score.toFixed(1)}
+                        印象分 {r.impression_score.toFixed(1)}
                       </div>
                       <button
                         onClick={() => handleToggleLike(i)}
