@@ -16,7 +16,7 @@ import ChangePasswordModal from './components/ChangePasswordModal';
 
 // 导入类型与工具
 import { User, Post, Category, BookRating } from './types';
-import { get_all_users, get_user, get_posts, getUnreadNotificationCount } from './services/storage';
+import { get_all_users, get_user, get_posts, getUnreadNotificationCount, get_book_rating_by_id } from './services/storage';
 import { 
   Search, LogOut, Menu, UserCircle, 
   PenSquare, X, Shield, BookOpen 
@@ -85,7 +85,6 @@ function AppContent() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
-  const [selectedBook, setSelectedBook] = useState<BookRating | null>(null); // 新增
 
   const touchStartX = useRef<number | null>(null);
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
@@ -267,11 +266,36 @@ function AppContent() {
     );
   };
 
+  const BookDetailWrapper = ({ currentUserId, currentUserName, showToast }: { currentUserId: string; currentUserName: string; showToast: (msg: string, type: ToastType) => void }) => {
+    const { bookId } = useParams<{ bookId: string }>();
+    const [book, setBook] = React.useState<BookRating | null>(null);
+    const [loading, setLoading] = React.useState(true);
+    useEffect(() => {
+      if (!bookId) return;
+      get_book_rating_by_id(bookId)
+        .then(data => setBook({ ...data, reader_reviews: data.reader_reviews || [] }))
+        .catch(() => showToast('书籍加载失败', 'error'))
+        .finally(() => setLoading(false));
+    }, [bookId]);
+    if (loading) return <LoadingSpinner fullScreen />;
+    if (!book) return <Navigate to="/bookshelf" replace />;
+    return (
+      <BookDetail
+        book={book}
+        currentUserId={currentUserId}
+        currentUserName={currentUserName}
+        onNavigateBack={() => navigate('/bookshelf')}
+        onPostClick={(postId: string) => navigate(`/post/${postId}`)}
+        showToast={showToast}
+      />
+    );
+  };
+
   const isLoginPage = location.pathname === '/login' || location.pathname === '/';
   const hideNavPages = location.pathname.startsWith('/post/') || 
                        location.pathname.startsWith('/profile/') || 
                        location.pathname === '/admin' ||
-                       location.pathname === '/bookshelf';
+                       location.pathname.startsWith('/bookshelf');
 
   return (
     <div className="min-h-screen bg-white text-zinc-900">
@@ -349,7 +373,7 @@ function AppContent() {
 
               <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
                 <button
-                  onClick={() => { setSelectedBook(null); navigate('/bookshelf'); }}
+                  onClick={() => navigate('/bookshelf')}
                   className="p-2 hover:bg-zinc-100 rounded-full transition-colors"
                 >
                   <BookOpen className="w-5 h-5 text-zinc-600" />
@@ -454,29 +478,26 @@ function AppContent() {
           <Route path="/post/:postId" element={user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" replace />} />
           <Route path="/profile/:userId" element={user ? <UserProfileWrapper /> : <Navigate to="/login" replace />} />
 
-          {/* 书架路由：有选中书籍则显示详情，否则显示列表 ！*/}
+          {/* 书架路由 */}
           <Route path="/bookshelf" element={
             user ? (
-              selectedBook ? (
-                <BookDetail
-                  book={selectedBook}
-                  currentUserId={user.id}
-                  currentUserName={user.user_name}
-                  onNavigateBack={() => setSelectedBook(null)}
-                  onPostClick={(postId: string) => {
-                    setSelectedBook(null);
-                    navigate(`/post/${postId}`);
-                  }}
-                  showToast={showToast}
-                />
-              ) : (
-                <Bookshelf
-                  onNavigateBack={() => navigate(-1)}
-                  onBookClick={(postId: string) => navigate(`/post/${postId}`)}
-                  onBookDetailClick={(book: BookRating) => setSelectedBook(book)}
-                  showToast={showToast}
-                />
-              )
+              <Bookshelf
+                onNavigateBack={() => navigate(-1)}
+                onBookClick={(postId: string) => navigate(`/post/${postId}`)}
+                onBookDetailClick={(book: BookRating) => navigate(`/bookshelf/${book.id}`)}
+                showToast={showToast}
+              />
+            ) : <Navigate to="/login" replace />
+          } />
+
+          {/* 书籍详情路由 */}
+          <Route path="/bookshelf/:bookId" element={
+            user ? (
+              <BookDetailWrapper
+                currentUserId={user.id}
+                currentUserName={user.user_name}
+                showToast={showToast}
+              />
             ) : <Navigate to="/login" replace />
           } />
 
