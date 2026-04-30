@@ -321,7 +321,7 @@ export default function BookDetail({
     }
   };
 
-  const sectionCard = "bg-white rounded-2xl border border-zinc-100 p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]";
+  const sectionCard = "bg-white rounded-2xl border border-zinc-100 p-5";
   // 移动端可读字号：标题 16px（font-bold），正文统一用 text-base(16px) 或 text-[15px]
   const sectionTitle = "text-[17px] font-bold text-zinc-800 mb-4 flex items-center gap-2";
 
