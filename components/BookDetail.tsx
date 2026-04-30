@@ -199,7 +199,7 @@ export default function BookDetail({
   const sectionTitle = "text-[15px] font-bold text-zinc-800 mb-4 flex items-center gap-2";
 
   return (
-    <div className="relative min-h-screen bg-[#fafafa] pb-10">
+    <div className="relative min-h-screen bg-[#fafafa] pb-10 text-zinc-900">
       {/* ── 顶栏 ── */}
       <div className="sticky top-0 z-40 w-full bg-white/70 backdrop-blur-md border-b border-zinc-100 px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
@@ -235,7 +235,7 @@ export default function BookDetail({
           <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
 
           <div className="flex-1">
-            <h1 className="text-2xl font-extrabold text-zinc-900 leading-tight mb-1">{book.book_name}</h1>
+            <h1 className="text-2xl font-extrabold leading-tight mb-1">{book.book_name}</h1>
             <p className="text-zinc-500 text-sm mb-4">{book.book_author}</p>
             
             <div className="flex flex-wrap gap-2 mb-4">
@@ -392,53 +392,59 @@ export default function BookDetail({
       {/* ── 评价弹窗 (Portal-like Modal) ── */}
       {isReviewModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-          {/* 遮罩层 */}
+          {/* 遮罩层 - 改为深色半透明配合亮色卡片 */}
           <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+            className="absolute inset-0 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-300"
             onClick={() => setIsReviewModalOpen(false)}
           />
           
-          {/* 评价卡片 (对应图片中的 UI) */}
-          <section className="relative w-full max-w-lg bg-zinc-900 rounded-[24px] p-6 text-white shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
+          {/* 评价卡片 - 主体改为亮色 */}
+          <section className="relative w-full max-w-lg bg-zinc-50 rounded-[24px] p-6 text-zinc-900 shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-[15px] font-bold flex items-center gap-2">
-                <span className="w-2 h-2 bg-white rounded-full"></span>
+                <span className="w-2 h-2 bg-zinc-900 rounded-full"></span>
                 {myReview ? '修改我的评价' : '发表我的印象分'}
               </h2>
               <button 
                 onClick={() => setIsReviewModalOpen(false)}
-                className="p-1 hover:bg-zinc-800 rounded-full transition-colors"
+                className="p-1 hover:bg-zinc-100 rounded-full transition-colors"
               >
-                <X className="w-5 h-5 text-zinc-500" />
+                <X className="w-5 h-5 text-zinc-400" />
               </button>
             </div>
 
-            <div className="flex items-center gap-1.5 mb-6">
-              {[...Array(10)].map((_, i) => (
-                <button
-                  key={i}
-                  onMouseEnter={() => setHoverStar(i + 1)}
-                  onMouseLeave={() => setHoverStar(0)}
-                  onClick={() => setStarRating(i + 1)}
-                  className={`text-2xl transition-all duration-200 ${ (hoverStar || starRating) > i ? 'text-white scale-110' : 'text-zinc-700'}`}
-                >
-                  ★
-                </button>
-              ))}
-              <span className="ml-4 text-3xl font-black text-white italic">{starRating || '0'}</span>
+            {/* 修改布局：星星和数字垂直对齐中，并在移动端增加左右边距 */}
+            <div className="flex flex-col items-center gap-4 mb-6">
+              <div className="flex items-center gap-1.5 overflow-x-auto w-full justify-center px-2 scrollbar-hide">
+                {[...Array(10)].map((_, i) => (
+                  <button
+                    key={i}
+                    onMouseEnter={() => setHoverStar(i + 1)}
+                    onMouseLeave={() => setHoverStar(0)}
+                    onClick={() => setStarRating(i + 1)}
+                    className={`text-2xl transition-all duration-200 ${ (hoverStar || starRating) > i ? 'text-zinc-900 scale-110' : 'text-zinc-200 hover:text-zinc-400'}`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+              {/* 数字：下移到星星中间排列，增加间距防止移动端超出 */}
+              <span className="text-3xl font-black text-zinc-900 italic">{starRating || '0'}</span>
             </div>
 
+            {/* 输入框背景色也对应改浅 */}
             <textarea
               value={reviewText}
               onChange={e => setReviewText(e.target.value)}
               placeholder="写下你对此书的排雷或安利感悟..."
-              className="w-full bg-zinc-800 border-none rounded-2xl p-4 text-[14px] text-zinc-200 placeholder:text-zinc-600 focus:ring-1 focus:ring-zinc-700 outline-none min-h-[140px] mb-6 leading-relaxed"
+              className="w-full bg-zinc-100 border border-zinc-200 rounded-2xl p-4 text-[14px] text-zinc-900 placeholder:text-zinc-400 focus:ring-1 focus:ring-zinc-300 outline-none min-h-[140px] mb-6 leading-relaxed"
             />
 
+            {/* 底部按钮保留黑色强调 */}
             <button
               onClick={handleSubmitReview}
               disabled={submittingReview || !starRating}
-              className={`w-full py-4 rounded-2xl text-[15px] font-black transition-all active:scale-[0.98] ${starRating ? 'bg-white text-zinc-900 shadow-xl' : 'bg-zinc-800 text-zinc-700 cursor-not-allowed'}`}
+              className={`w-full py-4 rounded-2xl text-[15px] font-black transition-all active:scale-[0.98] ${starRating ? 'bg-zinc-900 text-white shadow-xl hover:bg-black' : 'bg-zinc-200 text-zinc-500 cursor-not-allowed'}`}
             >
               {submittingReview ? '正在提交...' : myReview ? '更新评价' : '发布评价'}
             </button>
