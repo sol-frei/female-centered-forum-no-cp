@@ -10,6 +10,8 @@ interface BookshelfProps {
   onBookClick: (postId: string) => void;
   onBookDetailClick: (book: BookRating) => void;
   showToast: (msg: string, type: ToastType) => void;
+  cachedBooks?: BookRating[] | null;
+  onBooksLoaded?: (books: BookRating[]) => void;
 }
 
 const LoadingSpinner = () => (
@@ -60,20 +62,29 @@ export default function Bookshelf({
   onBookClick,
   onBookDetailClick,
   showToast,
+  cachedBooks,
+  onBooksLoaded,
 }: BookshelfProps) {
   const [books, setBooks] = useState<BookRating[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!cachedBooks);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeChip, setActiveChip] = useState('all');
   const chipsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { loadBooks(); }, []);
+  useEffect(() => {
+    if (cachedBooks) {
+      setBooks(cachedBooks);
+      return;
+    }
+    loadBooks();
+  }, []);
 
   const loadBooks = async () => {
     setIsLoading(true);
     try {
       const data = await get_all_book_ratings({ sortBy: 'highest' });
       setBooks(data);
+      onBooksLoaded?.(data);
     } catch {
       showToast('加载书架失败', 'error');
     } finally {
