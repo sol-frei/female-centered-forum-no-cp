@@ -245,12 +245,9 @@ export default function BookDetail({
                 {/* 推荐帖/排雷帖：黑色圆形按钮 */}
                 <button
                   onClick={() => onPostClick(book.post_id)}
-                  className="w-7 h-7 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:bg-black active:scale-95 transition-all shadow-sm"
-                  title={book.recommendation_tag === 'recommend' ? '推荐帖' : '排雷帖'}
+                  className="h-7 px-2.5 rounded-full bg-zinc-900 text-white flex items-center justify-center active:scale-95 transition-all shadow-sm text-[10px] font-bold whitespace-nowrap"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3">
-                    <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                  {book.recommendation_tag === 'recommend' ? '推荐帖' : '排雷帖'}
                 </button>
               </div>
             </div>
