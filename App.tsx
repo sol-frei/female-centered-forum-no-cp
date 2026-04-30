@@ -85,6 +85,7 @@ function AppContent() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [cachedBooks, setCachedBooks] = useState<BookRating[] | null>(null);
 
   const touchStartX = useRef<number | null>(null);
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
@@ -486,6 +487,8 @@ function AppContent() {
                 onBookClick={(postId: string) => navigate(`/post/${postId}`)}
                 onBookDetailClick={(book: BookRating) => navigate(`/bookshelf/${book.id}`)}
                 showToast={showToast}
+                cachedBooks={cachedBooks}
+                onBooksLoaded={(books) => setCachedBooks(books)}
               />
             ) : <Navigate to="/login" replace />
           } />
