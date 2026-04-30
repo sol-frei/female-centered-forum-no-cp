@@ -522,7 +522,7 @@ export default function BookDetail({
 
         {/* ── 书友短评 ── */}
         <section className="space-y-4">
-          <h2 className={sectionTitle + " -mx-3"}>读者评论 ({reviews.length})</h2>
+          <h2 className={sectionTitle + " px-1"}>读者评论 ({reviews.length})</h2>
           {reviews.length === 0 ? (
             <div className="text-center py-10 text-zinc-400 text-sm">暂无评论</div>
           ) : (
