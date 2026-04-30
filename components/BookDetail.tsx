@@ -74,7 +74,7 @@ export default function BookDetail({
   const [introText, setIntroText] = useState(initialBook.book_intro || '');
   const [introExpanded, setIntroExpanded] = useState(false);
   
-  // ── 评价相关状态 ──
+  // ── 评价弹窗状态 ──
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [starRating, setStarRating] = useState(0);
   const [hoverStar, setHoverStar] = useState(0);
@@ -103,12 +103,13 @@ export default function BookDetail({
           setReviewText(currentMyReview.review_text || '');
         }
       } catch (e) {
-        console.error('获取最新书籍失败', e);
+        console.error('加载失败', e);
       }
     }
     loadBook();
   }, [initialBook.id, currentUserId]);
 
+  // ── 处理逻辑 (与之前保持一致) ──
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !book.id) return;
@@ -118,10 +119,9 @@ export default function BookDetail({
       setBook(prev => ({ ...prev, cover_url: url }));
       showToast('封面上传成功', 'success');
     } catch {
-      showToast('封面上传失败', 'error');
+      showToast('上传失败', 'error');
     } finally {
       setUploadingCover(false);
-      e.target.value = '';
     }
   };
 
@@ -132,13 +132,12 @@ export default function BookDetail({
     try {
       const updated = await upload_character_illustration(book.id, pendingCharIdx, file, book.book_characters || []);
       setBook(prev => ({ ...prev, book_characters: updated }));
-      showToast('插图上传成功', 'success');
+      showToast('人物图上传成功', 'success');
     } catch {
-      showToast('插图上传失败', 'error');
+      showToast('上传失败', 'error');
     } finally {
       setUploadingCharIdx(null);
       setPendingCharIdx(null);
-      e.target.value = '';
     }
   };
 
@@ -148,7 +147,7 @@ export default function BookDetail({
       await update_book_intro(book.id, introText);
       setBook(prev => ({ ...prev, book_intro: introText }));
       setEditingIntro(false);
-      showToast('简介已保存', 'success');
+      showToast('简介已更新', 'success');
     } catch {
       showToast('保存失败', 'error');
     }
@@ -175,8 +174,8 @@ export default function BookDetail({
         impressed_score: newImpressedScore,
         final_score: newFinalScore,
       }));
-      showToast('评分已提交', 'success');
-      setIsReviewModalOpen(false); 
+      showToast('提交成功', 'success');
+      setIsReviewModalOpen(false);
     } catch {
       showToast('提交失败', 'error');
     } finally {
@@ -190,7 +189,7 @@ export default function BookDetail({
       const updated = await toggle_review_like(book.id, reviews, reviewIndex, currentUserId);
       setBook(prev => ({ ...prev, reader_reviews: updated }));
     } catch {
-      showToast('操作失败', 'error');
+      showToast('点赞操作失败', 'error');
     }
   };
 
@@ -276,7 +275,6 @@ export default function BookDetail({
               </button>
             )}
           </div>
-          
           {editingIntro ? (
             <div className="space-y-3">
               <textarea
@@ -295,7 +293,7 @@ export default function BookDetail({
                 className={`text-zinc-600 text-[14px] leading-relaxed transition-all duration-300 ${!introExpanded && 'max-h-24 overflow-hidden'}`}
                 style={{ whiteSpace: 'pre-wrap' }}
               >
-                {book.book_intro || '暂无简介，点击右上角添加...'}
+                {book.book_intro || '暂无简介...'}
               </div>
               {book.book_intro && book.book_intro.length > 100 && (
                 <button 
@@ -309,7 +307,7 @@ export default function BookDetail({
           )}
         </section>
 
-        {/* ── 人物 ── */}
+        {/* ── 人物图 ── */}
         {book.book_characters && book.book_characters.length > 0 && (
           <section>
             <h2 className={sectionTitle + " px-1"}>人物档案</h2>
@@ -341,11 +339,11 @@ export default function BookDetail({
           </section>
         )}
 
-        {/* ── 读者书评列表 ── */}
+        {/* ── 书友短评 ── */}
         <section className="space-y-4">
           <h2 className={sectionTitle + " px-1"}>书友短评 ({reviews.length})</h2>
           {reviews.length === 0 ? (
-            <div className="text-center py-10 text-zinc-400 text-sm">暂无短评，快来抢沙发</div>
+            <div className="text-center py-10 text-zinc-400 text-sm">暂无短评</div>
           ) : (
             <div className="space-y-3">
               {reviews.map((r, i) => (
@@ -357,7 +355,7 @@ export default function BookDetail({
                       </div>
                       <span className="text-xs font-bold text-zinc-700">{r.user_name}</span>
                     </div>
-                    <div className="text-[11px] font-black bg-zinc-50 px-2 py-0.5 rounded text-zinc-400 italic">
+                    <div className="text-[11px] font-black bg-zinc-50 px-2 py-0.5 rounded text-zinc-400 italic uppercase">
                       SCORE {r.impression_score.toFixed(1)}
                     </div>
                   </div>
@@ -377,26 +375,30 @@ export default function BookDetail({
           )}
         </section>
 
-        {/* ── 修改后的：圆形悬浮按钮 ── */}
-        <div className="flex justify-center pt-10">
+        {/* ── 修改后的：精致版圆形悬浮按钮 ── */}
+        <div className="flex justify-center pt-8">
           <button
             onClick={() => onPostClick(book.post_id)}
-            className="group relative flex flex-col items-center justify-center w-24 h-24 rounded-full bg-zinc-900 text-white shadow-[0_15px_30px_-10px_rgba(0,0,0,0.3)] hover:scale-110 active:scale-95 transition-all duration-300 border-[6px] border-white ring-1 ring-zinc-100"
+            className="group relative flex flex-col items-center justify-center w-20 h-20 rounded-full 
+                       bg-white border border-zinc-200 text-zinc-800 
+                       shadow-[0_4px_12px_-2px_rgba(0,0,0,0.05)] 
+                       hover:border-zinc-400 hover:shadow-md active:scale-95 transition-all duration-300"
           >
-             <span className="text-[10px] font-bold opacity-60 tracking-widest mb-0.5">查看</span>
-             <span className="text-[13px] font-black tracking-tight">
+             <span className="text-[10px] font-medium text-zinc-400 tracking-wider mb-0.5">查看</span>
+             <span className="text-[12px] font-bold">
                {book.recommendation_tag === 'recommend' ? '推荐帖' : '排雷帖'}
              </span>
-             {/* 一个小的装饰箭头 */}
-             <div className="absolute -right-1 top-1/2 -translate-y-1/2 bg-white rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all">
-                <ArrowRight className="w-3 h-3 text-zinc-900" />
+             
+             {/* 悬浮指示装饰 */}
+             <div className="absolute -bottom-1 bg-white border border-zinc-200 rounded-full p-0.5 opacity-0 group-hover:opacity-100 group-hover:translate-y-1 transition-all shadow-sm">
+                <ArrowRight className="w-2.5 h-2.5 text-zinc-500 rotate-90" />
              </div>
           </button>
         </div>
 
       </div>
 
-      {/* ── 评价弹窗 ── */}
+      {/* ── 评价弹窗 (白色风格) ── */}
       {isReviewModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
           <div 
@@ -410,14 +412,12 @@ export default function BookDetail({
                 <span className="w-2 h-2 bg-zinc-900 rounded-full"></span>
                 {myReview ? '修改我的评价' : '发表我的印象分'}
               </h2>
-              <button 
-                onClick={() => setIsReviewModalOpen(false)}
-                className="p-1 hover:bg-zinc-100 rounded-full transition-colors"
-              >
+              <button onClick={() => setIsReviewModalOpen(false)} className="p-1 hover:bg-zinc-100 rounded-full transition-colors">
                 <X className="w-5 h-5 text-zinc-400" />
               </button>
             </div>
 
+            {/* 评分区域：修复手机端超出问题 */}
             <div className="flex flex-col items-center gap-4 mb-6">
               <div className="flex items-center gap-1.5 overflow-x-auto w-full justify-center px-2 scrollbar-hide">
                 {[...Array(10)].map((_, i) => (
@@ -432,7 +432,7 @@ export default function BookDetail({
                   </button>
                 ))}
               </div>
-              <span className="text-3xl font-black text-zinc-900 italic">{starRating || '0'}</span>
+              <span className="text-3xl font-black text-zinc-900 italic leading-none">{starRating || '0'}</span>
             </div>
 
             <textarea
