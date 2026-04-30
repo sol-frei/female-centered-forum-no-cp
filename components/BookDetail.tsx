@@ -401,7 +401,7 @@ export default function BookDetail({
         </div>
 
         {/* ── 评分卡片 + 评价按钮 ── */}
-        <section className={sectionCard}>
+        <section className={sectionCard+" -mx-3"}>
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-black text-zinc-900 leading-none">{book.final_score.toFixed(1)}</span>
