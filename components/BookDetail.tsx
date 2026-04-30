@@ -239,34 +239,25 @@ export default function BookDetail({
               <h1 className="text-2xl font-extrabold leading-tight mb-1">{book.book_name}</h1>
               <p className="text-zinc-500 text-sm mb-3">{book.book_author}</p>
               
-              <div className="flex flex-wrap gap-1.5">
-                {book.recommendation_tag && (
-                  <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${book.recommendation_tag === 'recommend' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'}`}>
-                    {TAG_LABEL[book.recommendation_tag]}
-                  </span>
-                )}
+              <div className="flex flex-wrap gap-1.5 items-center">
                 {book.book_category && <span className="px-2 py-0.5 rounded bg-zinc-50 border border-zinc-100 text-zinc-500 text-[11px]">{book.book_category}</span>}
                 {book.serial_status && <span className="px-2 py-0.5 rounded bg-zinc-50 text-zinc-500 text-[11px]">{STATUS_LABEL[book.serial_status]}</span>}
-                {/* 推荐帖/排雷帖小按钮 */}
+                {/* 推荐帖/排雷帖：黑色圆形按钮 */}
                 <button
                   onClick={() => onPostClick(book.post_id)}
-                  className="px-2 py-0.5 rounded bg-zinc-50 border border-zinc-200 text-zinc-500 text-[11px] hover:bg-zinc-100 hover:text-zinc-700 transition-colors"
+                  className="w-7 h-7 rounded-full bg-zinc-900 text-white flex items-center justify-center hover:bg-black active:scale-95 transition-all shadow-sm"
+                  title={book.recommendation_tag === 'recommend' ? '推荐帖' : '排雷帖'}
                 >
-                  {book.recommendation_tag === 'recommend' ? '推荐帖 →' : '排雷帖 →'}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3">
+                    <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 </button>
               </div>
             </div>
-
-            <button 
-              onClick={() => setIsReviewModalOpen(true)}
-              className="self-start bg-zinc-900 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-lg hover:scale-105 transition-transform"
-            >
-              {myReview ? '修改评价' : '我读过'}
-            </button>
           </div>
         </div>
 
-        {/* ── 评分卡片（独立区域）── */}
+        {/* ── 评分卡片 + 评价按钮 ── */}
         <section className={sectionCard}>
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-2">
@@ -274,9 +265,9 @@ export default function BookDetail({
               <span className="text-zinc-300 text-2xl font-light leading-none">/</span>
               <span className="text-zinc-400 text-xl font-bold leading-none">10</span>
             </div>
-            <div className="text-right">
+            <div className="flex flex-col items-end gap-2">
               <div className="text-[11px] text-zinc-400">{reviews.length + 1} 人已评</div>
-              <div className="mt-1 flex gap-0.5 justify-end">
+              <div className="flex gap-0.5">
                 {[...Array(10)].map((_, i) => (
                   <div
                     key={i}
@@ -284,6 +275,12 @@ export default function BookDetail({
                   />
                 ))}
               </div>
+              <button
+                onClick={() => setIsReviewModalOpen(true)}
+                className="mt-1 bg-zinc-900 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-black active:scale-95 transition-all"
+              >
+                {myReview ? '修改评价' : '我读过'}
+              </button>
             </div>
           </div>
         </section>
