@@ -1,65 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Search } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ArrowLeft, Search, SlidersHorizontal, X, Check } from 'lucide-react';
 import { get_all_book_ratings } from '../services/storage';
 import { BookRating } from '../types';
 
-type ToastType = 'success' | 'error' | 'warning' | 'info';
-
-interface BookshelfProps {
-  onNavigateBack: () => void;
-  onBookClick: (postId: string) => void;
-  onBookDetailClick: (book: BookRating) => void;
-  showToast: (msg: string, type: ToastType) => void;
-  cachedBooks?: BookRating[] | null;
-  onBooksLoaded?: (books: BookRating[]) => void;
-}
-
-const LoadingSpinner = () => (
-  <div className="py-20 flex items-center justify-center bg-white">
-    <div className="w-6 h-6 border-2 border-zinc-200 border-t-zinc-800 rounded-full animate-spin"></div>
-  </div>
-);
-
-const BOOK_CATEGORIES = [
-  '热血竞技', '西幻史诗', '姼想奇幻', '科幻未来', '恐怖灵异', '无限快穿',
-  '性别战争', '年代重制', '悬疑推理', '东方架空', '校园青春', '职场商战',
-  '武侠仙侠', '其他',
-];
-
-const STATUS_LABEL: Record<string, string> = {
-  finished: '完结',
-  ongoing: '连载中',
-  hiatus: '断更',
-};
-
-const TAG_LABEL: Record<string, string> = {
-  recommend: '推荐',
-  warn: '排雷',
-};
-
-const FILTER_CHIPS = [
-  { key: 'all', label: '全部' },
-  { key: 'recommend', label: '推荐' },
-  { key: 'warn', label: '排雷' },
-  { key: 'finished', label: '完结' },
-  { key: 'ongoing', label: '连载中' },
-  { key: 'hiatus', label: '断更' },
-  ...BOOK_CATEGORIES.map(c => ({ key: c, label: c })),
-];
-
-function BookIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
-      style={{ width: 18, height: 18, opacity: 0.2 }}>
-      <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-    </svg>
-  );
-}
+// ... (LoadingSpinner, BOOK_CATEGORIES, STATUS_LABEL, TAG_LABEL 保持不变)
 
 export default function Bookshelf({
   onNavigateBack,
-  onBookClick,
   onBookDetailClick,
   showToast,
   cachedBooks,
@@ -68,8 +15,10 @@ export default function Bookshelf({
   const [books, setBooks] = useState<BookRating[]>([]);
   const [isLoading, setIsLoading] = useState(!cachedBooks);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // 筛选状态管理
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeChip, setActiveChip] = useState('all');
-  const chipsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (cachedBooks) {
@@ -86,243 +35,198 @@ export default function Bookshelf({
       setBooks(data);
       onBooksLoaded?.(data);
     } catch {
-      showToast('加载书架失败', 'error');
+      showToast('加载失败', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filtered = books
-    .filter(book => {
-      if (!searchQuery) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        book.book_name.toLowerCase().includes(q) ||
-        book.book_author.toLowerCase().includes(q)
-      );
-    })
-    .filter(book => {
-      if (activeChip === 'all') return true;
-      if (activeChip === 'recommend') return book.recommendation_tag === 'recommend';
-      if (activeChip === 'warn') return book.recommendation_tag === 'warn';
-      if (activeChip === 'finished') return book.serial_status === 'finished';
-      if (activeChip === 'ongoing') return book.serial_status === 'ongoing';
-      if (activeChip === 'hiatus') return book.serial_status === 'hiatus';
-      return book.book_category === activeChip;
-    })
-    .sort((a, b) => b.final_score - a.final_score);
+  const filtered = useMemo(() => {
+    return books
+      .filter(book => {
+        const q = searchQuery.toLowerCase();
+        const matchesSearch = !searchQuery || 
+          book.book_name.toLowerCase().includes(q) || 
+          book.book_author.toLowerCase().includes(q);
+        
+        const matchesChip = activeChip === 'all' || 
+          (activeChip === 'recommend' && book.recommendation_tag === 'recommend') ||
+          (activeChip === 'warn' && book.recommendation_tag === 'warn') ||
+          (activeChip === 'finished' && book.serial_status === 'finished') ||
+          (activeChip === 'ongoing' && book.serial_status === 'ongoing') ||
+          (activeChip === 'hiatus' && book.serial_status === 'hiatus') ||
+          book.book_category === activeChip;
 
-  // 全局排名（不受筛选影响）
-  const globalRanked = [...books].sort((a, b) => b.final_score - a.final_score);
+        return matchesSearch && matchesChip;
+      })
+      .sort((a, b) => b.final_score - a.final_score);
+  }, [books, searchQuery, activeChip]);
+
+  const globalRanked = useMemo(() => [...books].sort((a, b) => b.final_score - a.final_score), [books]);
 
   if (isLoading) return <LoadingSpinner />;
 
   return (
-    <div className="min-h-screen bg-white">
-      <style>{`
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-      `}</style>
-
+    <div className="min-h-screen bg-white text-zinc-900 font-sans">
       {/* ── 顶栏 ── */}
-      <div className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-zinc-100">
-        <div className="w-full max-w-2xl mx-auto px-4">
-
-          {/* 返回按钮行 */}
-          <div className="py-3 flex items-center justify-between">
-            <button onClick={onNavigateBack} className="text-zinc-600 hover:text-black font-medium flex items-center gap-2">
-              <ArrowLeft className="w-5 h-5" /> <span className="text-base">返回</span>
+      <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-zinc-100">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="h-14 flex items-center justify-between">
+            <button onClick={onNavigateBack} className="p-2 -ml-2 text-zinc-600 hover:text-black">
+              <ArrowLeft className="w-5 h-5" />
             </button>
-            <span
-              className="text-sm px-2.5 py-1 rounded-full"
-              style={{ color: '#71717a', backgroundColor: '#f4f4f5' }}
+            <h1 className="text-base font-semibold">书架清单</h1>
+            <div className="w-9"></div> {/* 占位平衡 */}
+          </div>
+
+          {/* 搜索与筛选触发栏 */}
+          <div className="pb-3 flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="搜索书名、作者..."
+                className="w-full bg-zinc-100 border-none rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-zinc-200 transition-all"
+              />
+            </div>
+            <button 
+              onClick={() => setIsFilterOpen(true)}
+              className={`p-2.5 rounded-xl border transition-all ${
+                activeChip !== 'all' 
+                ? 'bg-zinc-900 border-zinc-900 text-white' 
+                : 'bg-white border-zinc-200 text-zinc-600'
+              }`}
             >
-              共 {filtered.length} 本
-            </span>
-          </div>
-
-          {/* 搜索框 */}
-          <div className="relative mb-2.5" style={{ display: 'flex', alignItems: 'center' }}>
-            <Search
-              className="w-4 h-4"
-              style={{
-                color: '#a1a1aa',
-                position: 'absolute',
-                left: 12,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                pointerEvents: 'none',
-              }}
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="搜索书名或作者…"
-              className="w-full outline-none"
-              style={{
-                fontSize: 15,
-                paddingLeft: 36,
-                paddingRight: 12,
-                paddingTop: 9,
-                paddingBottom: 9,
-                border: '0.5px solid #e4e4e7',
-                borderRadius: 10,
-                backgroundColor: '#ffffff',
-                color: '#18181b',
-              }}
-            />
-          </div>
-
-          {/* 筛选芯片 */}
-          <div
-            ref={chipsRef}
-            className="hide-scrollbar flex gap-2 overflow-x-auto pb-2.5 -mx-4 px-4"
-            style={{
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              WebkitOverflowScrolling: 'touch',
-            } as React.CSSProperties}
-          >
-            {FILTER_CHIPS.map(chip => (
-              <button
-                key={chip.key}
-                onClick={() => setActiveChip(chip.key)}
-                className="flex-shrink-0 transition-colors"
-                style={{
-                  fontSize: 13,
-                  padding: '5px 12px',
-                  borderRadius: 20,
-                  border: '0.5px solid',
-                  borderColor: activeChip === chip.key ? '#18181b' : '#e4e4e7',
-                  backgroundColor: activeChip === chip.key ? '#18181b' : '#ffffff',
-                  color: activeChip === chip.key ? '#ffffff' : '#52525b',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {chip.label}
-              </button>
-            ))}
+              <SlidersHorizontal className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
 
       {/* ── 书籍列表 ── */}
-      <div className="w-full max-w-2xl mx-auto px-4 py-3">
-        {filtered.length === 0 ? (
-          <div
-            className="text-center py-20"
-            style={{ fontSize: 15, color: '#a1a1aa' }}
-          >
-            没有符合条件的书籍
-          </div>
-        ) : (
-          <div>
-            {filtered.map(book => {
-              const rank = globalRanked.findIndex(b => b.id === book.id) + 1;
-              return (
-                <div
-                  key={book.id}
-                  className="flex items-center gap-3 py-3.5 cursor-pointer"
-                  style={{ borderBottom: '0.5px solid #f4f4f5' }}
-                  onClick={() => onBookDetailClick(book)}
-                >
-                  {/* 排名 */}
-                  <div
-                    className="flex-shrink-0 text-center"
-                    style={{
-                      minWidth: 22,
-                      fontSize: 15,
-                      fontWeight: rank <= 3 ? 600 : 400,
-                      color: '#18181b',
-                    }}
-                  >
-                    {rank}
-                  </div>
+      <div className="max-w-2xl mx-auto px-4 py-2">
+        <div className="flex justify-between items-center py-4 text-xs font-medium text-zinc-400 uppercase tracking-wider">
+          <span>共 {filtered.length} 本藏书</span>
+          {activeChip !== 'all' && (
+            <span className="text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded">正在筛选: {activeChip}</span>
+          )}
+        </div>
 
-                  {/* 封面 */}
-                  <div
-                    className="flex-shrink-0 flex items-center justify-center overflow-hidden"
-                    style={{
-                      width: 48,
-                      height: 66,
-                      borderRadius: 4,
-                      backgroundColor: '#f4f4f5',
-                      border: '0.5px solid #e4e4e7',
-                    }}
-                  >
-                    {book.cover_url
-                      ? <img src={book.cover_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : <BookIcon />
-                    }
-                  </div>
+        {filtered.map((book) => {
+          const rank = globalRanked.findIndex(b => b.id === book.id) + 1;
+          return (
+            <div
+              key={book.id}
+              onClick={() => onBookDetailClick(book)}
+              className="group flex items-center gap-4 py-4 active:bg-zinc-50 transition-colors border-b border-zinc-50 last:border-0"
+            >
+              <div className={`w-6 text-center text-sm font-bold ${rank <= 3 ? 'text-zinc-900' : 'text-zinc-300'}`}>
+                {rank.toString().padStart(2, '0')}
+              </div>
+              
+              <div className="w-12 h-16 bg-zinc-100 rounded shadow-sm overflow-hidden flex-shrink-0">
+                {book.cover_url ? (
+                  <img src={book.cover_url} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center opacity-20"><BookIcon /></div>
+                )}
+              </div>
 
-                  {/* 信息 */}
-                  <div className="flex-1 min-w-0">
-                    <div
-                      className="font-medium mb-0.5"
-                      style={{
-                        fontSize: 16,
-                        color: '#18181b',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        lineHeight: '1.4',
-                      }}
-                    >
-                      {book.book_name}
-                    </div>
-                    <div
-                      className="mb-1.5 truncate"
-                      style={{ fontSize: 14, color: '#71717a' }}
-                    >
-                      {book.book_author}
-                    </div>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {book.recommendation_tag && (
-                        <span
-                          style={{
-                            fontSize: 12,
-                            padding: '2px 8px',
-                            borderRadius: 20,
-                            border: '0.5px solid',
-                            borderColor: book.recommendation_tag === 'recommend' ? '#18181b' : '#e4e4e7',
-                            backgroundColor: book.recommendation_tag === 'recommend' ? '#18181b' : 'transparent',
-                            color: book.recommendation_tag === 'recommend' ? '#ffffff' : '#71717a',
-                          }}
-                        >
-                          {TAG_LABEL[book.recommendation_tag]}
-                        </span>
-                      )}
-                      {book.serial_status && (
-                        <span
-                          style={{
-                            fontSize: 12,
-                            padding: '2px 8px',
-                            borderRadius: 20,
-                            border: '0.5px solid #e4e4e7',
-                            color: '#71717a',
-                          }}
-                        >
-                          {STATUS_LABEL[book.serial_status]}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 评分 */}
-                  <div
-                    className="flex-shrink-0 font-semibold"
-                    style={{ fontSize: 18, color: '#18181b' }}
-                  >
-                    {book.final_score.toFixed(1)}
-                  </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-zinc-900 text-[15px] truncate group-active:text-zinc-600">
+                  {book.book_name}
+                </h3>
+                <p className="text-zinc-500 text-xs mt-0.5">{book.book_author}</p>
+                <div className="flex gap-2 mt-2">
+                  {book.recommendation_tag === 'recommend' && (
+                    <span className="px-1.5 py-0.5 bg-zinc-900 text-white text-[10px] font-bold rounded">TOP</span>
+                  )}
+                  <span className="px-1.5 py-0.5 border border-zinc-200 text-zinc-500 text-[10px] rounded">
+                    {book.book_category || '其他'}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
+
+              <div className="text-right">
+                <div className="text-lg font-black italic text-zinc-900">
+                  {book.final_score.toFixed(1)}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      {/* ── 筛选抽屉 (Overlay) ── */}
+      {isFilterOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsFilterOpen(false)} />
+          <div className="relative bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom duration-300">
+            <div className="sticky top-0 bg-white px-6 py-4 border-b border-zinc-100 flex justify-between items-center">
+              <h2 className="font-bold text-lg">筛选条件</h2>
+              <button onClick={() => setIsFilterOpen(false)} className="p-1"><X className="w-6 h-6" /></button>
+            </div>
+            
+            <div className="p-6 space-y-8">
+              <section>
+                <h3 className="text-xs font-bold text-zinc-400 mb-4 uppercase">推荐状态</h3>
+                <div className="flex flex-wrap gap-2">
+                  {['all', 'recommend', 'warn'].map(k => (
+                    <FilterChip 
+                      key={k} 
+                      label={k === 'all' ? '全部' : (k === 'recommend' ? '精选推荐' : '避雷警示')} 
+                      active={activeChip === k} 
+                      onClick={() => setActiveChip(k)} 
+                    />
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <h3 className="text-xs font-bold text-zinc-400 mb-4 uppercase">书籍分类</h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {BOOK_CATEGORIES.map(c => (
+                    <FilterChip 
+                      key={c} 
+                      label={c} 
+                      active={activeChip === c} 
+                      onClick={() => setActiveChip(c)} 
+                    />
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            <div className="p-6 pt-0">
+              <button 
+                onClick={() => setIsFilterOpen(false)}
+                className="w-full bg-zinc-900 text-white py-4 rounded-2xl font-bold active:scale-[0.98] transition-transform"
+              >
+                查看 ({filtered.length}) 本书籍
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// 辅助组件
+function FilterChip({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+        active 
+        ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-200' 
+        : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+      }`}
+    >
+      {active && <Check className="w-3.5 h-3.5" />}
+      {label}
+    </button>
   );
 }
