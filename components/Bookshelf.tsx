@@ -82,19 +82,13 @@ export default function Bookshelf({
   const filteredBooks = useMemo(() => {
     return books
       .filter(book => {
-        // 搜索过滤
         const q = searchQuery.toLowerCase();
         const matchesSearch = !searchQuery || 
           book.book_name.toLowerCase().includes(q) || 
           book.book_author.toLowerCase().includes(q);
         
-        // 分类过滤
         const matchesCat = filterConfig.category === 'all' || book.book_category === filterConfig.category;
-        
-        // 状态过滤
         const matchesStatus = filterConfig.status === 'all' || book.serial_status === filterConfig.status;
-        
-        // 评价过滤
         const matchesEval = filterConfig.eval === 'all' || book.recommendation_tag === filterConfig.eval;
 
         return matchesSearch && matchesCat && matchesStatus && matchesEval;
@@ -104,13 +98,12 @@ export default function Bookshelf({
 
   const globalRanked = useMemo(() => [...books].sort((a, b) => b.final_score - a.final_score), [books]);
 
-  // 判断是否有激活的筛选
   const hasActiveFilters = filterConfig.category !== 'all' || filterConfig.status !== 'all' || filterConfig.eval !== 'all';
 
   if (isLoading) return <LoadingSpinner />;
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900 select-none">
+    <div className="min-h-screen bg-white text-zinc-900 select-none font-sans">
       {/* ── 顶栏 ── */}
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
         <div className="max-w-2xl mx-auto px-4">
@@ -118,7 +111,6 @@ export default function Bookshelf({
             <button onClick={onNavigateBack} className="p-2 -ml-2 text-zinc-500 hover:text-black transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-[15px] font-bold tracking-tight">我的书架</h1>
             <div className="w-9" /> 
           </div>
 
@@ -153,7 +145,7 @@ export default function Bookshelf({
       {/* ── 列表区域 ── */}
       <div className="max-w-2xl mx-auto px-4 py-2">
         <div className="flex justify-between items-center py-4 text-[11px] font-bold text-zinc-400 uppercase tracking-widest">
-          <span>{filteredBooks.length} BOOKS FOUND</span>
+          <span>{filteredBooks.length} 本</span>
           {hasActiveFilters && (
             <button 
               onClick={() => setFilterConfig({ category: 'all', status: 'all', eval: 'all' })}
@@ -176,7 +168,8 @@ export default function Bookshelf({
                   onClick={() => onBookDetailClick(book)}
                   className="flex items-center gap-4 py-5 cursor-pointer active:opacity-60 transition-opacity"
                 >
-                  <div className={`w-6 text-center text-sm font-black ${rank <= 3 ? 'text-zinc-900' : 'text-zinc-200'}`}>
+                  {/* 修改1：排名序号全部改为黑色 (text-zinc-900) */}
+                  <div className="w-6 text-center text-sm font-black text-zinc-900">
                     {rank}
                   </div>
                   
@@ -193,20 +186,8 @@ export default function Bookshelf({
                       {book.book_name}
                     </h3>
                     <p className="text-zinc-500 text-xs mt-1 font-medium">{book.book_author}</p>
-                    <div className="flex gap-1.5 mt-2.5">
-                      {book.recommendation_tag && (
-                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${
-                          book.recommendation_tag === 'recommend' 
-                          ? 'bg-zinc-900 border-zinc-900 text-white' 
-                          : 'bg-white border-zinc-200 text-zinc-500'
-                        }`}>
-                          {book.recommendation_tag === 'recommend' ? '精选' : '排雷'}
-                        </span>
-                      )}
-                      <span className="px-2 py-0.5 bg-zinc-100 text-zinc-500 text-[10px] font-bold rounded-full">
-                        {book.book_category}
-                      </span>
-                    </div>
+                    
+                    {/* 修改2：删除了标签展示区域 (Tag section removed) */}
                   </div>
 
                   <div className="text-right">
@@ -227,7 +208,6 @@ export default function Bookshelf({
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setIsFilterOpen(false)} />
           <div className="relative bg-white rounded-t-[32px] max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300">
             
-            {/* 面板头部 */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-50">
               <h2 className="font-black text-xl">筛选条件</h2>
               <button onClick={() => setIsFilterOpen(false)} className="p-2 bg-zinc-100 rounded-full text-zinc-500 active:scale-90 transition-transform">
@@ -235,9 +215,7 @@ export default function Bookshelf({
               </button>
             </div>
             
-            {/* 筛选内容区 */}
             <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-10">
-              {/* 评价维度 */}
               <section>
                 <h3 className="text-[11px] font-black text-zinc-400 mb-4 tracking-widest uppercase">推荐指数</h3>
                 <div className="flex flex-wrap gap-2">
@@ -252,7 +230,6 @@ export default function Bookshelf({
                 </div>
               </section>
 
-              {/* 状态维度 */}
               <section>
                 <h3 className="text-[11px] font-black text-zinc-400 mb-4 tracking-widest uppercase">创作状态</h3>
                 <div className="flex flex-wrap gap-2">
@@ -267,7 +244,6 @@ export default function Bookshelf({
                 </div>
               </section>
 
-              {/* 类别维度 */}
               <section>
                 <h3 className="text-[11px] font-black text-zinc-400 mb-4 tracking-widest uppercase">频道类别</h3>
                 <div className="grid grid-cols-3 gap-2">
@@ -288,7 +264,6 @@ export default function Bookshelf({
               </section>
             </div>
 
-            {/* 面板底部按钮 */}
             <div className="p-6 border-t border-zinc-50 bg-white/80 backdrop-blur-md">
               <button 
                 onClick={() => setIsFilterOpen(false)}
@@ -304,7 +279,6 @@ export default function Bookshelf({
   );
 }
 
-// 筛选按钮子组件
 function FilterButton({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) {
   return (
     <button
