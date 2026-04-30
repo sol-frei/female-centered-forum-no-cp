@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
-import { BookRating, ReaderReview, Character } from '../types';
+import { ArrowLeft, Edit2, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { BookRating, ReaderReview } from '../types';
 
 import {
   upload_book_cover,
@@ -73,10 +73,14 @@ export default function BookDetail({
   const [editingIntro, setEditingIntro] = useState(false);
   const [introText, setIntroText] = useState(initialBook.book_intro || '');
   const [introExpanded, setIntroExpanded] = useState(false);
+  
+  // ── 评价相关状态 ──
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [starRating, setStarRating] = useState(0);
   const [hoverStar, setHoverStar] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingCharIdx, setUploadingCharIdx] = useState<number | null>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -172,6 +176,7 @@ export default function BookDetail({
         final_score: newFinalScore,
       }));
       showToast('评分已提交', 'success');
+      setIsReviewModalOpen(false); // 提交成功后关闭弹窗
     } catch {
       showToast('提交失败', 'error');
     } finally {
@@ -194,7 +199,7 @@ export default function BookDetail({
   const sectionTitle = "text-[15px] font-bold text-zinc-800 mb-4 flex items-center gap-2";
 
   return (
-    <div className="min-h-screen bg-[#fafafa] pb-10">
+    <div className="relative min-h-screen bg-[#fafafa] pb-10">
       {/* ── 顶栏 ── */}
       <div className="sticky top-0 z-40 w-full bg-white/70 backdrop-blur-md border-b border-zinc-100 px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
@@ -243,12 +248,22 @@ export default function BookDetail({
               {book.serial_status && <span className="px-2 py-0.5 rounded bg-zinc-50 text-zinc-500 text-[11px]">{STATUS_LABEL[book.serial_status]}</span>}
             </div>
 
-            <div className="flex flex-col">
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-zinc-900">{book.final_score.toFixed(1)}</span>
-                <span className="text-zinc-400 text-xs font-bold">最终得分</span>
+            <div className="flex items-end justify-between">
+              <div className="flex flex-col">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-black text-zinc-900">{book.final_score.toFixed(1)}</span>
+                  <span className="text-zinc-400 text-xs font-bold">最终得分</span>
+                </div>
+                <span className="text-zinc-400 text-[11px] mt-1">{reviews.length + 1} 人已评</span>
               </div>
-              <span className="text-zinc-400 text-[11px] mt-1">{reviews.length + 1} 人已评</span>
+              
+              {/* 触发评价的按钮 */}
+              <button 
+                onClick={() => setIsReviewModalOpen(true)}
+                className="bg-zinc-900 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-lg hover:scale-105 transition-transform"
+              >
+                {myReview ? '修改评价' : '我读过'}
+              </button>
             </div>
           </div>
         </div>
@@ -328,41 +343,6 @@ export default function BookDetail({
           </section>
         )}
 
-        {/* ── 撰写评论卡片 ── */}
-        <section className="bg-zinc-900 rounded-2xl p-6 text-white shadow-xl">
-          <h2 className="text-sm font-bold mb-4 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-            {myReview ? '修改我的评价' : '发表你的印象分'}
-          </h2>
-          <div className="flex items-center gap-2 mb-5">
-            {[...Array(10)].map((_, i) => (
-              <button
-                key={i}
-                onMouseEnter={() => setHoverStar(i + 1)}
-                onMouseLeave={() => setHoverStar(0)}
-                onClick={() => setStarRating(i + 1)}
-                className={`text-xl transition-all duration-200 ${ (hoverStar || starRating) > i ? 'text-white scale-125' : 'text-zinc-700'}`}
-              >
-                ★
-              </button>
-            ))}
-            <span className="ml-3 text-2xl font-black text-white italic">{starRating || '0'}</span>
-          </div>
-          <textarea
-            value={reviewText}
-            onChange={e => setReviewText(e.target.value)}
-            placeholder="写下你对此书的排雷或安利感悟..."
-            className="w-full bg-zinc-800 border-none rounded-xl p-4 text-sm text-zinc-200 placeholder:text-zinc-600 focus:ring-1 focus:ring-zinc-600 outline-none min-h-[100px] mb-4"
-          />
-          <button
-            onClick={handleSubmitReview}
-            disabled={submittingReview || !starRating}
-            className={`w-full py-3 rounded-xl text-sm font-bold transition-all ${starRating ? 'bg-white text-zinc-900 shadow-lg' : 'bg-zinc-800 text-zinc-600'}`}
-          >
-            {submittingReview ? '提交中...' : myReview ? '更新评价' : '发布评价'}
-          </button>
-        </section>
-
         {/* ── 读者书评列表 ── */}
         <section className="space-y-4">
           <h2 className={sectionTitle + " px-1"}>书友短评 ({reviews.length})</h2>
@@ -408,6 +388,63 @@ export default function BookDetail({
         </button>
 
       </div>
+
+      {/* ── 评价弹窗 (Portal-like Modal) ── */}
+      {isReviewModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+          {/* 遮罩层 */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={() => setIsReviewModalOpen(false)}
+          />
+          
+          {/* 评价卡片 (对应图片中的 UI) */}
+          <section className="relative w-full max-w-lg bg-zinc-900 rounded-[24px] p-6 text-white shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-[15px] font-bold flex items-center gap-2">
+                <span className="w-2 h-2 bg-white rounded-full"></span>
+                {myReview ? '修改我的评价' : '发表我的印象分'}
+              </h2>
+              <button 
+                onClick={() => setIsReviewModalOpen(false)}
+                className="p-1 hover:bg-zinc-800 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-zinc-500" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1.5 mb-6">
+              {[...Array(10)].map((_, i) => (
+                <button
+                  key={i}
+                  onMouseEnter={() => setHoverStar(i + 1)}
+                  onMouseLeave={() => setHoverStar(0)}
+                  onClick={() => setStarRating(i + 1)}
+                  className={`text-2xl transition-all duration-200 ${ (hoverStar || starRating) > i ? 'text-white scale-110' : 'text-zinc-700'}`}
+                >
+                  ★
+                </button>
+              ))}
+              <span className="ml-4 text-3xl font-black text-white italic">{starRating || '0'}</span>
+            </div>
+
+            <textarea
+              value={reviewText}
+              onChange={e => setReviewText(e.target.value)}
+              placeholder="写下你对此书的排雷或安利感悟..."
+              className="w-full bg-zinc-800 border-none rounded-2xl p-4 text-[14px] text-zinc-200 placeholder:text-zinc-600 focus:ring-1 focus:ring-zinc-700 outline-none min-h-[140px] mb-6 leading-relaxed"
+            />
+
+            <button
+              onClick={handleSubmitReview}
+              disabled={submittingReview || !starRating}
+              className={`w-full py-4 rounded-2xl text-[15px] font-black transition-all active:scale-[0.98] ${starRating ? 'bg-white text-zinc-900 shadow-xl' : 'bg-zinc-800 text-zinc-700 cursor-not-allowed'}`}
+            >
+              {submittingReview ? '正在提交...' : myReview ? '更新评价' : '发布评价'}
+            </button>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
