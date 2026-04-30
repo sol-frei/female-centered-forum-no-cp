@@ -49,7 +49,6 @@ export default function Bookshelf({
   const [isLoading, setIsLoading] = useState(!cachedBooks);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // 筛选状态
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterConfig, setFilterConfig] = useState({
     category: 'all',
@@ -78,7 +77,6 @@ export default function Bookshelf({
     }
   };
 
-  // 核心筛选逻辑
   const filteredBooks = useMemo(() => {
     return books
       .filter(book => {
@@ -97,7 +95,6 @@ export default function Bookshelf({
   }, [books, searchQuery, filterConfig]);
 
   const globalRanked = useMemo(() => [...books].sort((a, b) => b.final_score - a.final_score), [books]);
-
   const hasActiveFilters = filterConfig.category !== 'all' || filterConfig.status !== 'all' || filterConfig.eval !== 'all';
 
   if (isLoading) return <LoadingSpinner />;
@@ -107,14 +104,22 @@ export default function Bookshelf({
       {/* ── 顶栏 ── */}
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-zinc-100">
         <div className="max-w-2xl mx-auto px-4">
-          <div className="h-14 flex items-center justify-between">
+          <div className="h-12 flex items-center justify-between">
             <button onClick={onNavigateBack} className="p-2 -ml-2 text-zinc-500 hover:text-black transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="w-9" /> 
+            {/* 重置筛选按钮放在右上角，如有激活筛选则显示 */}
+            {hasActiveFilters && (
+              <button 
+                onClick={() => setFilterConfig({ category: 'all', status: 'all', eval: 'all' })}
+                className="text-[11px] font-bold text-zinc-900 px-2 py-1 bg-zinc-100 rounded-lg"
+              >
+                重置
+              </button>
+            )}
           </div>
 
-          <div className="pb-3 flex gap-2">
+          <div className="pb-3 flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
               <input
@@ -122,39 +127,36 @@ export default function Bookshelf({
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="搜索书名或作者..."
-                className="w-full bg-zinc-100 border-none rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-zinc-200 transition-all placeholder:text-zinc-400"
+                className="w-full bg-zinc-100 border-none rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-zinc-200 transition-all placeholder:text-zinc-400"
               />
             </div>
-            <button 
-              onClick={() => setIsFilterOpen(true)}
-              className={`p-2.5 rounded-xl border transition-all relative ${
-                hasActiveFilters 
-                ? 'bg-zinc-900 border-zinc-900 text-white' 
-                : 'bg-white border-zinc-200 text-zinc-600 active:bg-zinc-50'
-              }`}
-            >
-              <SlidersHorizontal className="w-5 h-5" />
-              {hasActiveFilters && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
-              )}
-            </button>
+            
+            {/* 修改2：将数量统计移动到位置“2” */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[13px] font-black text-zinc-400 italic">
+                {filteredBooks.length}<span className="text-[10px] ml-0.5 not-italic">本</span>
+              </span>
+              <button 
+                onClick={() => setIsFilterOpen(true)}
+                className={`p-2.5 rounded-xl border transition-all relative ${
+                  hasActiveFilters 
+                  ? 'bg-zinc-900 border-zinc-900 text-white' 
+                  : 'bg-white border-zinc-200 text-zinc-600 active:bg-zinc-50'
+                }`}
+              >
+                <SlidersHorizontal className="w-5 h-5" />
+                {hasActiveFilters && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ── 列表区域 ── */}
       <div className="max-w-2xl mx-auto px-4 py-2">
-        <div className="flex justify-between items-center py-4 text-[11px] font-bold text-zinc-400 uppercase tracking-widest">
-          <span>{filteredBooks.length} 本</span>
-          {hasActiveFilters && (
-            <button 
-              onClick={() => setFilterConfig({ category: 'all', status: 'all', eval: 'all' })}
-              className="text-zinc-900 hover:underline"
-            >
-              重置重选
-            </button>
-          )}
-        </div>
+        {/* 修改2：删除了原来的“18本”统计行 (行 1 消失) */}
 
         {filteredBooks.length === 0 ? (
           <div className="py-20 text-center text-zinc-400 text-sm">没找到相关的书籍</div>
@@ -166,10 +168,9 @@ export default function Bookshelf({
                 <div
                   key={book.id}
                   onClick={() => onBookDetailClick(book)}
-                  className="flex items-center gap-4 py-5 cursor-pointer active:opacity-60 transition-opacity"
+                  className="flex items-start gap-4 py-5 cursor-pointer active:opacity-60 transition-opacity"
                 >
-                  {/* 修改1：排名序号全部改为黑色 (text-zinc-900) */}
-                  <div className="w-6 text-center text-sm font-black text-zinc-900">
+                  <div className="w-6 pt-1 text-center text-sm font-black text-zinc-900 shrink-0">
                     {rank}
                   </div>
                   
@@ -182,15 +183,14 @@ export default function Bookshelf({
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-zinc-900 text-base leading-tight truncate">
+                    {/* 修改1：去掉了 truncate，让书名完整显示 */}
+                    <h3 className="font-bold text-zinc-900 text-base leading-tight break-words">
                       {book.book_name}
                     </h3>
-                    <p className="text-zinc-500 text-xs mt-1 font-medium">{book.book_author}</p>
-                    
-                    {/* 修改2：删除了标签展示区域 (Tag section removed) */}
+                    <p className="text-zinc-500 text-xs mt-1 font-medium truncate">{book.book_author}</p>
                   </div>
 
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <div className="text-xl font-black italic tracking-tighter text-zinc-900">
                       {book.final_score.toFixed(1)}
                     </div>
@@ -248,7 +248,7 @@ export default function Bookshelf({
                 <h3 className="text-[11px] font-black text-zinc-400 mb-4 tracking-widest uppercase">频道类别</h3>
                 <div className="grid grid-cols-3 gap-2">
                   <FilterButton 
-                    label="全部类别"
+                    label="全部"
                     active={filterConfig.category === 'all'}
                     onClick={() => setFilterConfig(prev => ({ ...prev, category: 'all' }))}
                   />
