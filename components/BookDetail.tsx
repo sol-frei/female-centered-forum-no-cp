@@ -8,7 +8,6 @@ import {
   update_book_intro,
   submit_reader_review,
   toggle_review_like,
-  get_book_rating_by_id,
   check_sensitive_words,
 } from '../services/storage';
 
@@ -197,30 +196,22 @@ export default function BookDetail({
   const myReview = reviews.find(r => r.user_id === currentUserId);
 
   // ── 权限判断 ──────────────────────────────────────────────────────
-  // 可以编辑封面 / 人物图 / 简介的身份：发帖人、i女er、管理员
-  const isAuthor    = book.author_id === currentUserId;          // 发帖人
-  const isIer       = currentUserRole === 'i女er';               // i女er 身份
-  const isAdmin     = currentUserRole === 'admin';               // 管理员
-  const canEdit     = isAuthor || isIer || isAdmin;
+  // book_ratings_full 视图中发帖人字段为 user_id（非 author_id）
+  const isAuthor = book.user_id === currentUserId;
+  const isIer    = currentUserRole === 'i女er';
+  const isAdmin  = currentUserRole === 'admin';
+  const canEdit  = isAuthor || isIer || isAdmin;
 
+  // 仅同步当前用户已有评价的初始值，不重复拉取整个 book（避免提交后"闪两次"）
   useEffect(() => {
-    async function loadBook() {
-      if (!initialBook.id) return;
-      try {
-        const fresh = await get_book_rating_by_id(initialBook.id);
-        setBook({ ...fresh, reader_reviews: fresh.reader_reviews || [] });
-        setIntroText(fresh.book_intro || '');
-        const currentMyReview = fresh.reader_reviews?.find(r => r.user_id === currentUserId);
-        if (currentMyReview) {
-          setStarRating(currentMyReview.impression_score);
-          setReviewText(currentMyReview.review_text || '');
-        }
-      } catch (e) {
-        console.error('加载失败', e);
-      }
+    const existingReview = (initialBook.reader_reviews || []).find(
+      (r: ReaderReview) => r.user_id === currentUserId
+    );
+    if (existingReview) {
+      setStarRating(existingReview.impression_score);
+      setReviewText(existingReview.review_text || '');
     }
-    loadBook();
-  }, [initialBook.id, currentUserId]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── 处理逻辑 ──────────────────────────────────────────────────────
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -376,18 +367,18 @@ export default function BookDetail({
               {/* 书名：移动端 text-xl 保证可读，桌面端 text-2xl */}
               <h1 className="text-xl sm:text-2xl font-extrabold leading-tight mb-1">{book.book_name}</h1>
               {/* 作者：从 text-sm 调整为 text-[15px] */}
-              <p className="text-[15px] text-zinc-500 mb-3">{book.book_author}</p>
+              <p className="text-base text-zinc-500 mb-3">{book.book_author}</p>
 
-              <div className="flex flex-wrap gap-1.5 items-center">
+              <div className="flex flex-wrap gap-2 items-center">
                 {book.book_category && (
-                  <span className="px-2 py-0.5 rounded bg-zinc-50 border border-zinc-100 text-zinc-500 text-xs">{book.book_category}</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-zinc-50 border border-zinc-100 text-zinc-500 text-sm">{book.book_category}</span>
                 )}
                 {book.serial_status && (
-                  <span className="px-2 py-0.5 rounded bg-zinc-50 text-zinc-500 text-xs">{STATUS_LABEL[book.serial_status]}</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-zinc-50 text-zinc-500 text-sm">{STATUS_LABEL[book.serial_status]}</span>
                 )}
                 <button
                   onClick={() => onPostClick(book.post_id)}
-                  className="h-7 px-2.5 rounded-full bg-zinc-900 text-white flex items-center justify-center active:scale-95 transition-all shadow-sm text-[11px] font-bold whitespace-nowrap"
+                  className="h-8 px-3 rounded-full bg-zinc-900 text-white flex items-center justify-center active:scale-95 transition-all shadow-sm text-sm font-bold whitespace-nowrap"
                 >
                   {book.recommendation_tag === 'recommend' ? '推荐帖' : '排雷帖'}
                 </button>
