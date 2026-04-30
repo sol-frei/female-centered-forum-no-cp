@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Edit2, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { ArrowLeft, Edit2, ChevronDown, ChevronUp, X, ArrowRight } from 'lucide-react';
 import { BookRating, ReaderReview } from '../types';
 
 import {
@@ -176,7 +176,7 @@ export default function BookDetail({
         final_score: newFinalScore,
       }));
       showToast('评分已提交', 'success');
-      setIsReviewModalOpen(false); // 提交成功后关闭弹窗
+      setIsReviewModalOpen(false); 
     } catch {
       showToast('提交失败', 'error');
     } finally {
@@ -194,12 +194,11 @@ export default function BookDetail({
     }
   };
 
-  // ── 统一样式 ──
   const sectionCard = "bg-white rounded-2xl border border-zinc-100 p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]";
   const sectionTitle = "text-[15px] font-bold text-zinc-800 mb-4 flex items-center gap-2";
 
   return (
-    <div className="relative min-h-screen bg-[#fafafa] pb-10 text-zinc-900">
+    <div className="relative min-h-screen bg-[#fafafa] pb-32 text-zinc-900">
       {/* ── 顶栏 ── */}
       <div className="sticky top-0 z-40 w-full bg-white/70 backdrop-blur-md border-b border-zinc-100 px-4 py-3">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
@@ -257,7 +256,6 @@ export default function BookDetail({
                 <span className="text-zinc-400 text-[11px] mt-1">{reviews.length + 1} 人已评</span>
               </div>
               
-              {/* 触发评价的按钮 */}
               <button 
                 onClick={() => setIsReviewModalOpen(true)}
                 className="bg-zinc-900 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-lg hover:scale-105 transition-transform"
@@ -379,26 +377,33 @@ export default function BookDetail({
           )}
         </section>
 
-        {/* ── 底部操作 ── */}
-        <button
-          onClick={() => onPostClick(book.post_id)}
-          className="w-full py-4 rounded-2xl border-2 border-zinc-100 text-zinc-900 font-black text-sm hover:bg-zinc-50 transition-all flex items-center justify-center gap-2"
-        >
-          查看完整帖子详情 <ArrowLeft className="w-4 h-4 rotate-180" />
-        </button>
+        {/* ── 修改后的：圆形悬浮按钮 ── */}
+        <div className="flex justify-center pt-10">
+          <button
+            onClick={() => onPostClick(book.post_id)}
+            className="group relative flex flex-col items-center justify-center w-24 h-24 rounded-full bg-zinc-900 text-white shadow-[0_15px_30px_-10px_rgba(0,0,0,0.3)] hover:scale-110 active:scale-95 transition-all duration-300 border-[6px] border-white ring-1 ring-zinc-100"
+          >
+             <span className="text-[10px] font-bold opacity-60 tracking-widest mb-0.5">查看</span>
+             <span className="text-[13px] font-black tracking-tight">
+               {book.recommendation_tag === 'recommend' ? '推荐帖' : '排雷帖'}
+             </span>
+             {/* 一个小的装饰箭头 */}
+             <div className="absolute -right-1 top-1/2 -translate-y-1/2 bg-white rounded-full p-1 shadow-sm opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all">
+                <ArrowRight className="w-3 h-3 text-zinc-900" />
+             </div>
+          </button>
+        </div>
 
       </div>
 
-      {/* ── 评价弹窗 (Portal-like Modal) ── */}
+      {/* ── 评价弹窗 ── */}
       {isReviewModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-          {/* 遮罩层 - 改为深色半透明配合亮色卡片 */}
           <div 
             className="absolute inset-0 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-300"
             onClick={() => setIsReviewModalOpen(false)}
           />
           
-          {/* 评价卡片 - 主体改为亮色 */}
           <section className="relative w-full max-w-lg bg-zinc-50 rounded-[24px] p-6 text-zinc-900 shadow-2xl animate-in slide-in-from-bottom-10 duration-300">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-[15px] font-bold flex items-center gap-2">
@@ -413,7 +418,6 @@ export default function BookDetail({
               </button>
             </div>
 
-            {/* 修改布局：星星和数字垂直对齐中，并在移动端增加左右边距 */}
             <div className="flex flex-col items-center gap-4 mb-6">
               <div className="flex items-center gap-1.5 overflow-x-auto w-full justify-center px-2 scrollbar-hide">
                 {[...Array(10)].map((_, i) => (
@@ -428,11 +432,9 @@ export default function BookDetail({
                   </button>
                 ))}
               </div>
-              {/* 数字：下移到星星中间排列，增加间距防止移动端超出 */}
               <span className="text-3xl font-black text-zinc-900 italic">{starRating || '0'}</span>
             </div>
 
-            {/* 输入框背景色也对应改浅 */}
             <textarea
               value={reviewText}
               onChange={e => setReviewText(e.target.value)}
@@ -440,7 +442,6 @@ export default function BookDetail({
               className="w-full bg-zinc-100 border border-zinc-200 rounded-2xl p-4 text-[14px] text-zinc-900 placeholder:text-zinc-400 focus:ring-1 focus:ring-zinc-300 outline-none min-h-[140px] mb-6 leading-relaxed"
             />
 
-            {/* 底部按钮保留黑色强调 */}
             <button
               onClick={handleSubmitReview}
               disabled={submittingReview || !starRating}
