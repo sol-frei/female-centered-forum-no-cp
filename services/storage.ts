@@ -966,8 +966,8 @@ export async function submit_reader_review(
     impression_score: number;
     review_text: string;
   }
-): Promise<{ updatedReviews: ReaderReview[]; newImpressedScore: number; newFinalScore: number }> {
-  // 1. 更新书评列表
+): Promise<{ freshBook: BookRating }> {
+  // 1. 构造新的 reader_reviews 列表
   const existingIndex = currentReviews.findIndex(r => r.user_id === newReview.user_id);
 
   let updatedReviews: ReaderReview[];
@@ -989,14 +989,11 @@ export async function submit_reader_review(
     }];
   }
 
-  // 2. 只写 reader_reviews，impressed_score / final_score 由视图自动重算
-  const updated = await update_book_rating(bookRatingId, { reader_reviews: updatedReviews });
+  // 2. 写库；update_book_rating 内部会从视图 SELECT 一次并返回完整最新数据，
+  //    直接把这份数据透传给前端，避免前端再做一次拼装（减少一次 setState）。
+  const freshBook = await update_book_rating(bookRatingId, { reader_reviews: updatedReviews });
 
-  return {
-    updatedReviews,
-    newImpressedScore: updated.impressed_score,
-    newFinalScore: updated.final_score,
-  };
+  return { freshBook };
 }
 
 export async function toggle_review_like(
