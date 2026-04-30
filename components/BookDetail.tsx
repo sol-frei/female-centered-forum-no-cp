@@ -118,7 +118,7 @@ function PersonIcon() {
 function HeartIcon({ filled }: { filled: boolean }) {
   return (
     <svg viewBox="0 0 24 24" fill={filled ? '#ef4444' : 'none'}
-      stroke={filled ? '#ef4444' : 'currentColor'} strokeWidth="2" className="w-3.5 h-4">
+      stroke={filled ? '#ef4444' : '#d1d5db'} strokeWidth="2" className="w-4 h-4">
       <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
     </svg>
   );
@@ -430,7 +430,7 @@ export default function BookDetail({
         </section>
 
         {/* ── 简介 ── */}
-        <section className={sectionCard}>
+        <section className={sectionCard + " -mx-2"}>
           <div className="flex justify-between items-center mb-2">
             <h2 className={sectionTitle}>书籍简介</h2>
             {/* 编辑按钮仅对有权限用户展示 */}
@@ -543,7 +543,7 @@ export default function BookDetail({
                       </div>
                       <button
                         onClick={() => handleToggleLike(i)}
-                        className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full transition-colors ${r.liked_by.includes(currentUserId) ? 'bg-red-500 text-white' : 'bg-zinc-50 text-zinc-400'}`}
+                        className={`flex items-center gap-1 text-xs transition-colors ${r.liked_by.includes(currentUserId) ? 'text-red-500' : 'text-zinc-300'}`}
                       >
                         <HeartIcon filled={r.liked_by.includes(currentUserId)} />
                         {r.likes}
@@ -599,7 +599,7 @@ export default function BookDetail({
             <textarea
               value={reviewText}
               onChange={e => setReviewText(e.target.value)}
-              placeholder="写下书评..."
+              placeholder="写下你对此书的排雷或安利感悟..."
               className="w-full bg-zinc-100 border border-zinc-200 rounded-2xl p-4 text-base text-zinc-900 placeholder:text-zinc-400 focus:ring-1 focus:ring-zinc-300 outline-none min-h-[140px] mb-6 leading-[1.85]"
             />
 
