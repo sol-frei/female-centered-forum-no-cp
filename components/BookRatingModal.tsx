@@ -147,6 +147,8 @@ export default function BookRatingModal({ onClose, onSave, showToast, initialDat
       extra_deduction: extraDeduction,
       extra_remark: extraRemark,
       post_final_score: finalScore,
+      impressed_score: Number(impressedScore),
+      final_score: finalScore,
       // 新增
       serial_status: serialStatus,
       recommendation_tag: recommendationTag,
