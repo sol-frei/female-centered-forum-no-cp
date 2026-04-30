@@ -275,7 +275,11 @@ export default function BookDetail({
     setSubmittingReview(true);
     try {
       await check_sensitive_words(reviewText);
-      const { updatedReviews, newImpressedScore, newFinalScore } = await submit_reader_review(
+      // submit_reader_review 内部会调 update_book_rating，
+      // 后者最终从视图 SELECT 一次完整数据返回。
+      // 直接用视图返回的 freshBook 整体替换状态，避免本地拼装 + 视图数据
+      // 两次 setState 导致的双重渲染。
+      const { freshBook } = await submit_reader_review(
         book.id,
         reviews,
         {
@@ -285,12 +289,7 @@ export default function BookDetail({
           review_text: reviewText,
         }
       );
-      setBook(prev => ({
-        ...prev,
-        reader_reviews: updatedReviews,
-        impressed_score: newImpressedScore,
-        final_score: newFinalScore,
-      }));
+      setBook({ ...freshBook, reader_reviews: freshBook.reader_reviews || [] });
       showToast('提交成功', 'success');
       setIsReviewModalOpen(false);
     } catch (err: any) {
