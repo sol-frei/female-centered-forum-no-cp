@@ -275,10 +275,6 @@ export default function BookDetail({
     setSubmittingReview(true);
     try {
       await check_sensitive_words(reviewText);
-      // submit_reader_review 内部会调 update_book_rating，
-      // 后者最终从视图 SELECT 一次完整数据返回。
-      // 直接用视图返回的 freshBook 整体替换状态，避免本地拼装 + 视图数据
-      // 两次 setState 导致的双重渲染。
       const { freshBook } = await submit_reader_review(
         book.id,
         reviews,
@@ -289,13 +285,17 @@ export default function BookDetail({
           review_text: reviewText,
         }
       );
-      setBook({ ...freshBook, reader_reviews: freshBook.reader_reviews || [] });
+      // 把所有成功后的 setState 放在同一个 React.startTransition 批次里，
+      // 保证只触发一次渲染，消除双重刷新。
+      React.startTransition(() => {
+        setBook({ ...freshBook, reader_reviews: freshBook.reader_reviews || [] });
+        setIsReviewModalOpen(false);
+        setSubmittingReview(false);
+      });
       showToast('提交成功', 'success');
-      setIsReviewModalOpen(false);
     } catch (err: any) {
-      showToast(err?.message || '提交失败', 'error');
-    } finally {
       setSubmittingReview(false);
+      showToast(err?.message || '提交失败', 'error');
     }
   };
 
