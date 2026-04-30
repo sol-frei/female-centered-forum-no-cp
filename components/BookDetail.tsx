@@ -117,8 +117,8 @@ function PersonIcon() {
 
 function HeartIcon({ filled }: { filled: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'}
-      stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
+    <svg viewBox="0 0 24 24" fill={filled ? '#ef4444' : 'none'}
+      stroke={filled ? '#ef4444' : 'currentColor'} strokeWidth="2" className="w-3.5 h-4">
       <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
     </svg>
   );
@@ -453,8 +453,7 @@ export default function BookDetail({
               </div>
             </div>
           ) : (
-            <div className="relative">
-              {/* 简介正文：移动端 text-[15px]，行高 relaxed */}
+            <div className="relative -mx-5 px-4">
               <div
                 className={`text-zinc-600 text-[17px] leading-[1.9] transition-all duration-300 ${!introExpanded && 'max-h-36 overflow-hidden'}`}
                 style={{ whiteSpace: 'pre-wrap' }}
@@ -600,7 +599,7 @@ export default function BookDetail({
             <textarea
               value={reviewText}
               onChange={e => setReviewText(e.target.value)}
-              placeholder="写下你对此书的排雷或安利感悟..."
+              placeholder="写下书评..."
               className="w-full bg-zinc-100 border border-zinc-200 rounded-2xl p-4 text-base text-zinc-900 placeholder:text-zinc-400 focus:ring-1 focus:ring-zinc-300 outline-none min-h-[140px] mb-6 leading-[1.85]"
             />
 
