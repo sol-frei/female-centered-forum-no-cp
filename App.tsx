@@ -67,6 +67,59 @@ export default function App() {
   );
 }
 
+// ── 独立定义，避免在 AppContent 内重复创建导致子组件整体重挂载 ──
+
+interface UserProfileWrapperProps { onRead: () => void; }
+function UserProfileWrapper({ onRead }: UserProfileWrapperProps) {
+  const navigate = useNavigate();
+  const { userId } = useParams<{ userId: string }>();
+  if (!userId) return <Navigate to="/feed" replace />;
+  return (
+    <UserProfile
+      userId={userId}
+      onNavigateBack={() => navigate(-1)}
+      onPostClick={(id: string) => navigate(`/post/${id}`)}
+      onRead={onRead}
+    />
+  );
+}
+
+interface BookDetailWrapperProps {
+  currentUserId: string;
+  currentUserName: string;
+  currentUserRole?: string;
+  showToast: (msg: string, type: ToastType) => void;
+}
+
+function BookDetailWrapper({ currentUserId, currentUserName, currentUserRole, showToast }: BookDetailWrapperProps) {
+  const navigate = useNavigate();
+  const { bookId } = useParams<{ bookId: string }>();
+  const [book, setBook] = React.useState<BookRating | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  useEffect(() => {
+    if (!bookId) return;
+    get_book_rating_by_id(bookId)
+      .then(data => setBook({ ...data, reader_reviews: data.reader_reviews || [] }))
+      .catch(() => showToast('书籍加载失败', 'error'))
+      .finally(() => setLoading(false));
+  }, [bookId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (loading) return <LoadingSpinner fullScreen />;
+  if (!book) return <Navigate to="/bookshelf" replace />;
+  return (
+    <BookDetail
+      book={book}
+      currentUserId={currentUserId}
+      currentUserName={currentUserName}
+      currentUserRole={currentUserRole}
+      onNavigateBack={() => navigate('/bookshelf')}
+      onPostClick={(postId: string) => navigate(`/post/${postId}`)}
+      showToast={showToast}
+    />
+  );
+}
+
 function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -261,44 +314,6 @@ function AppContent() {
     return <ChangePasswordModal user={user} onComplete={(u) => { setUser(u); navigate('/feed', { replace: true }); }} />;
   }
 
-  const UserProfileWrapper = () => {
-    const { userId } = useParams<{ userId: string }>();
-    if (!userId) return <Navigate to="/feed" replace />;
-    return (
-      <UserProfile 
-        userId={userId}
-        onNavigateBack={() => navigate(-1)} 
-        onPostClick={(id: string) => navigate(`/post/${id}`)}
-        onRead={() => setUnreadCount(0)}
-      />
-    );
-  };
-
-  const BookDetailWrapper = ({ currentUserId, currentUserName, showToast }: { currentUserId: string; currentUserName: string; showToast: (msg: string, type: ToastType) => void }) => {
-    const { bookId } = useParams<{ bookId: string }>();
-    const [book, setBook] = React.useState<BookRating | null>(null);
-    const [loading, setLoading] = React.useState(true);
-    useEffect(() => {
-      if (!bookId) return;
-      get_book_rating_by_id(bookId)
-        .then(data => setBook({ ...data, reader_reviews: data.reader_reviews || [] }))
-        .catch(() => showToast('书籍加载失败', 'error'))
-        .finally(() => setLoading(false));
-    }, [bookId]);
-    if (loading) return <LoadingSpinner fullScreen />;
-    if (!book) return <Navigate to="/bookshelf" replace />;
-    return (
-      <BookDetail
-        book={book}
-        currentUserId={currentUserId}
-        currentUserName={currentUserName}
-        onNavigateBack={() => navigate('/bookshelf')}
-        onPostClick={(postId: string) => navigate(`/post/${postId}`)}
-        showToast={showToast}
-      />
-    );
-  };
-
   const isLoginPage = location.pathname === '/login' || location.pathname === '/';
   const hideNavPages = location.pathname.startsWith('/post/') || 
                        location.pathname.startsWith('/profile/') || 
@@ -484,7 +499,7 @@ function AppContent() {
           } />
           
           <Route path="/post/:postId" element={user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" replace />} />
-          <Route path="/profile/:userId" element={user ? <UserProfileWrapper /> : <Navigate to="/login" replace />} />
+          <Route path="/profile/:userId" element={user ? <UserProfileWrapper onRead={() => setUnreadCount(0)} /> : <Navigate to="/login" replace />} />
 
           {/* 书架路由 */}
           <Route path="/bookshelf" element={
@@ -506,6 +521,7 @@ function AppContent() {
               <BookDetailWrapper
                 currentUserId={user.id}
                 currentUserName={user.user_name}
+                currentUserRole={user.role}
                 showToast={showToast}
               />
             ) : <Navigate to="/login" replace />
