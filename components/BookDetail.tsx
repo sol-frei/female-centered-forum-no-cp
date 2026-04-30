@@ -321,7 +321,7 @@ export default function BookDetail({
 
   const sectionCard = "bg-white rounded-2xl border border-zinc-100 p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]";
   // 移动端可读字号：标题 16px（font-bold），正文统一用 text-base(16px) 或 text-[15px]
-  const sectionTitle = "text-base font-bold text-zinc-800 mb-4 flex items-center gap-2";
+  const sectionTitle = "text-[17px] font-bold text-zinc-800 mb-4 flex items-center gap-2";
 
   return (
     <div className="relative min-h-screen bg-[#fafafa] pb-32 text-zinc-900">
@@ -441,7 +441,7 @@ export default function BookDetail({
               <textarea
                 value={introText}
                 onChange={e => setIntroText(e.target.value)}
-                className="w-full text-[15px] p-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none min-h-[140px] leading-relaxed"
+                className="w-full text-base p-3 bg-zinc-50 border border-zinc-200 rounded-xl outline-none min-h-[140px] leading-[1.85]"
               />
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setEditingIntro(false)} className="px-4 py-1.5 text-sm text-zinc-400">取消</button>
@@ -452,7 +452,7 @@ export default function BookDetail({
             <div className="relative">
               {/* 简介正文：移动端 text-[15px]，行高 relaxed */}
               <div
-                className={`text-zinc-600 text-[15px] leading-relaxed transition-all duration-300 ${!introExpanded && 'max-h-28 overflow-hidden'}`}
+                className={`text-zinc-600 text-base leading-[1.85] transition-all duration-300 ${!introExpanded && 'max-h-32 overflow-hidden'}`}
                 style={{ whiteSpace: 'pre-wrap' }}
               >
                 {book.book_intro || '暂无简介...'}
@@ -507,10 +507,8 @@ export default function BookDetail({
                     )}
                   </div>
                   <div className="text-center">
-                    {/* 人物名：text-[13px] 更易读 */}
-                    <div className="text-[13px] font-bold text-zinc-800 truncate">{char.name}</div>
-                    {/* 角色标签：text-xs 从 text-[10px] 提升 */}
-                    <div className="text-xs text-zinc-400">{char.role}</div>
+                    <div className="text-sm font-bold text-zinc-800 truncate">{char.name}</div>
+                    <div className="text-[13px] text-zinc-400 mt-0.5">{char.role}</div>
                   </div>
                 </div>
               ))}
@@ -533,16 +531,13 @@ export default function BookDetail({
                       <div className="w-8 h-8 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center text-xs font-bold text-zinc-400 uppercase">
                         {r.user_name.charAt(0)}
                       </div>
-                      {/* 用户名：text-sm 从 text-xs 提升 */}
-                      <span className="text-sm font-bold text-zinc-700">{r.user_name}</span>
+                      <span className="text-[15px] font-bold text-zinc-700">{r.user_name}</span>
                     </div>
-                    {/* 评分标签 */}
-                    <div className="text-xs font-black bg-zinc-50 px-2 py-0.5 rounded text-zinc-400 italic uppercase">
+                    <div className="text-sm font-black bg-zinc-50 px-2 py-0.5 rounded text-zinc-400 italic uppercase">
                       SCORE {r.impression_score.toFixed(1)}
                     </div>
                   </div>
-                  {/* 评价正文：text-[15px] 从 text-sm 提升，行高 relaxed */}
-                  <p className="text-[15px] text-zinc-600 leading-relaxed mb-3 pl-10">{r.review_text}</p>
+                  <p className="text-base text-zinc-600 leading-[1.85] mb-3 pl-10">{r.review_text}</p>
                   <div className="flex justify-end pl-10">
                     <button
                       onClick={() => handleToggleLike(i)}
@@ -601,7 +596,7 @@ export default function BookDetail({
               value={reviewText}
               onChange={e => setReviewText(e.target.value)}
               placeholder="写下你对此书的排雷或安利感悟..."
-              className="w-full bg-zinc-100 border border-zinc-200 rounded-2xl p-4 text-[15px] text-zinc-900 placeholder:text-zinc-400 focus:ring-1 focus:ring-zinc-300 outline-none min-h-[140px] mb-6 leading-relaxed"
+              className="w-full bg-zinc-100 border border-zinc-200 rounded-2xl p-4 text-base text-zinc-900 placeholder:text-zinc-400 focus:ring-1 focus:ring-zinc-300 outline-none min-h-[140px] mb-6 leading-[1.85]"
             />
 
             <button
