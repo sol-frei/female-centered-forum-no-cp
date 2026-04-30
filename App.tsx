@@ -16,7 +16,7 @@ import ChangePasswordModal from './components/ChangePasswordModal';
 
 // 导入类型与工具
 import { User, Post, Category, BookRating } from './types';
-import { get_all_users, get_user, get_posts, getUnreadNotificationCount, get_book_rating_by_id } from './services/storage';
+import { get_all_users, get_user, get_posts, getUnreadNotificationCount, get_book_rating_by_id, get_all_book_ratings } from './services/storage';
 import { 
   Search, LogOut, Menu, UserCircle, 
   PenSquare, X, Shield, BookOpen 
@@ -86,6 +86,13 @@ function AppContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [cachedBooks, setCachedBooks] = useState<BookRating[] | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    get_all_book_ratings({ sortBy: 'highest' })
+      .then(data => setCachedBooks(data))
+      .catch(() => {});
+  }, [user]);
 
   const touchStartX = useRef<number | null>(null);
   const showToast = (msg: string, type: ToastType) => setToast({ msg, type });
@@ -483,7 +490,7 @@ function AppContent() {
           <Route path="/bookshelf" element={
             user ? (
               <Bookshelf
-                onNavigateBack={() => navigate(-1)}
+                onNavigateBack={() => navigate('/feed')}
                 onBookClick={(postId: string) => navigate(`/post/${postId}`)}
                 onBookDetailClick={(book: BookRating) => navigate(`/bookshelf/${book.id}`)}
                 showToast={showToast}
