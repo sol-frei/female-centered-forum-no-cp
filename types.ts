@@ -33,10 +33,10 @@ export interface Post {
 
 export type Category = 
   | '全部' 
-  | '推书📖排雷' 
-  | '讨论👊🏻i女' 
-  | '求书🔍求作' 
-  | '自荐🙋🏻分享' 
+  | '📍 旧屋路标' 
+  | '🏗️ 雕梁画栋' 
+  | '🎉 乔迁之喜' 
+  | '🛠️ 新屋建议' 
   | '组务❗组规';
 
 export interface PollOption {

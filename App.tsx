@@ -22,7 +22,7 @@ import {
   PenSquare, X, Shield, BookOpen 
 } from 'lucide-react';
 
-const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
+const CATEGORIES: Category[] = ['全部', '📍 旧屋路标', '�️ 雕梁画栋', '🎉 乔迁之喜', '�️ 新屋建议', '组务❗组规'];
 
 const LoadingSpinner = ({ fullScreen = false }: { fullScreen?: boolean }) => (
   <div className={fullScreen ? "min-h-screen flex items-center justify-center bg-white" : "py-20 flex items-center justify-center bg-white"}>

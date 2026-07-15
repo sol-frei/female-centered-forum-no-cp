@@ -60,7 +60,7 @@ const compressCommentImage = (file: File): Promise<File> => {
     img.src = url;
   });
 };
-const CATEGORIES: Category[] = ['全部', '推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
+const CATEGORIES: Category[] = ['全部', '📍 旧屋路标', '🏗️ 雕梁画栋', '🎉 乔迁之喜', '🛠️ 新屋建议', '组务❗组规'];
 
 // 辅助函数：时间格式化
 function timeAgo(dateInput: string | Date): string {
@@ -114,7 +114,7 @@ const PostDetailPage = ({
   const [isEditingPost, setIsEditingPost] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editBlocks, setEditBlocks] = useState<any[]>([]);
-  const [editCategory, setEditCategory] = useState<Category>('讨论👊🏻i女');
+  const [editCategory, setEditCategory] = useState<Category>('🏗️ 雕梁画栋');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [selectedPollOption, setSelectedPollOption] = useState<number | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);

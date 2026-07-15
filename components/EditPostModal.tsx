@@ -16,7 +16,7 @@ interface EditPostModalProps {
   showToast: (msg: string, type: ToastType) => void;
 }
 
-const CATEGORIES: Category[] = ['推书📖排雷', '讨论👊🏻i女', '求书🔍求作', '自荐🙋🏻分享', '组务❗组规'];
+const CATEGORIES: Category[] = ['📍 旧屋路标', '🏗️ 雕梁画栋', '🎉 乔迁之喜', '🛠️ 新屋建议', '组务❗组规'];
 
 export default function EditPostModal({ user, post, bookRating, onClose, onSuccess, showToast }: EditPostModalProps) {
   const [title, setTitle] = useState(post.title);
