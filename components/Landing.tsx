@@ -10,12 +10,6 @@ export default function Landing({ onLoginClick }: LandingProps) {
     <div className="min-h-screen flex flex-col font-sans">
       {/* 1. 上半部分：黑色背景区域 - 占比 4 */}
       <div className="flex-[4] bg-[#1a1a1a] text-white p-8 pt-16 flex flex-col items-center">
-        
-        {/* 顶部的标签 - 紧凑间距 */}
-        <div className="flex gap-3 justify-center mb-6"> 
-          <span className="bg-white text-black px-3 py-1 text-sm font-bold rounded-sm">NO CP</span>
-          <span className="bg-zinc-700 text-white px-3 py-1 text-sm font-bold rounded-sm">NO MALE LEAD</span>
-        </div>
 
         {/* 主标题 - 移除居中容器，使其自然上浮 */}
         <div className="text-center space-y-4">
