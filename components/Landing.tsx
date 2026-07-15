@@ -6,16 +6,18 @@ interface LandingProps {
 
 export default function Landing({ onLoginClick }: LandingProps) {
   return (
-    <div className="min-h-screen flex flex-col items-center px-8 pt-14 pb-10 bg-[#FAF8F4]">
-      {/* 顶部标题区 */}
-      <h1 className="text-4xl font-semibold tracking-tight text-[#231F1C] text-center">
-        New Haus
-      </h1>
-      <div className="w-7 h-0.5 bg-[#5B4A57] mt-5" />
+    <div className="min-h-screen flex flex-col items-center px-8 pb-10 bg-[#FAF8F4]">
+      {/* 标题区，占据主要视觉重量 */}
+      <div className="flex-[1.3] flex flex-col items-center justify-center">
+        <h1 className="text-6xl md:text-7xl font-bold tracking-tighter leading-none text-[#231F1C] text-center">
+          New<br />Haus
+        </h1>
+        <div className="w-8 h-[3px] bg-[#5B4A57] mt-6" />
+      </div>
 
-      {/* 中间标语，垂直居中占据剩余空间 */}
-      <div className="flex-1 flex flex-col items-center justify-center text-center max-w-xs">
-        <h3 className="text-[15px] font-semibold tracking-tight text-[#231F1C] mb-1.5">
+      {/* 标语，字号和颜色更轻，退居次要位置 */}
+      <div className="flex-[0.8] flex flex-col items-center justify-center text-center max-w-xs">
+        <h3 className="text-sm font-semibold tracking-tight text-[#4A453F] mb-1.5">
           为了建造一座，更值得居住的新屋
         </h3>
         <p className="text-[11px] text-[#9A9186]">12bt 持续践行</p>
