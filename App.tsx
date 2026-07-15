@@ -373,7 +373,7 @@ function AppContent() {
               <div className="flex items-center gap-2 flex-shrink-0 min-w-0">
                 <button onClick={() => setShowMobileMenu(true)} className="md:hidden p-1.5 hover:bg-zinc-100 rounded-full"><Menu className="w-5 h-5" /></button>
                 <h1 className="font-bold text-base md:text-lg cursor-pointer truncate hidden sm:block" onClick={() => navigate('/feed')}>
-                  女主无cp/无男主小说交流中心
+                  New Haus
                 </h1>
               </div>
 
