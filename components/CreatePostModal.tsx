@@ -14,7 +14,7 @@ interface CreatePostModalProps {
   showToast: (msg: string, type: ToastType) => void;
 }
 
-const CATEGORIES: Category[] = ['📍 旧屋路标', '🔨 雕梁画栋', '🎉 乔迁之喜', '🏠建设经验 '组务❗组规'];
+const CATEGORIES: Category[] = ['📍 旧屋路标', '🔨 雕梁画栋', '🎉 乔迁之喜', '🏠 建设经验' ,'❗ 网站相关'];
 
 type ContentBlock =
   | { type: 'text'; value: string }
@@ -270,41 +270,6 @@ const handleSubmit = async () => {
         poll: pollData,
       });
 
-      // --- 🟢 第四步：处理图书评分（如果有） ---
-      if (bookRating) {
-        try {
-          const ratingUserName = bookRating.reviewer_name?.trim() && bookRating.reviewer_name !== '匿名发帖者'
-            ? bookRating.reviewer_name.trim()
-            : user.user_name;
-      
-          await create_book_rating({
-            post_id: newPost.id,
-            user_id: user.id,
-            user_name: ratingUserName,
-            book_name: bookRating.book_name,
-            book_author: bookRating.book_author,
-            book_platform: bookRating.book_platform,
-            book_category: bookRating.book_category,
-            post_impressed_score: bookRating.impressed_score, 
-            post_final_score: bookRating.final_score,
-            principle_scores: bookRating.principle_scores,
-            principle_remarks: bookRating.principle_remarks,
-            extra_deduction: bookRating.extra_deduction,
-            extra_remark: bookRating.extra_remark,
-            final_score: bookRating.final_score,
-            reviewer_comment: bookRating.reviewer_comment ?? '',
-            reviewer_name: ratingUserName,
-            serial_status: bookRating.serial_status,
-            recommendation_tag: bookRating.recommendation_tag,
-            book_intro: bookRating.book_intro,
-            book_link: bookRating.book_link,
-            book_characters: bookRating.book_characters,
-          });
-        } catch (error) {
-          console.error('保存图书评分失败:', error);
-          showToast('帖子发布成功，但评分保存失败', 'warning');
-        }
-      }
 
       // --- 🟢 第五步：完成发布 ---
       showToast('发布成功', 'success');
@@ -405,47 +370,7 @@ const handleSubmit = async () => {
             />
           </div>
 
-          {/* 图书评分预览（已添加时展示） */}
-          {bookRating && (
-            <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <p className="font-medium text-zinc-800">《{bookRating.book_name}》</p>
-                  <p className="text-sm text-zinc-500">{bookRating.book_author}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowRatingModal(true)}
-                  className="text-xs text-purple-600 hover:underline"
-                >
-                  修改
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-white rounded-lg p-2 text-center">
-                  <div className="text-base font-bold text-blue-600">{bookRating.impressed_score}</div>
-                  <div className="text-[10px] text-zinc-400">印象分</div>
-                </div>
-                <div className="bg-white rounded-lg p-2 text-center">
-                  <div className="text-base font-bold text-red-500">
-                    -{(bookRating.impressed_score - bookRating.final_score - bookRating.extra_deduction).toFixed(1)}
-                  </div>
-                  <div className="text-[10px] text-zinc-400">准则扣分</div>
-                </div>
-                <div className="bg-white rounded-lg p-2 text-center">
-                  <div className="text-base font-bold text-purple-600">{bookRating.final_score.toFixed(1)}</div>
-                  <div className="text-[10px] text-zinc-400">最终得分</div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setBookRating(null)}
-                className="mt-3 text-xs text-red-500 hover:underline"
-              >
-                移除评分
-              </button>
-            </div>
-          )}
+
 
           {/* 投票设置（展开时显示） */}
           {enablePoll && (

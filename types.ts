@@ -36,8 +36,8 @@ export type Category =
   | '📍 旧屋路标' 
   | '🔨 雕梁画栋' 
   | '🎉 乔迁之喜' 
-  | '🏠建设经验' 
-  | '组务❗组规';
+  | '🏠 建设经验' 
+  | '❗ 网站相关';
 
 export interface PollOption {
   id: string;
