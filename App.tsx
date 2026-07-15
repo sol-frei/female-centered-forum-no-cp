@@ -22,7 +22,7 @@ import {
   PenSquare, X, Shield, BookOpen 
 } from 'lucide-react';
 
-const CATEGORIES: Category[] = ['全部', '📍 旧屋路标', '�️ 雕梁画栋', '🎉 乔迁之喜', '�️ 新屋建议', '❗ 网站相关'];
+const CATEGORIES: Category[] = ['全部', '📍 旧屋路标', '🔨 雕梁画栋', '🎉 乔迁之喜', '🏠 建设经验', '❗ 网站相关'];
 
 const LoadingSpinner = ({ fullScreen = false }: { fullScreen?: boolean }) => (
   <div className={fullScreen ? "min-h-screen flex items-center justify-center bg-white" : "py-20 flex items-center justify-center bg-white"}>
@@ -501,19 +501,7 @@ function AppContent() {
           <Route path="/post/:postId" element={user ? <PostDetailPage user={user} usersMap={usersMap} showToast={showToast} /> : <Navigate to="/login" replace />} />
           <Route path="/profile/:userId" element={user ? <UserProfileWrapper onRead={() => setUnreadCount(0)} /> : <Navigate to="/login" replace />} />
 
-          {/* 书架路由 */}
-          <Route path="/bookshelf" element={
-            user ? (
-              <Bookshelf
-                onNavigateBack={() => navigate('/feed')}
-                onBookClick={(postId: string) => navigate(`/post/${postId}`)}
-                onBookDetailClick={(book: BookRating) => navigate(`/bookshelf/${book.id}`)}
-                showToast={showToast}
-                cachedBooks={cachedBooks}
-                onBooksLoaded={(books) => setCachedBooks(books)}
-              />
-            ) : <Navigate to="/login" replace />
-          } />
+
 
           {/* 书籍详情路由 */}
           <Route path="/bookshelf/:bookId" element={
