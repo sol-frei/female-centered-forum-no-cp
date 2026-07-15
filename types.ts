@@ -34,9 +34,9 @@ export interface Post {
 export type Category = 
   | '全部' 
   | '📍 旧屋路标' 
-  | '🏗️ 雕梁画栋' 
+  | '🔨 雕梁画栋' 
   | '🎉 乔迁之喜' 
-  | '🛠️ 新屋建议' 
+  | '🏠建设经验' 
   | '组务❗组规';
 
 export interface PollOption {

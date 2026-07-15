@@ -14,7 +14,7 @@ interface CreatePostModalProps {
   showToast: (msg: string, type: ToastType) => void;
 }
 
-const CATEGORIES: Category[] = ['📍 旧屋路标', '🏗️ 雕梁画栋', '🎉 乔迁之喜', '🛠️ 新屋建议', '组务❗组规'];
+const CATEGORIES: Category[] = ['📍 旧屋路标', '🔨 雕梁画栋', '🎉 乔迁之喜', '🏠建设经验 '组务❗组规'];
 
 type ContentBlock =
   | { type: 'text'; value: string }
@@ -22,7 +22,7 @@ type ContentBlock =
 
 export default function CreatePostModal({ user, onClose, onSuccess, showToast }: CreatePostModalProps) {
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<Category>('🏗️ 雕梁画栋');
+  const [category, setCategory] = useState<Category>('🔨 雕梁画栋');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
 
