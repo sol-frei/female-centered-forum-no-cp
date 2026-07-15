@@ -1,5 +1,4 @@
 import React from 'react';
-import { BookOpen } from 'lucide-react';
 
 interface LandingProps {
   onLoginClick: () => void;
@@ -7,41 +6,32 @@ interface LandingProps {
 
 export default function Landing({ onLoginClick }: LandingProps) {
   return (
-    <div className="min-h-screen flex flex-col font-sans">
-      {/* 1. 上半部分：黑色背景区域 - 占比 4 */}
-      <div className="flex-[4] bg-[#1a1a1a] text-white p-8 pt-16 flex flex-col items-center">
+    <div className="min-h-screen flex flex-col items-center px-8 pt-14 pb-10 bg-[#FAF8F4]">
+      {/* 顶部标题区 */}
+      <h1 className="text-4xl font-semibold tracking-tight text-[#231F1C] text-center">
+        New Haus
+      </h1>
+      <div className="w-7 h-0.5 bg-[#5B4A57] mt-5" />
 
-        {/* 主标题 - 移除居中容器，使其自然上浮 */}
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tighter leading-tight">
-            New Haus 
-          </h1>
-        </div>
-
-        {/* 登录按钮区域 - 强制到底部 */}
-        <div className="mt-auto flex flex-col items-center space-y-4 w-full max-w-xs pb-10">
-          <button 
-            onClick={onLoginClick}
-            className="w-full bg-white text-black py-4 rounded-lg text-xl font-bold hover:bg-zinc-200 transition-all active:scale-[0.98] shadow-2xl"
-          >
-            立即登录
-          </button>
-          <p className="text-zinc-500 text-[10px] tracking-widest text-center uppercase">
-            *本站实行邀请制，请联系管理员获取 ID 和密码
-          </p>
-        </div>
+      {/* 中间标语，垂直居中占据剩余空间 */}
+      <div className="flex-1 flex flex-col items-center justify-center text-center max-w-xs">
+        <h3 className="text-[15px] font-semibold tracking-tight text-[#231F1C] mb-1.5">
+          为了建造一座，更值得居住的新屋
+        </h3>
+        <p className="text-[11px] text-[#9A9186]">12bt 持续践行</p>
       </div>
 
-      {/* 2. 下半部分：白色背景区域 - 占比 1 */}
-      <div className="flex-[1] bg-white p-6 flex items-center justify-center border-t border-zinc-100">
-        <div className="max-w-md w-full text-center">
-          <h3 className="text-lg font-bold text-black mb-1">
-            为了建造一座，更值得居住的新屋
-          </h3>
-          <p className="text-zinc-500 text-xs">
-            12bt持续践行。
-          </p>
-        </div>
+      {/* 登录按钮固定在底部 */}
+      <div className="w-full max-w-xs flex flex-col items-center text-center">
+        <button
+          onClick={onLoginClick}
+          className="w-full bg-[#231F1C] text-[#FAF8F4] py-4 rounded-lg text-base font-semibold tracking-wide hover:bg-[#3a3530] transition-all active:scale-[0.98]"
+        >
+          立即登录
+        </button>
+        <p className="text-[11px] text-[#9A9186] mt-3.5">
+          邀请制，请联系管理员获取 ID 和密码
+        </p>
       </div>
     </div>
   );
