@@ -20,7 +20,7 @@ export default function Landing({ onLoginClick }: LandingProps) {
         {/* 主标题 - 移除居中容器，使其自然上浮 */}
         <div className="text-center space-y-4">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tighter leading-tight">
-            女主无cp/无男主<br />小说交流中心
+            New Haus 
           </h1>
         </div>
 
@@ -42,10 +42,10 @@ export default function Landing({ onLoginClick }: LandingProps) {
       <div className="flex-[1] bg-white p-6 flex items-center justify-center border-t border-zinc-100">
         <div className="max-w-md w-full text-center">
           <h3 className="text-lg font-bold text-black mb-1">
-            女性为第一性，爱女永不停歇！
+            为了建造一座，更值得居住的新屋
           </h3>
           <p className="text-zinc-500 text-xs">
-            只允许推荐女主无cp/无男主，请遵守组规。
+            12bt持续践行。
           </p>
         </div>
       </div>
